@@ -161,3 +161,31 @@ describe('project', () => {
     expect(p.breachDate).toBeNull()
   })
 })
+
+describe('resúmenes ya vencidos', () => {
+  const card = { id: 'c1', name: 'Visa', closing_day: 25, due_day: 5 }
+
+  it('no se proyectan: ya se pagaron y el pago figura en el extracto de la cuenta', () => {
+    // Compra de mayo -> cierra 25/05 -> vence 05/06, muy anterior a hoy (31/07).
+    const txs = [{ date: '2026-05-10', amount_cents: -100000, category: 'otros', method: 'credito', card_id: 'c1' }]
+    expect(cardDues(card, txs, TODAY)).toHaveLength(0)
+  })
+
+  it('sí se proyecta el resumen cuyo vencimiento todavía no llegó', () => {
+    const txs = [{ date: '2026-07-20', amount_cents: -100000, category: 'otros', method: 'credito', card_id: 'c1' }]
+    const dues = cardDues(card, txs, TODAY)
+    expect(dues).toHaveLength(1)
+    expect(dues[0].due_date).toBe('2026-08-05')
+  })
+})
+
+describe('pago de tarjeta y gasto variable', () => {
+  it('el pago del resumen no infla el consumo diario', () => {
+    const txs = [
+      { date: '2026-07-28', amount_cents: -41368600, category: 'pago_tarjeta', method: 'debito' },
+      { date: '2026-07-28', amount_cents: -70000, category: 'supermercado', method: 'debito' },
+    ]
+    // Solo cuenta el súper: 700 en 4 días (28 al 31).
+    expect(dailyBurn(txs, TODAY)).toBe(17500)
+  })
+})

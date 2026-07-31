@@ -366,6 +366,7 @@ export function spendByCategory(from: ISODate, to: ISODate): Array<{ category: s
       `SELECT category, SUM(-amount_cents) AS cents, COUNT(*) AS count
        FROM transactions
        WHERE amount_cents < 0 AND date BETWEEN ? AND ?
+         AND category <> 'pago_tarjeta'
        GROUP BY category ORDER BY cents DESC`,
     )
     .all(from, to) as Array<{ category: string; cents: number; count: number }>
@@ -379,7 +380,7 @@ export function monthlySpend(months = 6, today: ISODate = todayISO()): Array<{ p
     .prepare(
       `SELECT substr(date, 1, 7) AS period, SUM(-amount_cents) AS cents
        FROM transactions
-       WHERE amount_cents < 0 AND date >= ? AND category NOT IN ('transferencias')
+       WHERE amount_cents < 0 AND date >= ? AND category NOT IN ('transferencias', 'pago_tarjeta')
        GROUP BY period ORDER BY period`,
     )
     .all(start) as Array<{ period: string; cents: number }>
@@ -419,8 +420,7 @@ export function upcomingDues(days = 30, today: ISODate = todayISO()) {
   const bills = listPendingBills()
     .filter((b) => compare(b.due_date, to) <= 0)
     .map((b) => ({ date: b.due_date, label: b.name, cents: b.amount_cents, kind: 'factura' as const }))
-  const dues = allCardDues(today)
-    .filter((d) => compare(d.due_date, to) <= 0 && compare(d.due_date, addDays(today, -30)) >= 0)
+  const dues = allCardDues(today).filter((d) => compare(d.due_date, to) <= 0)
     .map((d) => ({ date: d.due_date, label: `Resumen ${d.name}`, cents: d.amount_cents, kind: 'tarjeta' as const }))
   const loans = listLoans()
     .filter((l) => l.active && l.installments_paid < l.installments_total)

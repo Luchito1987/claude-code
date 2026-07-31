@@ -118,3 +118,17 @@ describe('detección en el resumen de tarjeta', () => {
     )
   })
 })
+
+describe('desambiguación de comercios parecidos', () => {
+  it('"PRESTAMO PERSONAL" es un préstamo, no la telefónica Personal', () => {
+    expect(categorize('DEBITO CUOTA PRESTAMO PERSONAL')).toBe('prestamos')
+    expect(categorize('PERSONAL FLOW ABONO MENSUAL')).toBe('servicios')
+  })
+
+  it('el pago del resumen tiene categoría propia para no duplicar el gasto', () => {
+    expect(categorize('PAGO TARJETA VISA')).toBe('pago_tarjeta')
+    expect(categorize('PAGO DE RESUMEN MASTERCARD')).toBe('pago_tarjeta')
+    // Un consumo con la tarjeta sigue siendo el consumo, no un pago.
+    expect(categorize('RAPPI*MOSTAZA VISA DEBITO')).toBe('delivery')
+  })
+})

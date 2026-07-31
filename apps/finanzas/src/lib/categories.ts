@@ -19,6 +19,7 @@ export const CATEGORIES = [
   'impuestos',
   'prestamos',
   'transferencias',
+  'pago_tarjeta',
   'ingresos',
   'otros',
 ] as const
@@ -40,6 +41,11 @@ export const VARIABLE_CATEGORIES: Category[] = [
 export const FIXED_CATEGORIES: Category[] = ['servicios', 'educacion', 'salud', 'impuestos', 'prestamos']
 
 const RULES: Array<{ re: RegExp; category: Category }> = [
+  // Estas tres van primero: sus palabras aparecen dentro de otros comercios
+  // ("PRESTAMO PERSONAL" contra Personal telefonía, "PAGO TARJETA VISA" contra
+  // cualquier consumo con Visa en el detalle).
+  { re: /\bPAGO\s+(DE\s+)?(TARJETA|RESUMEN|VISA|MASTER\s?CARD|MASTERCARD|AMEX|AMERICAN\s?EXPRESS|CABAL)/i, category: 'pago_tarjeta' },
+  { re: /\bCUOTA\s?PRESTAMO|PRESTAMO|CREDITO\s?PERSONAL|REFINANCIACION/i, category: 'prestamos' },
   { re: /\bRAPPI|RAPI\*|RAPPIPRO|RAPPI\s?FAVOR/i, category: 'delivery' },
   { re: /\bPEDIDOS\s?YA|PEDIDOSYA|UBER\s?EATS|MC\s?DELIVERY|GLOVO/i, category: 'delivery' },
   { re: /\bCARREFOUR|COTO|JUMBO|DIA%|DIA\b|VEA\b|DISCO\b|LIBERTAD|CHANGOMAS|MAKRO|VITAL\b/i, category: 'supermercado' },
@@ -55,7 +61,6 @@ const RULES: Array<{ re: RegExp; category: Category }> = [
   { re: /\bZARA|H&M|ADIDAS|NIKE|DEXTER|FALABELLA|MERCADOLIBRE|MERCADO\s?LIBRE|SHEIN|DAFITI/i, category: 'indumentaria' },
   { re: /\bEASY\b|SODIMAC|FERRETERIA|PINTURERIA|MUEBLES|IKEA/i, category: 'hogar' },
   { re: /\bAFIP|ARBA|AGIP|RENTAS|MONOTRIBUTO|IIBB|IMPUESTO|SELLOS/i, category: 'impuestos' },
-  { re: /\bCUOTA\s?PRESTAMO|PRESTAMO|CREDITO\s?PERSONAL|REFINANCIACION/i, category: 'prestamos' },
   { re: /\bTRANSFERENCIA|TRANSF\b|CVU|CBU|DEBIN|MERCADO\s?PAGO\s?TRANSF/i, category: 'transferencias' },
   { re: /\bSUELDO|HABERES|ACREDITACION\s?HABERES|REMUNERACION|HONORARIOS/i, category: 'ingresos' },
   { re: /\bMOSTAZA|MCDONALD|BURGER\s?KING|STARBUCKS|HAVANNA|BAR\b|RESTO\b|PARRILLA|PIZZ/i, category: 'restaurante' },
@@ -121,6 +126,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   impuestos: 'Impuestos',
   prestamos: 'Préstamos',
   transferencias: 'Transferencias',
+  pago_tarjeta: 'Pago de tarjeta',
   ingresos: 'Ingresos',
   otros: 'Otros',
 }

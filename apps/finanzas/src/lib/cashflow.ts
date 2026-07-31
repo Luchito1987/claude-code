@@ -298,7 +298,17 @@ export interface TxLike {
  */
 export function dailyBurn(txs: TxLike[], today: ISODate = todayISO(), days = 90): number {
   const from = addDays(today, -days)
-  const excluded = new Set(['transferencias', 'ingresos', 'servicios', 'prestamos', 'impuestos', 'educacion'])
+  // `pago_tarjeta` queda afuera: el consumo ya se cuenta en el resumen, sumarlo
+  // otra vez como gasto duplicaría todo lo que pasa por la tarjeta.
+  const excluded = new Set([
+    'transferencias',
+    'pago_tarjeta',
+    'ingresos',
+    'servicios',
+    'prestamos',
+    'impuestos',
+    'educacion',
+  ])
   let total = 0
   let earliest: ISODate | null = null
   for (const t of txs) {
@@ -343,8 +353,11 @@ export function cardDues(card: CardLike, txs: TxLike[], today: ISODate = todayIS
     byDue.set(due, (byDue.get(due) ?? 0) + -t.amount_cents)
   }
 
+  // Solo los resúmenes que todavía no vencieron. Un resumen con vencimiento
+  // pasado ya se pagó, y ese pago aparece como movimiento en el extracto de la
+  // cuenta: contarlo de nuevo duplicaría la salida.
   return [...byDue.entries()]
-    .filter(([due]) => compare(due, addDays(today, -60)) >= 0)
+    .filter(([due]) => compare(due, today) >= 0)
     .map(([due_date, amount_cents]) => ({ cardId: card.id, name: card.name, due_date, amount_cents }))
     .sort((a, b) => compare(a.due_date, b.due_date))
 }

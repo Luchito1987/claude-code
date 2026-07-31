@@ -10,7 +10,17 @@ export interface WeekPoint {
 
 const W = 720
 const H = 190
-const PAD = { top: 16, right: 12, bottom: 26, left: 64 }
+const PAD = { top: 16, right: 26, bottom: 26, left: 54 }
+
+/** Etiqueta corta para el eje: $ 1,2 M / $ 350 mil. El detalle está en la tabla. */
+function shortMoney(cents: number): string {
+  const pesos = Math.round(cents / 100)
+  const abs = Math.abs(pesos)
+  const signo = pesos < 0 ? '-' : ''
+  if (abs >= 1_000_000) return `${signo}$ ${(abs / 1_000_000).toFixed(1).replace('.', ',')} M`
+  if (abs >= 1_000) return `${signo}$ ${Math.round(abs / 1_000)} mil`
+  return `${signo}$ ${abs}`
+}
 
 /** Marcas del eje en valores redondos dentro del rango, de mayor a menor. */
 function niceTicks(min: number, max: number, count = 4): number[] {
@@ -76,7 +86,7 @@ export function WeeklyChart({ weeks, buffer }: { weeks: WeekPoint[]; buffer: num
           <g key={v}>
             <line x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)} stroke="#232c38" strokeWidth="1" />
             <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" fontSize="10" fill="#8b98a9">
-              {formatMoney(v)}
+              {shortMoney(v)}
             </text>
           </g>
         ))}
@@ -96,8 +106,8 @@ export function WeeklyChart({ weeks, buffer }: { weeks: WeekPoint[]; buffer: num
               strokeWidth="1.5"
               strokeDasharray="5 4"
             />
-            <text x={PAD.left + 4} y={y(buffer) - 5} textAnchor="start" fontSize="10" fill="#8b98a9">
-              colchón
+            <text x={W - PAD.right} y={y(buffer) + 12} textAnchor="end" fontSize="10" fill="#8b98a9">
+              colchón {shortMoney(buffer)}
             </text>
           </>
         )}
@@ -143,7 +153,14 @@ export function WeeklyChart({ weeks, buffer }: { weeks: WeekPoint[]; buffer: num
 
         {weeks.map((w, i) =>
           i % Math.ceil(weeks.length / 6) === 0 || i === weeks.length - 1 ? (
-            <text key={`x-${w.start}`} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#8b98a9">
+            <text
+              key={`x-${w.start}`}
+              x={Math.min(Math.max(x(i), 18), W - 18)}
+              y={H - 8}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#8b98a9"
+            >
               {w.label}
             </text>
           ) : null,
