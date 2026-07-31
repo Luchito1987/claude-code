@@ -1,0 +1,14 @@
+services:
+  finanzas:
+    build: .
+    ports:
+      - '3100:3100'
+    volumes:
+      # La base vive acá: sin este volumen se pierde todo al recrear el contenedor.
+      - finanzas-data:/data
+    environment:
+      TZ: America/Argentina/Buenos_Aires
+    restart: unless-stopped
+
+volumes:
+  finanzas-data:
