@@ -5,3 +5,10 @@ node_modules
 data/
 *.db
 *.db-journal
+
+# Documentos personales: facturas, extractos, resúmenes. Nunca van al repo.
+documentos/*
+!documentos/LEEME.md
+*.pdf
+*.xlsx
+!tests/**/*.xlsx
