@@ -16,7 +16,8 @@ desde internet.
 | Necesidad | Cómo se resuelve |
 |---|---|
 | Saber qué se paga y cuándo, del 28 al 15 | Registro de servicios con día de vencimiento. La app genera las facturas del período y muestra la ventana vigente; los importes arrancan estimados y se confirman con un clic |
-| Subir extractos de tarjeta y de caja de ahorro | Importador de CSV/TSV con detección automática de separador y columnas, y parseo de texto pegado (sirve para PDF) |
+| Subir extractos de tarjeta y de caja de ahorro | Importador de CSV/TSV/XLSX con detección automática de separador, de hoja y de columnas, y parseo de texto pegado (sirve para PDF) |
+| Dejar la planilla de Excel que llevabas | Modo "planilla propia de gastos": los importes positivos entran como gastos y se respeta tu columna de categoría. Se migra el historial una vez y se sigue en la app |
 | Dar de alta préstamos vigentes | Alta con cuota, total de cuotas y cuántas van pagas; las pendientes entran solas en la proyección |
 | Tickets y gastos sueltos | Carga manual con categorización automática por comercio |
 | Cuánto efectivo queda | Proyección día a día agregada por semana, con piso de la curva y alerta de colchón perforado |
@@ -64,10 +65,23 @@ npm run seed -- --reset --email vos@ejemplo.com --password una-clave-larga
 Otros comandos:
 
 ```bash
-npm test          # 71 tests de la lógica de dominio
+npm test          # 89 tests de la lógica de dominio
 npm run typecheck
 npm run build
 ```
+
+Para cargar archivos sin pasar por el navegador, o para mirar una planilla
+desconocida antes de importarla:
+
+```bash
+npm run import -- --inspect --archivo planilla.xlsx
+npm run import -- --tipo gastos  --destino "Caja de ahorro" --archivo gastos-2026.xlsx --dry
+npm run import -- --tipo cuenta  --destino "Caja de ahorro" --archivo extracto.csv
+npm run import -- --tipo tarjeta --destino "Visa"           --archivo resumen.xlsx
+```
+
+`--dry` muestra fecha, comercio, importe y categoría de cada línea sin escribir
+nada en la base.
 
 ---
 
@@ -155,15 +169,18 @@ src/
     report.ts             Informe Markdown / JSON / CSV
     parsers/
       csv.ts              CSV/TSV sin dependencias
+      xlsx.ts             Planillas: hojas a matriz de texto, fechas normalizadas
+      input.ts            Entrada única: decide texto o planilla y elige la hoja
       statement.ts        Extractos: columnas por nombre + fallback por líneas
       rappi.ts            Mails de pedido, CSV y análisis de delivery
   app/                    Pantallas (Next.js App Router) y server actions
   components/             UI compartida y el gráfico semanal en SVG
-tests/                    71 tests sobre parsers, fechas, plata, proyección y reglas
+tests/                    89 tests sobre parsers, fechas, plata, proyección y reglas
 ```
 
-Sin dependencias de runtime más allá de Next, React y `better-sqlite3`: los
-parsers, el gráfico y el motor de reglas son código propio y testeado.
+Las únicas dependencias de runtime son Next, React, `better-sqlite3` y `exceljs`
+(para leer planillas): los parsers, el gráfico y el motor de reglas son código
+propio y testeado.
 
 ---
 

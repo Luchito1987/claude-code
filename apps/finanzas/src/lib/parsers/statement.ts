@@ -10,7 +10,7 @@
 import { createHash } from 'node:crypto'
 import { parseCsv } from './csv'
 import { toCents } from '../money'
-import { categorize, extractMerchant, isRappi, type UserRule } from '../categories'
+import { categorize, extractMerchant, isRappi, mapCategoryName, type UserRule } from '../categories'
 import type { ISODate } from '../dates'
 
 export interface ParsedRow {
@@ -42,6 +42,7 @@ const HEADER_HINTS = {
   credit: ['credito', 'creditos', 'abono', 'ingreso', 'haber'],
   installment: ['cuota', 'cuotas', 'plan'],
   currency: ['moneda', 'divisa'],
+  category: ['categoria', 'rubro', 'clasificacion', 'tipo de gasto'],
 }
 
 function norm(s: string): string {
@@ -123,8 +124,14 @@ function expandYear(y: number): number {
 }
 
 export interface ParseOptions {
-  /** 'card' invierte el signo: en resúmenes de tarjeta los consumos vienen positivos. */
-  kind: 'card' | 'account'
+  /**
+   * Define cómo se lee el signo del importe:
+   *  - 'account': se respeta el signo del extracto.
+   *  - 'card':    los consumos vienen positivos y son egresos.
+   *  - 'gastos':  planilla propia de gastos, donde todo positivo es un gasto y
+   *               la columna de categoría, si existe, la puso el usuario.
+   */
+  kind: 'card' | 'account' | 'gastos'
   userRules?: UserRule[]
   fallbackYear?: number
   /** Identifica el origen para el fingerprint anti-duplicados. */
@@ -138,7 +145,14 @@ export function parseStatement(text: string, opts: ParseOptions): ParseResult {
 }
 
 function tryParseCsv(text: string, opts: ParseOptions): ParseResult | null {
-  const rows = parseCsv(text)
+  return parseRows(parseCsv(text), opts)
+}
+
+/**
+ * Parseo a partir de una matriz ya armada. Lo usan tanto el CSV como las hojas
+ * de Excel: una vez que las celdas son strings, el problema es el mismo.
+ */
+export function parseRows(rows: string[][], opts: ParseOptions): ParseResult | null {
   if (rows.length < 2) return null
   const headerIdx = findHeaderRow(rows)
   if (headerIdx === -1) return null
@@ -152,6 +166,7 @@ function tryParseCsv(text: string, opts: ParseOptions): ParseResult | null {
     credit: matchColumn(headers, HEADER_HINTS.credit),
     installment: matchColumn(headers, HEADER_HINTS.installment),
     currency: matchColumn(headers, HEADER_HINTS.currency),
+    category: matchColumn(headers, HEADER_HINTS.category),
   }
   if (cols.date === -1) return null
   if (cols.amount === -1 && cols.debit === -1 && cols.credit === -1) return null
@@ -191,6 +206,7 @@ function tryParseCsv(text: string, opts: ParseOptions): ParseResult | null {
         cents,
         installment: cols.installment !== -1 ? (r[cols.installment] ?? '').trim() : '',
         currency: cols.currency !== -1 ? normalizeCurrency(r[cols.currency]) : 'ARS',
+        sheetCategory: cols.category !== -1 ? (r[cols.category] ?? '').trim() : '',
         raw: r.join(' | '),
         opts,
       }),
@@ -264,17 +280,22 @@ function buildRow(args: {
   currency: string
   raw: string
   opts: ParseOptions
+  sheetCategory?: string
 }): ParsedRow {
   const { date, description, installment, currency, raw, opts } = args
-  // En resúmenes de tarjeta el consumo llega positivo: para el flujo de caja es egreso.
-  const amountCents = opts.kind === 'card' ? -args.cents : args.cents
+  // Tanto en un resumen de tarjeta como en una planilla de gastos el importe
+  // llega positivo, pero para el flujo de caja es plata que sale.
+  const amountCents = opts.kind === 'account' ? args.cents : -Math.abs(args.cents)
   const merchant = extractMerchant(description)
+  // La categoría que el usuario ya escribió en su planilla gana: la puso él.
+  const propia = args.sheetCategory ? mapCategoryName(args.sheetCategory) : null
   return {
     date,
     description: description.replace(/\s+/g, ' ').trim(),
     merchant,
     amountCents,
-    category: amountCents > 0 ? 'ingresos' : categorize(description, opts.userRules ?? []),
+    category:
+      propia ?? (amountCents > 0 ? 'ingresos' : categorize(description, opts.userRules ?? [])),
     installment,
     currency,
     rappi: isRappi(description),

@@ -130,3 +130,35 @@ export const CATEGORY_LABELS: Record<string, string> = {
   ingresos: 'Ingresos',
   otros: 'Otros',
 }
+
+/**
+ * Traduce el nombre de categoría que trae una planilla propia ("Comida", "Auto",
+ * "Deudas") a las categorías de la app. Devuelve null cuando no hay equivalente
+ * claro, para que en ese caso decida el detalle del movimiento.
+ */
+const SINONIMOS: Array<[RegExp, Category]> = [
+  [/^(delivery|pedidos?\s?ya|rappi|comida\s?a\s?domicilio)$/i, 'delivery'],
+  [/^(super|supermercado|almacen|alimentos?|comida|mercado|verduler[ií]a|carnicer[ií]a)$/i, 'supermercado'],
+  [/^(resto|restaurante|salidas?\s?a\s?comer|bares?)$/i, 'restaurante'],
+  [/^(auto|nafta|combustible|gasoil|gnc|vehiculo|veh[ií]culo)$/i, 'combustible'],
+  [/^(transporte|viajes?\s?diarios?|sube|taxi|colectivo)$/i, 'transporte'],
+  [/^(servicios?|expensas|luz|gas|agua|internet|telefon[ií]a|cable)$/i, 'servicios'],
+  [/^(salud|medicina|prepaga|obra\s?social|m[eé]dico)$/i, 'salud'],
+  [/^(farmacia|remedios?|medicamentos?)$/i, 'farmacia'],
+  [/^(educaci[oó]n|colegio|escuela|cuota\s?escolar|universidad|cursos?)$/i, 'educacion'],
+  [/^(ocio|entretenimiento|salidas?|streaming|suscripciones?|cine)$/i, 'entretenimiento'],
+  [/^(ropa|indumentaria|vestimenta|calzado)$/i, 'indumentaria'],
+  [/^(hogar|casa|muebles|ferreter[ií]a|mantenimiento)$/i, 'hogar'],
+  [/^(impuestos?|afip|arba|monotributo|patente|abl)$/i, 'impuestos'],
+  [/^(deudas?|pr[eé]stamos?|cuotas?|cr[eé]ditos?)$/i, 'prestamos'],
+  [/^(transferencias?|env[ií]os?)$/i, 'transferencias'],
+  [/^(ingresos?|sueldos?|haberes|cobros?)$/i, 'ingresos'],
+]
+
+export function mapCategoryName(raw: string): Category | null {
+  const texto = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+  if (!texto) return null
+  if ((CATEGORIES as readonly string[]).includes(texto.toLowerCase())) return texto.toLowerCase() as Category
+  for (const [re, cat] of SINONIMOS) if (re.test(texto)) return cat
+  return null
+}

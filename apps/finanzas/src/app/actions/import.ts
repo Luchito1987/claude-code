@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getDb, id, now } from '@/db/client'
 import { currentUser } from '@/lib/auth'
-import { parseStatement, fingerprint, type ParsedRow } from '@/lib/parsers/statement'
+import { fingerprint, parseStatement, type ParsedRow } from '@/lib/parsers/statement'
+import { decodeText, parseUploadedFile, type FileParseResult } from '@/lib/parsers/input'
+import { isSpreadsheet, readWorkbook } from '@/lib/parsers/xlsx'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint, type RappiOrder } from '@/lib/parsers/rappi'
 import { listUserRules } from '@/lib/queries'
 import { formatMoney } from '@/lib/money'
@@ -16,43 +18,29 @@ export interface ImportState {
   detail?: string[]
 }
 
-/**
- * Los home banking argentinos exportan tanto UTF-8 como Windows-1252. Se prueba
- * el estricto primero y se cae al latino si aparecen bytes inválidos.
- */
-async function readText(file: File): Promise<string> {
-  const buf = await file.arrayBuffer()
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(buf)
-  } catch {
-    return new TextDecoder('windows-1252').decode(buf)
-  }
-}
 
 export async function importStatementAction(_prev: ImportState, form: FormData): Promise<ImportState> {
   const user = currentUser()
   if (!user) redirect('/login')
 
-  const kind = String(form.get('kind') ?? 'account') as 'card' | 'account'
+  const kind = String(form.get('kind') ?? 'account') as 'card' | 'account' | 'gastos'
   const targetId = String(form.get('target') ?? '')
   const pasted = String(form.get('text') ?? '').trim()
   const file = form.get('file')
 
-  let text = pasted
+  const opts = { kind, userRules: listUserRules(), fallbackYear: parseISO(todayISO()).y }
+
   let fileName = 'texto pegado'
+  let parsed: FileParseResult
   if (file instanceof File && file.size > 0) {
     if (file.size > 8 * 1024 * 1024) return { error: 'El archivo supera los 8 MB.' }
-    text = await readText(file)
     fileName = file.name
+    parsed = await parseUploadedFile(fileName, await file.arrayBuffer(), opts)
+  } else {
+    if (!pasted) return { error: 'Subí un archivo o pegá el texto del extracto.' }
+    parsed = parseStatement(pasted, opts)
   }
-  if (!text.trim()) return { error: 'Subí un archivo o pegá el texto del extracto.' }
   if (!targetId) return { error: kind === 'card' ? 'Elegí la tarjeta.' : 'Elegí la cuenta.' }
-
-  const parsed = parseStatement(text, {
-    kind,
-    userRules: listUserRules(),
-    fallbackYear: parseISO(todayISO()).y,
-  })
   if (!parsed.rows.length) {
     return {
       error: 'No se reconoció ningún movimiento.',
@@ -85,7 +73,7 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       statementId,
       kind,
       kind === 'card' ? targetId : null,
-      kind === 'account' ? targetId : null,
+      kind === 'card' ? null : targetId,
       fileName,
       rows[0]?.date.slice(0, 7) ?? '',
       user.id,
@@ -101,8 +89,8 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
         row.amountCents,
         row.currency,
         row.category,
-        kind === 'card' ? 'credito' : 'debito',
-        kind === 'account' ? targetId : null,
+        kind === 'card' ? 'credito' : kind === 'gastos' ? 'otro' : 'debito',
+        kind === 'card' ? null : targetId,
         kind === 'card' ? targetId : null,
         statementId,
         row.installment,
@@ -128,7 +116,9 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
   revalidatePath('/')
 
   const detail = [
-    `Formato detectado: ${parsed.strategy === 'csv' ? 'CSV con encabezados' : 'texto por líneas'}.`,
+    parsed.sheetName
+      ? `Planilla leída, hoja "${parsed.sheetName}".`
+      : `Formato detectado: ${parsed.strategy === 'csv' ? 'CSV con encabezados' : 'texto por líneas'}.`,
     `${parsed.skipped} línea(s) sin fecha o importe se ignoraron.`,
     ...parsed.warnings,
   ]
@@ -149,8 +139,17 @@ export async function importRappiAction(_prev: ImportState, form: FormData): Pro
   let text = pasted
   let fileName = 'texto pegado'
   if (file instanceof File && file.size > 0) {
-    text = await readText(file)
     fileName = file.name
+    const buf = await file.arrayBuffer()
+    if (isSpreadsheet(fileName)) {
+      // Una planilla se aplana a CSV para reusar el mismo parser de pedidos.
+      const hojas = await readWorkbook(buf)
+      text = hojas
+        .map((h) => h.rows.map((r) => r.join(',')).join('\n'))
+        .find((t) => t.trim()) ?? ''
+    } else {
+      text = decodeText(buf)
+    }
   }
   if (!text.trim()) return { error: 'Pegá los mails de los pedidos o subí el CSV.' }
 

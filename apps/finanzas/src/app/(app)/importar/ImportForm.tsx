@@ -23,7 +23,7 @@ export function ImportForm({
   cards: Array<{ id: string; name: string }>
 }) {
   const [state, action] = useFormState(importStatementAction, initial)
-  const [kind, setKind] = useState<'account' | 'card'>('account')
+  const [kind, setKind] = useState<'account' | 'card' | 'gastos'>('account')
   const targets = kind === 'card' ? cards : accounts
 
   return (
@@ -38,10 +38,11 @@ export function ImportForm({
             name="kind"
             className="input"
             value={kind}
-            onChange={(e) => setKind(e.target.value as 'account' | 'card')}
+            onChange={(e) => setKind(e.target.value as 'account' | 'card' | 'gastos')}
           >
             <option value="account">Cuenta (caja de ahorro / corriente)</option>
             <option value="card">Resumen de tarjeta de crédito</option>
+            <option value="gastos">Planilla propia de gastos</option>
           </select>
         </div>
         <div>
@@ -66,9 +67,15 @@ export function ImportForm({
 
       <div>
         <label className="label" htmlFor="imp-file">
-          Archivo (.csv, .tsv, .txt)
+          Archivo (.csv, .tsv, .txt, .xlsx)
         </label>
-        <input id="imp-file" name="file" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" className="input" />
+        <input
+          id="imp-file"
+          name="file"
+          type="file"
+          accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv,text/plain"
+          className="input"
+        />
       </div>
 
       <div>
@@ -85,6 +92,12 @@ export function ImportForm({
         <p className="mt-1 text-xs text-muted">
           Sirve para PDF: abrí el resumen, seleccioná el detalle de movimientos y pegalo acá.
         </p>
+        {kind === 'gastos' && (
+          <p className="mt-2 rounded-lg border border-edge bg-ink p-2 text-xs text-slate-300">
+            En una planilla de gastos los importes van positivos y se cargan como egresos. Si tenés una columna
+            “Categoría”, se respeta la tuya en lugar de adivinarla por el comercio.
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
