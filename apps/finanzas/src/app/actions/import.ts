@@ -10,7 +10,8 @@ import { isSpreadsheet, readWorkbook } from '@/lib/parsers/xlsx'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint, type RappiOrder } from '@/lib/parsers/rappi'
 import { listUserRules } from '@/lib/queries'
 import { formatMoney } from '@/lib/money'
-import { todayISO, parseISO } from '@/lib/dates'
+import { financialMonth, todayISO, parseISO } from '@/lib/dates'
+import { dueDateFor } from '@/lib/cashflow'
 
 export interface ImportState {
   error?: string
@@ -56,10 +57,27 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
 
   const insertTx = db.prepare(
     `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
-       account_id, card_id, statement_id, source, installment, fingerprint, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?)
+       account_id, card_id, statement_id, source, installment, billing_period, fingerprint, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?, ?)
      ON CONFLICT DO NOTHING`,
   )
+
+  /*
+   * Mes de resumen. Es el ancla de las cuotas: una línea "3/6" en el resumen que
+   * vence en agosto deja las cuotas 4, 5 y 6 en septiembre, octubre y noviembre.
+   * Se deduce del último consumo del archivo, que siempre cae en el ciclo que
+   * está cerrando.
+   */
+  let billingPeriod = ''
+  if (kind === 'card') {
+    const card = db.prepare('SELECT id, name, closing_day, due_day FROM cards WHERE id = ?').get(targetId) as
+      | { id: string; name: string; closing_day: number; due_day: number }
+      | undefined
+    if (card) {
+      const ultima = parsed.rows.reduce((max, r) => (r.date > max ? r.date : max), parsed.rows[0].date)
+      billingPeriod = financialMonth(dueDateFor(card, ultima))
+    }
+  }
 
   let inserted = 0
   let duplicates = 0
@@ -75,7 +93,7 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       kind === 'card' ? targetId : null,
       kind === 'card' ? null : targetId,
       fileName,
-      rows[0]?.date.slice(0, 7) ?? '',
+      billingPeriod || (rows[0]?.date.slice(0, 7) ?? ''),
       user.id,
       now(),
     )
@@ -94,6 +112,7 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
         kind === 'card' ? targetId : null,
         statementId,
         row.installment,
+        billingPeriod,
         fingerprint(row, sourceKey),
         now(),
       )

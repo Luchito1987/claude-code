@@ -189,3 +189,19 @@ describe('pago de tarjeta y gasto variable', () => {
     expect(dailyBurn(txs, TODAY)).toBe(17500)
   })
 })
+
+describe('resúmenes impagos del mes en curso', () => {
+  const card = { id: 'c1', name: 'Visa', closing_day: 25, due_day: 5 }
+  const txs = [{ date: '2026-07-20', amount_cents: -100000, category: 'otros', method: 'credito', card_id: 'c1' }]
+
+  it('por defecto no se proyecta un resumen que ya venció', () => {
+    // Compra del 20/07 -> cierra 25/07 -> vence 05/08, y hoy es 08/08.
+    expect(cardDues(card, txs, '2026-08-08')).toHaveLength(0)
+  })
+
+  it('pero pedido desde el arranque del mes sigue estando, para poder tildarlo', () => {
+    const dues = cardDues(card, txs, '2026-08-08', '2026-07-28')
+    expect(dues).toHaveLength(1)
+    expect(dues[0].due_date).toBe('2026-08-05')
+  })
+})

@@ -337,27 +337,41 @@ export interface CardLike {
  * Un consumo entra en el ciclo que cierra el primer `closing_day` posterior;
  * ese resumen vence el `due_day` del mes siguiente al cierre.
  */
-export function cardDues(card: CardLike, txs: TxLike[], today: ISODate = todayISO()): CardDue[] {
+/**
+ * Vencimiento del resumen donde cae una compra: cierra el primer `closing_day`
+ * posterior a la compra y vence el primer `due_day` posterior al cierre.
+ */
+export function dueDateFor(card: CardLike, purchaseDate: ISODate): ISODate {
+  const { y, m, d } = parseISO(purchaseDate)
+  const closing = d <= card.closing_day ? iso(y, m, card.closing_day) : addMonths(iso(y, m, card.closing_day), 1)
+  const c = parseISO(closing)
+  const due = iso(c.y, c.m, card.due_day)
+  return compare(due, closing) <= 0 ? addMonths(due, 1) : due
+}
+
+/**
+ * Resúmenes a pagar. Por defecto solo los que todavía no vencieron: uno vencido
+ * ya se pagó y ese pago aparece en el extracto de la cuenta. Con `since` se
+ * puede pedir desde antes — la vista del mes lo usa para no perder de vista un
+ * resumen que venció hace unos días y sigue impago.
+ */
+export function cardDues(
+  card: CardLike,
+  txs: TxLike[],
+  today: ISODate = todayISO(),
+  since: ISODate = today,
+): CardDue[] {
   const byDue = new Map<ISODate, number>()
 
   for (const t of txs) {
     if (t.card_id !== card.id) continue
     if (t.amount_cents >= 0) continue
-    const { y, m, d } = parseISO(t.date)
-    // Cierre que corresponde a la compra.
-    const closing = d <= card.closing_day ? iso(y, m, card.closing_day) : addMonths(iso(y, m, card.closing_day), 1)
-    // El resumen vence el primer `due_day` posterior al cierre.
-    const c = parseISO(closing)
-    let due = iso(c.y, c.m, card.due_day)
-    if (compare(due, closing) <= 0) due = addMonths(due, 1)
+    const due = dueDateFor(card, t.date)
     byDue.set(due, (byDue.get(due) ?? 0) + -t.amount_cents)
   }
 
-  // Solo los resúmenes que todavía no vencieron. Un resumen con vencimiento
-  // pasado ya se pagó, y ese pago aparece como movimiento en el extracto de la
-  // cuenta: contarlo de nuevo duplicaría la salida.
   return [...byDue.entries()]
-    .filter(([due]) => compare(due, today) >= 0)
+    .filter(([due]) => compare(due, since) >= 0)
     .map(([due_date, amount_cents]) => ({ cardId: card.id, name: card.name, due_date, amount_cents }))
     .sort((a, b) => compare(a.due_date, b.due_date))
 }

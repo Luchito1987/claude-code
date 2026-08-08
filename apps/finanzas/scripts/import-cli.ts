@@ -18,7 +18,8 @@ import { decodeText, parseUploadedFile } from '../src/lib/parsers/input'
 import { describeSheet, isSpreadsheet, readWorkbook } from '../src/lib/parsers/xlsx'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint } from '../src/lib/parsers/rappi'
 import { formatMoney } from '../src/lib/money'
-import { parseISO, todayISO } from '../src/lib/dates'
+import { financialMonth, parseISO, todayISO } from '../src/lib/dates'
+import { dueDateFor } from '../src/lib/cashflow'
 
 const args = process.argv.slice(2)
 const flag = (name: string): string | undefined => {
@@ -142,8 +143,13 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
   const metodo = kind === 'card' ? 'credito' : kind === 'gastos' ? 'otro' : 'debito'
 
   const target = db
-    .prepare(`SELECT id, name FROM ${tabla} WHERE lower(name) = lower(?) OR id = ?`)
-    .get(destino, destino) as { id: string; name: string } | undefined
+    .prepare(
+      `SELECT id, name${kind === 'card' ? ', closing_day, due_day' : ''} FROM ${tabla}
+       WHERE lower(name) = lower(?) OR id = ?`,
+    )
+    .get(destino, destino) as
+    | { id: string; name: string; closing_day?: number; due_day?: number }
+    | undefined
 
   if (!target) {
     const todas = db.prepare(`SELECT name FROM ${tabla}`).all() as Array<{ name: string }>
@@ -192,6 +198,17 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
 
   if (!parsed.rows.length) return 1
 
+  // Mes de resumen: ancla de las cuotas. Se deduce del último consumo del archivo.
+  const billingPeriod =
+    kind === 'card' && target.closing_day && target.due_day
+      ? financialMonth(
+          dueDateFor(
+            { id: target.id, name: target.name, closing_day: target.closing_day, due_day: target.due_day },
+            parsed.rows.reduce((max, r) => (r.date > max ? r.date : max), parsed.rows[0].date),
+          ),
+        )
+      : ''
+
   const total = parsed.rows.reduce((a, r) => a + r.amountCents, 0)
   console.log(`\nTotal neto: ${formatMoney(total)}`)
 
@@ -204,8 +221,8 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
   const sourceKey = `${kind}:${target.id}`
   const insertTx = db.prepare(
     `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
-       account_id, card_id, statement_id, source, installment, fingerprint, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?) ON CONFLICT DO NOTHING`,
+       account_id, card_id, statement_id, source, installment, billing_period, fingerprint, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
   )
 
   let nuevos = 0
@@ -220,7 +237,7 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
       statementId, kind,
       kind === 'card' ? target.id : null,
       kind === 'card' ? null : target.id,
-      nombreArchivo, parsed.rows[0].date.slice(0, 7), now(),
+      nombreArchivo, billingPeriod || parsed.rows[0].date.slice(0, 7), now(),
     )
 
     for (const r of parsed.rows) {
@@ -229,7 +246,7 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
         metodo,
         kind === 'card' ? null : target.id,
         kind === 'card' ? target.id : null,
-        statementId, r.installment, fingerprint(r, sourceKey), now(),
+        statementId, r.installment, billingPeriod, fingerprint(r, sourceKey), now(),
       )
       if (res.changes) {
         nuevos++

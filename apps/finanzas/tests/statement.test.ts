@@ -125,3 +125,12 @@ describe('fingerprint', () => {
     expect(fingerprint(row, 'a')).not.toBe(fingerprint(row, 'b'))
   })
 })
+
+describe('nombre del comercio', () => {
+  it('saca la marca de cuota que agrega el banco', () => {
+    const res = parseStatement('09/07/2026  ZARA ARGENTINA 3/6   25.000,00', { kind: 'card' })
+    expect(res.rows[0].merchant).toBe('ZARA ARGENTINA')
+    // La cuota no se pierde: viaja en su propio campo.
+    expect(res.rows[0].installment).toBe('3/6')
+  })
+})

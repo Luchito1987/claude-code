@@ -126,6 +126,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   statement_id TEXT REFERENCES statements(id) ON DELETE CASCADE,
   source       TEXT NOT NULL DEFAULT 'manual', -- manual | import | rappi
   installment  TEXT NOT NULL DEFAULT '',    -- '3/6' para cuotas de tarjeta
+  -- Mes de resumen en el que apareció el movimiento ('YYYY-MM'). Para las cuotas
+  -- es el ancla: la cuota 3/6 de este resumen deja 3 cuotas en los meses que siguen.
+  billing_period TEXT NOT NULL DEFAULT '',
   receipt_path TEXT NOT NULL DEFAULT '',
   fingerprint  TEXT NOT NULL DEFAULT '',    -- evita duplicados al reimportar
   created_at   TEXT NOT NULL
@@ -160,6 +163,18 @@ CREATE TABLE IF NOT EXISTS category_rules (
   pattern   TEXT NOT NULL,
   category  TEXT NOT NULL,
   priority  INTEGER NOT NULL DEFAULT 100
+);
+
+-- Pagos del mes que no son facturas de servicio: el resumen de una tarjeta o
+-- una cuota. Permite tildar "pagado" sin inventar una factura.
+CREATE TABLE IF NOT EXISTS month_payments (
+  id           TEXT PRIMARY KEY,
+  kind         TEXT NOT NULL,               -- tarjeta | prestamo
+  ref_id       TEXT NOT NULL,               -- card_id o loan_id
+  period       TEXT NOT NULL,               -- mes financiero 'YYYY-MM'
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  paid_at      TEXT NOT NULL,
+  UNIQUE (kind, ref_id, period)
 );
 
 CREATE TABLE IF NOT EXISTS settings (

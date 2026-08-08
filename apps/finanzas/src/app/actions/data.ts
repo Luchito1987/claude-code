@@ -7,7 +7,15 @@ import { currentUser } from '@/lib/auth'
 import { toCents } from '@/lib/money'
 import { todayISO } from '@/lib/dates'
 import { categorize, extractMerchant } from '@/lib/categories'
-import { listUserRules, markBillPaid, setSetting, updateBillAmount, ensureBillsForPeriod } from '@/lib/queries'
+import {
+  ensureBillsForPeriod,
+  listUserRules,
+  markBillPaid,
+  markMonthItemPaid,
+  setSetting,
+  updateBillAmount,
+} from '@/lib/queries'
+import { financialMonth } from '@/lib/dates'
 
 function requireUser() {
   const user = currentUser()
@@ -249,6 +257,18 @@ export async function deleteIncomeAction(form: FormData): Promise<void> {
 
 // ------------------------------------------------------------------ gastos
 
+/**
+ * Ajusta el saldo de una cuenta. Los movimientos manuales sí mueven el saldo
+ * (si no, el "disponible" del tablero queda viejo apenas cargás un gasto); los
+ * importados no, porque el saldo del extracto ya los incluye.
+ */
+function adjustBalance(accountId: string | null, deltaCents: number): void {
+  if (!accountId || !deltaCents) return
+  getDb()
+    .prepare('UPDATE accounts SET balance_cents = balance_cents + ?, updated_at = ? WHERE id = ?')
+    .run(deltaCents, now(), accountId)
+}
+
 export async function saveTransactionAction(form: FormData): Promise<void> {
   requireUser()
   const db = getDb()
@@ -294,6 +314,8 @@ export async function saveTransactionAction(form: FormData): Promise<void> {
       str(form, 'card_id') || null,
       now(),
     )
+    // Solo el efectivo se mueve al instante; lo de la tarjeta impacta al vencer.
+    if (!str(form, 'card_id')) adjustBalance(str(form, 'account_id') || null, amount)
   }
   revalidatePath('/gastos')
   revalidatePath('/')
@@ -301,7 +323,16 @@ export async function saveTransactionAction(form: FormData): Promise<void> {
 
 export async function deleteTransactionAction(form: FormData): Promise<void> {
   requireUser()
-  getDb().prepare('DELETE FROM transactions WHERE id = ?').run(str(form, 'id'))
+  const db = getDb()
+  const txId = str(form, 'id')
+  const tx = db
+    .prepare('SELECT amount_cents, account_id, card_id, source FROM transactions WHERE id = ?')
+    .get(txId) as { amount_cents: number; account_id: string | null; card_id: string | null; source: string } | undefined
+
+  db.prepare('DELETE FROM transactions WHERE id = ?').run(txId)
+  // Si el alta movió el saldo, la baja lo devuelve.
+  if (tx && tx.source === 'manual' && !tx.card_id) adjustBalance(tx.account_id, -tx.amount_cents)
+
   revalidatePath('/gastos')
   revalidatePath('/')
 }
@@ -352,4 +383,19 @@ export async function deleteRuleAction(form: FormData): Promise<void> {
   requireUser()
   getDb().prepare('DELETE FROM category_rules WHERE id = ?').run(str(form, 'id'))
   revalidatePath('/config')
+}
+
+/** Tilda como pagado el resumen de una tarjeta o la cuota del mes. */
+export async function toggleMonthItemPaidAction(form: FormData): Promise<void> {
+  requireUser()
+  const kind = str(form, 'kind') as 'tarjeta' | 'prestamo'
+  if (kind !== 'tarjeta' && kind !== 'prestamo') return
+  markMonthItemPaid(
+    kind,
+    str(form, 'refId'),
+    str(form, 'period') || financialMonth(),
+    cents(form, 'amount'),
+    str(form, 'paid') === '1',
+  )
+  revalidatePath('/')
 }

@@ -133,3 +133,45 @@ export function formatPeriod(period: string): string {
   const [y, m] = period.split('-').map(Number)
   return `${MONTHS[m - 1]} ${y}`
 }
+
+/**
+ * Mes financiero. El mes se cierra el día 27 y arranca el 28: a partir de ahí lo
+ * que hay que pagar ya es del mes siguiente. Es la misma regla que abre la
+ * ventana de consulta de facturas, aplicada a cualquier fecha.
+ *
+ *   financialMonth('2026-07-27') -> '2026-07'
+ *   financialMonth('2026-07-28') -> '2026-08'
+ */
+export function financialMonth(d: ISODate = todayISO()): string {
+  const { y, m, d: day } = parseISO(d)
+  const period = `${y}-${String(m).padStart(2, '0')}`
+  return day >= WINDOW_START_DAY ? nextPeriod(period) : period
+}
+
+/** Rango de días que cubre un mes financiero: del 28 del mes anterior al 27. */
+export function monthRange(period: string): { start: ISODate; end: ISODate } {
+  const [y, m] = period.split('-').map(Number)
+  const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 }
+  return {
+    start: iso(prev.y, prev.m, WINDOW_START_DAY),
+    end: iso(y, m, WINDOW_START_DAY - 1),
+  }
+}
+
+/** Los N meses financieros a partir del actual, incluido. */
+export function nextMonths(count: number, from: string = financialMonth()): string[] {
+  return Array.from({ length: count }, (_, i) => nextPeriod(from, i))
+}
+
+const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+export function formatMonthShort(period: string): string {
+  const [y, m] = period.split('-').map(Number)
+  return `${MONTHS_SHORT[m - 1]} ${String(y).slice(2)}`
+}
+
+/** Cuántos días tiene el mes financiero: sirve para prorratear el gasto variable. */
+export function daysInFinancialMonth(period: string): number {
+  const { start, end } = monthRange(period)
+  return diffDays(start, end) + 1
+}

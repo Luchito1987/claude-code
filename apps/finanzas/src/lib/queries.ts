@@ -4,12 +4,25 @@ import {
   addMonths,
   compare,
   currentWindow,
+  financialMonth,
+  formatMonthShort,
   iso,
+  monthRange,
+  nextMonths,
   nextPeriod,
   parseISO,
   todayISO,
   type ISODate,
 } from './dates'
+import {
+  debtSummary,
+  monthlyOutlook,
+  pendingInstallments,
+  pendingLoanInstallments,
+  type DebtSummary,
+  type FutureInstallment,
+  type MonthOutlook,
+} from './monthly'
 import {
   cardDues as computeCardDues,
   dailyBurn,
@@ -225,11 +238,31 @@ export function monthlyIncomeCents(): number {
   return row.total
 }
 
-export function allCardDues(today: ISODate = todayISO()): CardDue[] {
+export function allCardDues(today: ISODate = todayISO(), since: ISODate = today): CardDue[] {
   const txs = getDb()
     .prepare('SELECT date, amount_cents, category, method, card_id FROM transactions WHERE card_id IS NOT NULL')
     .all() as Array<{ date: ISODate; amount_cents: number; category: string; method: string; card_id: string }>
-  return listCards().flatMap((card) => computeCardDues(card, txs, today))
+  return listCards().flatMap((card) => computeCardDues(card, txs, today, since))
+}
+
+/** Resúmenes de tarjeta ya tildados como pagados, por mes financiero. */
+function paidCardDues(): Set<string> {
+  const rows = getDb()
+    .prepare("SELECT ref_id, period FROM month_payments WHERE kind = 'tarjeta'")
+    .all() as Array<{ ref_id: string; period: string }>
+  return new Set(rows.map((r) => `${r.ref_id}:${r.period}`))
+}
+
+/**
+ * Resúmenes que siguen debiéndose: los que no vencieron, más los del mes en
+ * curso que vencieron y todavía no se tildaron como pagados.
+ */
+export function unpaidCardDues(today: ISODate = todayISO()): CardDue[] {
+  const pagados = paidCardDues()
+  const desde = monthRange(financialMonth(today)).start
+  return allCardDues(today, desde).filter(
+    (d) => !pagados.has(`${d.cardId}:${financialMonth(d.due_date)}`),
+  )
 }
 
 export function currentBurnCents(today: ISODate = todayISO()): number {
@@ -259,7 +292,7 @@ export function buildProjection(today: ISODate = todayISO(), weeks = horizonWeek
     })),
     loans: listLoans(),
     incomes: listIncomes(),
-    cardDues: allCardDues(today),
+    cardDues: unpaidCardDues(today),
     dailyBurnCents: currentBurnCents(today),
     minBufferCents: minBufferCents(),
   })
@@ -433,4 +466,203 @@ export function upcomingDues(days = 30, today: ISODate = todayISO()) {
     .filter((l) => compare(l.date, to) <= 0)
 
   return [...bills, ...dues, ...loans].sort((a, b) => compare(a.date, b.date))
+}
+
+// ------------------------------------------------- mes financiero y deudas
+
+export interface MonthItem {
+  kind: 'factura' | 'tarjeta' | 'prestamo'
+  refId: string
+  label: string
+  detail: string
+  dueDate: ISODate
+  cents: number
+  paid: boolean
+  estimated: boolean
+}
+
+/** Cuotas de tarjeta pendientes, leídas de los resúmenes ya importados. */
+export function cardInstallments(today: ISODate = todayISO()): FutureInstallment[] {
+  const txs = getDb()
+    .prepare(
+      `SELECT id, description, merchant, amount_cents, installment, card_id, billing_period, date
+       FROM transactions
+       WHERE card_id IS NOT NULL AND installment <> ''`,
+    )
+    .all() as Array<{
+    id: string
+    description: string
+    merchant: string
+    amount_cents: number
+    installment: string
+    card_id: string
+    billing_period: string
+    date: ISODate
+  }>
+  return pendingInstallments(txs, today)
+}
+
+function paidSet(period: string): Set<string> {
+  const rows = getDb()
+    .prepare('SELECT kind, ref_id FROM month_payments WHERE period = ?')
+    .all(period) as Array<{ kind: string; ref_id: string }>
+  return new Set(rows.map((r) => `${r.kind}:${r.ref_id}`))
+}
+
+/**
+ * Todo lo que hay que pagar en un mes financiero: facturas de servicios,
+ * resúmenes de tarjeta que vencen en el mes y cuotas de préstamo.
+ */
+export function monthItems(period: string, today: ISODate = todayISO()): MonthItem[] {
+  const pagados = paidSet(period)
+  const { start, end } = monthRange(period)
+
+  const facturas: MonthItem[] = listBills(period).map((b) => ({
+    kind: 'factura' as const,
+    refId: b.id,
+    label: b.name,
+    detail: b.estimated === 1 ? 'importe estimado' : 'confirmada',
+    dueDate: b.due_date,
+    cents: b.amount_cents,
+    paid: b.status === 'pagado',
+    estimated: b.estimated === 1,
+  }))
+
+  const tarjetas: MonthItem[] = allCardDues(today, monthRange(period).start)
+    .filter((d) => financialMonth(d.due_date) === period)
+    .map((d) => ({
+      kind: 'tarjeta' as const,
+      refId: d.cardId,
+      label: `Resumen ${d.name}`,
+      detail: 'consumos del resumen importado',
+      dueDate: d.due_date,
+      cents: d.amount_cents,
+      paid: pagados.has(`tarjeta:${d.cardId}`),
+      estimated: false,
+    }))
+
+  const prestamos: MonthItem[] = pendingLoanInstallments(listLoans(), today)
+    .filter((c) => c.period === period)
+    .map((c) => {
+      const loan = listLoans().find((l) => l.id === c.loanId)
+      const fecha = loan ? addMonths(loan.first_due_date, c.number - 1) : end
+      return {
+        kind: 'prestamo' as const,
+        refId: c.loanId,
+        label: c.label,
+        detail: 'cuota fija',
+        dueDate: compare(fecha, start) < 0 ? start : fecha,
+        cents: c.amountCents,
+        paid: pagados.has(`prestamo:${c.loanId}`),
+        estimated: false,
+      }
+    })
+
+  return [...facturas, ...tarjetas, ...prestamos].sort((a, b) => compare(a.dueDate, b.dueDate))
+}
+
+export interface MonthSummary {
+  period: string
+  label: string
+  start: ISODate
+  end: ISODate
+  availableCents: number
+  pendingCents: number
+  paidCents: number
+  netCents: number
+  items: MonthItem[]
+  incomeCents: number
+}
+
+/** Los tres números de la primera pantalla, más el detalle del mes. */
+export function monthSummary(today: ISODate = todayISO()): MonthSummary {
+  const period = financialMonth(today)
+  ensureBillsForPeriod(period)
+
+  const items = monthItems(period, today)
+  const pendingCents = items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0)
+  const paidCents = items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0)
+  const availableCents = totalCashCents()
+  const { start, end } = monthRange(period)
+
+  return {
+    period,
+    label: formatMonthShort(period),
+    start,
+    end,
+    availableCents,
+    pendingCents,
+    paidCents,
+    netCents: availableCents - pendingCents,
+    items,
+    incomeCents: monthlyIncomeCents(),
+  }
+}
+
+/** Estimación por servicio para los meses que todavía no tienen factura. */
+function serviceEstimates(): Array<{ name: string; cents: number }> {
+  const db = getDb()
+  return listServices(true).map((s) => {
+    if (s.expected_amount_cents > 0) return { name: s.name, cents: s.expected_amount_cents }
+    const rows = db
+      .prepare(
+        `SELECT amount_cents FROM bills
+         WHERE service_id = ? AND amount_cents > 0 AND estimated = 0
+         ORDER BY period DESC LIMIT 3`,
+      )
+      .all(s.id) as Array<{ amount_cents: number }>
+    const promedio = rows.length ? Math.round(rows.reduce((a, r) => a + r.amount_cents, 0) / rows.length) : 0
+    return { name: s.name, cents: promedio }
+  })
+}
+
+export function monthlyProjection(months = 6, today: ISODate = todayISO()): MonthOutlook[] {
+  return monthlyOutlook({
+    months: nextMonths(months, financialMonth(today)),
+    bills: listBills().map((b) => ({
+      name: b.name,
+      period: b.period,
+      amount_cents: b.amount_cents,
+      estimated: b.estimated,
+    })),
+    serviceEstimates: serviceEstimates(),
+    loans: listLoans(),
+    installments: cardInstallments(today),
+    cardDues: unpaidCardDues(today),
+    incomeMonthlyCents: monthlyIncomeCents(),
+    dailyBurnCents: currentBurnCents(today),
+    today,
+  })
+}
+
+export function debts(today: ISODate = todayISO()): DebtSummary {
+  const resumen = debtSummary({
+    cards: listCards().map((c) => ({ id: c.id, name: c.name })),
+    loans: listLoans(),
+    installments: cardInstallments(today),
+    cardDues: unpaidCardDues(today),
+    incomeMonthlyCents: monthlyIncomeCents(),
+    today,
+  })
+  // El nombre de la entidad no viaja en el módulo de cálculo: se completa acá.
+  const prestamos = listLoans()
+  return {
+    ...resumen,
+    loans: resumen.loans.map((l) => ({
+      ...l,
+      lender: prestamos.find((p) => p.id === l.loanId)?.lender ?? '',
+    })),
+  }
+}
+
+export function markMonthItemPaid(kind: 'tarjeta' | 'prestamo', refId: string, period: string, cents: number, paid: boolean): void {
+  const db = getDb()
+  if (paid) {
+    db.prepare(
+      `INSERT INTO month_payments (id, kind, ref_id, period, amount_cents, paid_at)
+       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+    ).run(id(), kind, refId, period, cents, now())
+  } else {
+    db.prepare('DELETE FROM month_payments WHERE kind = ? AND ref_id = ? AND period = ?').run(kind, refId, period)
+  }
 }

@@ -99,10 +99,11 @@ export function isRappi(description: string): boolean {
   return RAPPI_RE.test(description)
 }
 
-/** Nombre del comercio, sin los prefijos que agregan los bancos. */
+/** Nombre del comercio, sin los prefijos ni la marca de cuota que agrega el banco. */
 export function extractMerchant(description: string): string {
   return description
     .replace(/^(COMPRA|CONSUMO|DEBITO|PAGO|COMPRAS?)\s+/i, '')
+    .replace(/\s+\d{1,2}\s*\/\s*\d{1,2}\s*$/, '')
     .replace(/\b\d{4,}\b/g, '')
     .replace(/\s{2,}/g, ' ')
     .replace(/\s*\*\s*/g, ' ')

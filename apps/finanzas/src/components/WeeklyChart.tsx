@@ -10,7 +10,7 @@ export interface WeekPoint {
 
 const W = 720
 const H = 190
-const PAD = { top: 16, right: 26, bottom: 26, left: 54 }
+const PAD = { top: 16, right: 26, bottom: 26, left: 68 }
 
 /** Etiqueta corta para el eje: $ 1,2 M / $ 350 mil. El detalle está en la tabla. */
 function shortMoney(cents: number): string {
