@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ledger Pro — Prototipo B</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --surface:#1a1a19; --page:#0d0d0d; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.08);
+    --blue:#3987e5; --blue-dim:rgba(57,135,229,.14);
+    --good:#0ca30c; --critical:#e66767; --warning:#c98500; --violet:#9085e9;
+  }
+  *{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+  body{background:var(--page); color:var(--ink);}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px;}
+  .tab{font-variant-numeric:tabular-nums;}
+  .num{font-variant-numeric:proportional-nums;}
+  .navitem{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;color:var(--muted);font-size:13px;}
+  .navitem.active{background:var(--blue-dim);color:var(--blue);}
+  .navitem:hover:not(.active){background:rgba(255,255,255,.04);color:var(--ink-2);}
+  th{font-weight:600;letter-spacing:.03em;}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="mx-auto flex max-w-[1400px]">
+
+  <!-- Sidebar -->
+  <aside class="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col gap-0.5 border-r border-[--border] p-4 md:flex">
+    <div class="mb-5 flex items-center gap-2 px-2">
+      <div class="h-7 w-7 rounded-md bg-[--blue] flex items-center justify-center text-xs font-bold text-white">LP</div>
+      <span class="text-sm font-semibold">Ledger Pro</span>
+    </div>
+    <a class="navitem" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Tablero</a>
+    <a class="navitem active" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V10M12 19V4M20 19v-7"/></svg>Resumen</a>
+    <a class="navitem" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Facturas</a>
+    <a class="navitem" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 12a2 2 0 0 0 2 1.7h10A2 2 0 0 0 19 19L21 7M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Gastos</a>
+    <a class="navitem" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Préstamos</a>
+    <a class="navitem" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 17 4-9 4 6 3-4 4 6"/></svg>Rappi</a>
+    <a class="navitem" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 13l2.5 2.5L16 10"/></svg>Reportes</a>
+    <div class="mt-auto navitem"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Config</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 px-5 py-6 md:px-8">
+    <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-lg font-semibold">Resumen del hogar</h1>
+        <p class="text-xs text-[--muted]">Miércoles 5 de agosto de 2026</p>
+      </div>
+      <div class="flex gap-1.5 rounded-lg border border-[--border] p-1 text-xs">
+        <button class="rounded-md bg-[--blue] px-3 py-1.5 font-medium text-white">8 semanas</button>
+        <button class="rounded-md px-3 py-1.5 text-[--muted] hover:text-[--ink-2]">3 meses</button>
+        <button class="rounded-md px-3 py-1.5 text-[--muted] hover:text-[--ink-2]">Año</button>
+      </div>
+    </header>
+
+    <!-- KPI row: dense, 5 tiles -->
+    <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div class="card p-3.5">
+        <p class="text-[11px] uppercase tracking-wide text-[--muted]">Efectivo</p>
+        <p class="tab mt-1 text-xl font-semibold" style="color:var(--good)">$842.300</p>
+        <p class="mt-0.5 text-[11px] text-[--muted]">colchón $650.000</p>
+      </div>
+      <div class="card p-3.5">
+        <p class="text-[11px] uppercase tracking-wide text-[--muted]">Piso proyectado</p>
+        <p class="tab mt-1 text-xl font-semibold" style="color:var(--warning)">$210.500</p>
+        <p class="mt-0.5 text-[11px] text-[--muted]">el 2 sep</p>
+      </div>
+      <div class="card p-3.5">
+        <p class="text-[11px] uppercase tracking-wide text-[--muted]">Compromisos</p>
+        <p class="tab mt-1 text-xl font-semibold">$1.180.000</p>
+        <p class="mt-0.5 text-[11px] text-[--muted]">+ $340.000 var.</p>
+      </div>
+      <div class="card p-3.5">
+        <p class="text-[11px] uppercase tracking-wide text-[--muted]">Consumo diario</p>
+        <p class="tab mt-1 text-xl font-semibold">$18.400</p>
+        <p class="mt-0.5 text-[11px] text-[--muted]">prom. 90 días</p>
+      </div>
+      <div class="card p-3.5">
+        <p class="text-[11px] uppercase tracking-wide text-[--muted]">Deuda total</p>
+        <p class="tab mt-1 text-xl font-semibold" style="color:var(--violet)">$621.500</p>
+        <p class="mt-0.5 text-[11px] text-[--muted]">2 préstamos activos</p>
+      </div>
+    </div>
+
+    <!-- Bento grid -->
+    <div class="grid gap-3 lg:grid-cols-3">
+      <!-- Big chart spans 2 -->
+      <section class="card p-4 lg:col-span-2">
+        <div class="mb-3 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold">Proyección de cierre semanal</h2>
+            <p class="text-[11px] text-[--muted]">Línea punteada: colchón mínimo</p>
+          </div>
+        </div>
+        <svg viewBox="0 0 640 180" class="w-full">
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="0" y1="20" x2="640" y2="20"/>
+            <line x1="0" y1="60" x2="640" y2="60"/>
+            <line x1="0" y1="100" x2="640" y2="100"/>
+            <line x1="0" y1="140" x2="640" y2="140"/>
+          </g>
+          <text x="0" y="17" font-size="9" fill="var(--muted)">$900k</text>
+          <text x="0" y="97" font-size="9" fill="var(--muted)">$450k</text>
+          <line x1="0" y1="128" x2="640" y2="128" stroke="var(--baseline)" stroke-dasharray="3 4" stroke-width="1.5"/>
+          <path d="M0,32 L91,58 L182,84 L273,110 L364,150 L455,102 L546,66 L637,42 L637,180 L0,180 Z" fill="var(--blue)" opacity="0.10"/>
+          <path d="M0,32 L91,58 L182,84 L273,110 L364,150 L455,102 L546,66 L637,42" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          <g fill="var(--blue)">
+            <circle cx="0" cy="32" r="3.5"><title>5 ago · $842.300</title></circle>
+            <circle cx="91" cy="58" r="3.5"><title>12 ago · $710.000</title></circle>
+            <circle cx="182" cy="84" r="3.5"><title>19 ago · $590.000</title></circle>
+            <circle cx="273" cy="110" r="3.5"><title>26 ago · $480.000</title></circle>
+            <circle cx="364" cy="150" r="4.5" fill="var(--warning)"><title>2 sep · $210.500 (piso)</title></circle>
+            <circle cx="455" cy="102" r="3.5"><title>9 sep · $340.000</title></circle>
+            <circle cx="546" cy="66" r="3.5"><title>16 sep · $520.000</title></circle>
+            <circle cx="637" cy="42" r="3.5"><title>23 sep · $690.000</title></circle>
+          </g>
+          <g font-size="9" fill="var(--muted)" text-anchor="middle">
+            <text x="0" y="176">5 ago</text><text x="91" y="176">12 ago</text><text x="182" y="176">19 ago</text><text x="273" y="176">26 ago</text>
+            <text x="364" y="176">2 sep</text><text x="455" y="176">9 sep</text><text x="546" y="176">16 sep</text><text x="637" y="176">23 sep</text>
+          </g>
+        </svg>
+      </section>
+
+      <!-- Category spend, sequential -->
+      <section class="card p-4">
+        <h2 class="mb-3 text-sm font-semibold">Gasto por categoría</h2>
+        <p class="mb-2 text-[11px] text-[--muted]">Últimos 30 días · $340.000</p>
+        <ul class="space-y-2.5">
+          <li>
+            <div class="flex items-baseline justify-between text-xs"><span>Supermercado</span><span class="tab text-[--muted]">$118.000</span></div>
+            <div class="mt-1 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:100%;background:#2a78d6"></div></div>
+          </li>
+          <li>
+            <div class="flex items-baseline justify-between text-xs"><span>Delivery</span><span class="tab text-[--muted]">$62.000</span></div>
+            <div class="mt-1 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:53%;background:#3987e5"></div></div>
+          </li>
+          <li>
+            <div class="flex items-baseline justify-between text-xs"><span>Otros</span><span class="tab text-[--muted]">$46.000</span></div>
+            <div class="mt-1 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:39%;background:#5598e7"></div></div>
+          </li>
+          <li>
+            <div class="flex items-baseline justify-between text-xs"><span>Transporte</span><span class="tab text-[--muted]">$41.000</span></div>
+            <div class="mt-1 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:35%;background:#6da7ec"></div></div>
+          </li>
+          <li>
+            <div class="flex items-baseline justify-between text-xs"><span>Salud</span><span class="tab text-[--muted]">$27.000</span></div>
+            <div class="mt-1 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:23%;background:#86b6ef"></div></div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Entra/Sale bars -->
+      <section class="card p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Entra / Sale</h2>
+          <div class="flex items-center gap-2 text-[10px] text-[--ink-2]">
+            <span class="inline-flex items-center gap-1"><i class="h-2 w-2 rounded-full" style="background:var(--good)"></i>Entra</span>
+            <span class="inline-flex items-center gap-1"><i class="h-2 w-2 rounded-full" style="background:var(--critical)"></i>Sale</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 300 120" class="w-full">
+          <line x1="0" y1="105" x2="300" y2="105" stroke="var(--grid)" stroke-width="1"/>
+          <g>
+            <rect x="4" y="35.9" width="12" height="69.1" rx="3" fill="var(--good)"><title>5 ago · $620.000</title></rect>
+            <rect x="17" y="56.4" width="12" height="48.6" rx="3" fill="var(--critical)"><title>5 ago · $410.000</title></rect>
+            <rect x="42" y="105" width="12" height="0" rx="3" fill="var(--good)"/>
+            <rect x="55" y="60.6" width="12" height="44.4" rx="3" fill="var(--critical)"><title>12 ago · $380.000</title></rect>
+            <rect x="80" y="105" width="12" height="0" rx="3" fill="var(--good)"/>
+            <rect x="93" y="64" width="12" height="41" rx="3" fill="var(--critical)"><title>19 ago · $350.000</title></rect>
+            <rect x="118" y="105" width="12" height="0" rx="3" fill="var(--good)"/>
+            <rect x="131" y="68.5" width="12" height="36.5" rx="3" fill="var(--critical)"><title>26 ago · $310.000</title></rect>
+            <rect x="156" y="35.9" width="12" height="69.1" rx="3" fill="var(--good)"><title>2 sep · $620.000</title></rect>
+            <rect x="169" y="36.7" width="12" height="68.3" rx="3" fill="var(--critical)"><title>2 sep · $610.000</title></rect>
+            <rect x="194" y="49.4" width="12" height="55.6" rx="3" fill="var(--good)"><title>9 sep · $480.000</title></rect>
+            <rect x="207" y="64" width="12" height="41" rx="3" fill="var(--critical)"><title>9 sep · $350.000</title></rect>
+            <rect x="232" y="105" width="12" height="0" rx="3" fill="var(--good)"/>
+            <rect x="245" y="66.3" width="12" height="38.7" rx="3" fill="var(--critical)"><title>16 sep · $330.000</title></rect>
+            <rect x="270" y="35.9" width="12" height="69.1" rx="3" fill="var(--good)"><title>23 sep · $620.000</title></rect>
+            <rect x="283" y="52.1" width="12" height="52.9" rx="3" fill="var(--critical)"><title>23 sep · $450.000</title></rect>
+          </g>
+        </svg>
+      </section>
+
+      <!-- Facturas table -->
+      <section class="card p-4 lg:col-span-2">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-semibold">Facturas de agosto</h2>
+          <span class="text-[11px] text-[--muted]">pendiente $662.300</span>
+        </div>
+        <table class="w-full border-collapse text-xs">
+          <thead>
+            <tr class="text-left text-[--muted]">
+              <th class="pb-2 pr-2 font-medium">Servicio</th>
+              <th class="pb-2 pr-2 font-medium">Vence</th>
+              <th class="pb-2 pr-2 font-medium">Estado</th>
+              <th class="pb-2 text-right font-medium">Monto</th>
+            </tr>
+          </thead>
+          <tbody class="tab">
+            <tr class="border-t border-[--border]"><td class="py-1.5 pr-2">Expensas</td><td class="py-1.5 pr-2 text-[--muted]">6 ago</td><td class="py-1.5 pr-2"><span class="rounded px-1.5 py-0.5 text-[10px]" style="background:rgba(230,103,103,.15);color:var(--critical)">vencida</span></td><td class="py-1.5 text-right">$145.000</td></tr>
+            <tr class="border-t border-[--border]"><td class="py-1.5 pr-2">Luz</td><td class="py-1.5 pr-2 text-[--muted]">15 ago</td><td class="py-1.5 pr-2 text-[--muted]">—</td><td class="py-1.5 text-right">$32.400</td></tr>
+            <tr class="border-t border-[--border]"><td class="py-1.5 pr-2">Gas</td><td class="py-1.5 pr-2 text-[--muted]">18 ago</td><td class="py-1.5 pr-2 text-[--muted]">—</td><td class="py-1.5 text-right">$18.900</td></tr>
+            <tr class="border-t border-[--border]"><td class="py-1.5 pr-2">Internet</td><td class="py-1.5 pr-2 text-[--muted]">20 ago</td><td class="py-1.5 pr-2"><span class="rounded px-1.5 py-0.5 text-[10px]" style="background:rgba(12,163,12,.15);color:var(--good)">pagado</span></td><td class="py-1.5 text-right">$24.500</td></tr>
+            <tr class="border-t border-[--border]"><td class="py-1.5 pr-2">Seguro auto</td><td class="py-1.5 pr-2 text-[--muted]">22 ago</td><td class="py-1.5 pr-2 text-[--muted]">—</td><td class="py-1.5 text-right">$56.000</td></tr>
+            <tr class="border-t border-[--border]"><td class="py-1.5 pr-2">Tarjeta Visa</td><td class="py-1.5 pr-2 text-[--muted]">28 ago</td><td class="py-1.5 pr-2"><span class="rounded px-1.5 py-0.5 text-[10px]" style="background:var(--blue-dim);color:var(--blue)">estimado</span></td><td class="py-1.5 text-right">$410.000</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Loans -->
+      <section class="card p-4">
+        <h2 class="mb-3 text-sm font-semibold">Préstamos</h2>
+        <div class="space-y-3">
+          <div class="rounded-lg border border-[--border] p-2.5">
+            <div class="flex items-baseline justify-between text-xs"><span class="font-medium">Préstamo personal</span><span class="text-[--muted]">6/12</span></div>
+            <div class="mt-1.5 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:50%;background:var(--violet)"></div></div>
+            <div class="tab mt-1 flex justify-between text-[10px] text-[--muted]"><span>$95.000/mes</span><span>$380.000</span></div>
+          </div>
+          <div class="rounded-lg border border-[--border] p-2.5">
+            <div class="flex items-baseline justify-between text-xs"><span class="font-medium">Tarjeta · Smart TV</span><span class="text-[--muted]">4/12</span></div>
+            <div class="mt-1.5 h-1.5 rounded-full" style="background:var(--grid)"><div class="h-1.5 rounded-full" style="width:33%;background:var(--violet)"></div></div>
+            <div class="tab mt-1 flex justify-between text-[10px] text-[--muted]"><span>$34.500/mes</span><span>$241.500</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="mt-6 text-center text-[11px] text-[--muted]">Prototipo B · Ledger Pro — datos de ejemplo</footer>
+  </main>
+</div>
+</body>
+</html>
