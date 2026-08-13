@@ -53,6 +53,10 @@ CREATE TABLE IF NOT EXISTS services (
   active                INTEGER NOT NULL DEFAULT 1,
   autodebit             INTEGER NOT NULL DEFAULT 0,
   notes                 TEXT NOT NULL DEFAULT '',
+  -- Cómo aparece este servicio en el extracto del banco. "Air-e (Energía)" se
+  -- paga como "PAGO SV EMPRESA DE ENERGIA AI": ni el nombre ni el importe
+  -- coinciden, así que sin esto no hay forma de cruzarlos.
+  match_pattern         TEXT NOT NULL DEFAULT '',
   created_at            TEXT NOT NULL
 );
 

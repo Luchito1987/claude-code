@@ -9,6 +9,24 @@ export function dbPath(): string {
   return process.env.SQLITE_PATH ?? resolve(process.cwd(), 'data', 'finanzas.db')
 }
 
+/**
+ * Columnas agregadas a tablas que ya existían. `CREATE TABLE IF NOT EXISTS` no
+ * toca una tabla ya creada, así que una base vieja se queda sin ellas y falla
+ * recién al consultarlas.
+ */
+const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
+  { table: 'transactions', column: 'billing_period', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'services', column: 'match_pattern', definition: "TEXT NOT NULL DEFAULT ''" },
+]
+
+function migrate(conn: Database.Database): void {
+  for (const { table, column, definition } of ADDED_COLUMNS) {
+    const columns = conn.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+    if (!columns.length || columns.some((c) => c.name === column)) continue
+    conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
+}
+
 export function getDb(): Database.Database {
   if (db) return db
   const path = dbPath()
@@ -17,6 +35,7 @@ export function getDb(): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   db.exec(readFileSync(resolve(process.cwd(), 'src/db/schema.sql'), 'utf8'))
+  migrate(db)
   return db
 }
 
