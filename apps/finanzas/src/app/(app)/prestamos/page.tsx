@@ -25,7 +25,7 @@ export default function PrestamosPage() {
           )}
         </div>
         <div className="card">
-          <p className="text-xs uppercase tracking-wide text-muted">Saldo total adeudado</p>
+          <p className="text-xs uppercase tracking-wide text-muted">Cuotas pendientes (capital + interés)</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(outstanding)}</p>
         </div>
         <div className="card">
@@ -45,7 +45,7 @@ export default function PrestamosPage() {
                 <th className="th text-right">Cuota</th>
                 <th className="th">Avance</th>
                 <th className="th">Próxima</th>
-                <th className="th text-right">Saldo</th>
+                <th className="th text-right">Pendiente</th>
                 <th className="th" />
               </tr>
             }

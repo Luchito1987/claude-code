@@ -11,7 +11,8 @@ import { createHash } from 'node:crypto'
 import { parseCsv } from './csv'
 import { toCents } from '../money'
 import { categorize, extractMerchant, isRappi, mapCategoryName, type UserRule } from '../categories'
-import type { ISODate } from '../dates'
+import { compare, type ISODate } from '../dates'
+import { isBancolombiaCsv, parseBancolombia } from './bancolombia'
 
 export interface ParsedRow {
   date: ISODate
@@ -32,18 +33,41 @@ export interface ParseResult {
   columns?: Record<string, number>
   strategy: 'csv' | 'text'
   warnings: string[]
+  /**
+   * Saldo que deja el movimiento más nuevo del archivo, cuando el extracto trae
+   * la columna. Es el saldo real de la cuenta y sirve para corregir el que la
+   * app viene arrastrando de las cargas a mano.
+   */
+  finalBalanceCents?: number
+  finalBalanceDate?: ISODate
 }
 
 const HEADER_HINTS = {
   date: ['fecha', 'date', 'f. operacion', 'fecha operacion', 'fecha oper', 'fec.', 'dia'],
   description: ['descripcion', 'detalle', 'concepto', 'comercio', 'movimiento', 'description', 'referencia'],
-  amount: ['importe', 'monto', 'amount', 'valor', 'pesos', 'importe pesos', 'total'],
+  // Las frases de cuota van primero: en un resumen de tarjeta en cuotas,
+  // "valor transaccion"/"monto" es el precio total de la compra, pero lo que
+  // hay que proyectar es la cuota que se cobra este ciclo.
+  amount: [
+    'cuota a pagar del mes', 'cuota a pagar', 'valor cuota', 'valor de la cuota',
+    'cuota mensual', 'pago cuota', 'capital facturado del periodo', 'capital facturado',
+    'importe', 'monto', 'amount', 'valor', 'pesos', 'importe pesos', 'total',
+  ],
   debit: ['debito', 'debitos', 'cargo', 'egreso'],
   credit: ['credito', 'creditos', 'abono', 'ingreso', 'haber'],
-  installment: ['cuota', 'cuotas', 'plan'],
+  // Idem: "cuotas cobradas/totales" (el progreso "4/6") tiene que ganarle a
+  // "cuota a pagar del mes", que ya se usó arriba como columna de importe.
+  installment: ['cuotas cobradas', 'cuotas totales', 'cuota', 'cuotas', 'plan'],
   currency: ['moneda', 'divisa'],
   category: ['categoria', 'rubro', 'clasificacion', 'tipo de gasto'],
+  // Saldo que va quedando después de cada movimiento. Bancolombia y la mayoría
+  // de los bancos colombianos lo traen como última columna, y es de donde sale
+  // el saldo real de la cuenta.
+  balance: ['saldo', 'nuevo saldo', 'saldo final', 'saldo disponible', 'balance'],
 }
+
+/** Un "saldo anterior" es el punto de partida, no el saldo de la cuenta hoy. */
+const OPENING_BALANCE = /ANTERI[O0]R|IN[I1]C[I1]AL|APERTURA/
 
 function norm(s: string): string {
   return s
@@ -82,7 +106,10 @@ function findHeaderRow(rows: string[][]): number {
 }
 
 const DATE_PATTERNS: Array<{ re: RegExp; order: 'dmy' | 'ymd' }> = [
-  { re: /(\d{4})-(\d{2})-(\d{2})/, order: 'ymd' },
+  // Año de 4 dígitos primero: cubre "2026-07-05" y también "2026/07/05"
+  // (algunos bancos colombianos exportan la fecha con barras). Va antes que
+  // el patrón dmy para que un año de 4 dígitos nunca se lea como día/mes.
+  { re: /(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/, order: 'ymd' },
   { re: /(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/, order: 'dmy' },
 ]
 
@@ -139,6 +166,9 @@ export interface ParseOptions {
 }
 
 export function parseStatement(text: string, opts: ParseOptions): ParseResult {
+  // Bancolombia va primero: su CSV no trae encabezados, así que el detector
+  // genérico no lo reconoce y el archivo entero se perdería.
+  if (isBancolombiaCsv(text)) return parseBancolombia(text, { userRules: opts.userRules })
   const csv = tryParseCsv(text, opts)
   if (csv && csv.rows.length) return csv
   return parseFreeText(text, opts)
@@ -167,6 +197,11 @@ export function parseRows(rows: string[][], opts: ParseOptions): ParseResult | n
     installment: matchColumn(headers, HEADER_HINTS.installment),
     currency: matchColumn(headers, HEADER_HINTS.currency),
     category: matchColumn(headers, HEADER_HINTS.category),
+    balance: matchColumn(headers, HEADER_HINTS.balance),
+  }
+  // "Saldo anterior" es el saldo con el que abre el extracto, no el de hoy.
+  if (cols.balance !== -1 && OPENING_BALANCE.test(norm(headers[cols.balance]).toUpperCase())) {
+    cols.balance = -1
   }
   if (cols.date === -1) return null
   if (cols.amount === -1 && cols.debit === -1 && cols.credit === -1) return null
@@ -176,6 +211,9 @@ export function parseRows(rows: string[][], opts: ParseOptions): ParseResult | n
 
   const out: ParsedRow[] = []
   let skipped = 0
+  // El saldo del movimiento más nuevo. Se elige por fecha y no por posición
+  // porque hay bancos que listan de nuevo a viejo y otros al revés.
+  let balance: { cents: number; date: ISODate } | null = null
 
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i]
@@ -183,6 +221,12 @@ export function parseRows(rows: string[][], opts: ParseOptions): ParseResult | n
     if (!date) {
       skipped++
       continue
+    }
+
+    if (cols.balance !== -1 && (r[cols.balance] ?? '').trim()) {
+      const cents = toCents(r[cols.balance])
+      // A igual fecha gana la última fila: es el saldo con el que cierra el día.
+      if (!balance || compare(date, balance.date) >= 0) balance = { cents, date }
     }
     const description = (cols.description !== -1 ? r[cols.description] : r.join(' ')).trim()
 
@@ -219,6 +263,7 @@ export function parseRows(rows: string[][], opts: ParseOptions): ParseResult | n
     columns: cols,
     strategy: 'csv',
     warnings,
+    ...(balance ? { finalBalanceCents: balance.cents, finalBalanceDate: balance.date } : {}),
   }
 }
 
@@ -303,10 +348,20 @@ function buildRow(args: {
   }
 }
 
-/** Huella estable de un movimiento: reimportar el mismo archivo no duplica nada. */
-export function fingerprint(row: ParsedRow, sourceKey = ''): string {
-  return createHash('sha256')
-    .update([sourceKey, row.date, row.description.toLowerCase(), row.amountCents].join('|'))
-    .digest('hex')
-    .slice(0, 32)
+/**
+ * Huella estable de un movimiento: reimportar el mismo archivo no duplica nada.
+ *
+ * `occurrence` distingue movimientos realmente repetidos. Un extracto real
+ * traía seis cobros idénticos el mismo día —misma fecha, mismo detalle, mismo
+ * importe, uno por cada pago hecho— y sin esto los seis colapsaban en uno solo:
+ * la app se comía cinco cobros de verdad. Al numerarlos, los seis entran, y
+ * reimportar el archivo los vuelve a numerar igual, así que sigue sin duplicar.
+ *
+ * El cero no se escribe en la huella a propósito: así los movimientos ya
+ * importados conservan la que tenían y no se reimportan por duplicado.
+ */
+export function fingerprint(row: ParsedRow, sourceKey = '', occurrence = 0): string {
+  const parts = [sourceKey, row.date, row.description.toLowerCase(), row.amountCents]
+  if (occurrence > 0) parts.push(`#${occurrence}`)
+  return createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 32)
 }
