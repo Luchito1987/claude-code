@@ -1,0 +1,490 @@
+/**
+ * Texto que devolvió el OCR sobre fotos reales de tickets colombianos,
+ * sacadas con el celular sobre un cuaderno y con el papel arrugado.
+ *
+ * Está tal cual salió, con la basura incluida: acá viven los casos que el
+ * texto inventado no anticipaba —el número partido en dos, el saldo de puntos,
+ * el código de producto de ocho dígitos, el NIT cortado— y por eso no se
+ * limpian ni se acortan.
+ */
+
+export interface TicketReal {
+  nombre: string
+  /** Importe leído a ojo de la foto: es lo que el parser tiene que dar. */
+  totalCents: number
+  fecha: string | null
+  texto: string
+}
+
+export const TICKETS_REALES: TicketReal[] = [
+  {
+    nombre: "Éxito WOW Buenavista",
+    totalCents: 27139000,
+    fecha: "2026-08-07",
+    texto: `L LY 4 Z de —
+-— Y
+» SXITO wow BUENAVIS
+MPRA Y RECOGE 3054829046 e...
+Ot 07/060/2026 19:00 0362 09 0133 22551763 LO Ga
+.
+E 11 de
+e _ PEE
+FACTURA
+DA, NUMERO: SDE CRONICA DE VENTA _
+— REMACENES EXITO $ A NIT 8909006089 o
+—— RESPONSABLE DE IVA-craN CONTRIBUYENTE —
+RETENEDOR IMPUESTO IVA
+—— AUTORRETENEDOR RES 8825 DE 16/00/2016 —————
+Consumidor Final — ————
+IDENTIFICACION: 222222222222
+— 2026-08-07 19:03:27.344 0362 009 0133 a
+PLU DETALLE PRECIO - -
+—— 1 1/u x 499,900 V.Ahorro 399,920 ==
+3750925 Peluche Dj Furby .— 99.9808
+—— 2 17u x 79,900 V.Ahorroa 0 : o.
+3737939 Esfera Sorpresa 793.93008
+a... Y 140 5% 35,990 V.ñhorro 7, Ia
+3620080 Caja Organizado 35.990A
+—... 4 174 X 29.200 V. Ahorro 11.250 ——
+833751 Suavizante Caps 17.950A
+B 1/4-x 13,400 V.Ahorro 0 E a ae
+— . 1738058 Bolsa Basura 70x% 13.4008
+6 1/u x 9.900 V.Ahorroa O — EA
+—— 3686164 MINI WORLD S3 SU 9.9008 E
+7 1/u x 7.200 V.Ahorro 0 — -
+—— 818251 BOLSA PAPELERA 6 Le...
+8 1/u x 7.070 V.Ahorro O
+———.. 1438042 Goma de mascar w 7.0708 me A.
+Total Item :8 -
+— SUBTOTAL 682.560 RC
+JESCUENTO 345.521
+AHORRO 411.170 . PEE
+——— VALOR TOTAL TT 271.390
+FORMA PAGO :CONTA E
+AN ETA DEBITO
+EE INACION TARIFAS IMPUESTOS Ts a
+TAS CRT COMPRA BASE IMPUESTO
+6 A-IyA=19% 27h, 390 228,059 43.331 ———— —]——Ñ——
+SES
+na Ap ptaye 1876 8TOL05ST 4 44 ESE o
+DEL 2025094 1 AL SDB4 1000000
+— RAN Ad: 2026-08-0719:03:27.344 e
+Tur o 986tRO|ece 1£204b34605384AZFCCAcAS — HS
+—— 1, 00 4bdbe09a39e480cfaabfa57994ba a4e2
+Sp c4060b7F9F18905432f11c x=
+— ES [E] A ho |
+; AL D a
+di E
+5 tae [7 —
+— AE ET
+CT... E,
+Image too small to scale!! (2x36 vs min width of 3)`,
+  },
+  {
+    nombre: "Éxito WOW Buenavista (una bolsa)",
+    totalCents: 60000,
+    fecha: "2026-07-04",
+    texto: `—
+COMPRA Y RECOGE 3054829046
+FACTURA ELECTRONICA DE VENTA
+NUMERO: SD90120036
+ALMACENES EXITO S.A NIT 89209006089
+RESPONSABLE DE IVA-GRAN CONTRIBUYENTE
+RETENEDOR IMPUESTO IVA
+AUTORRETENEDOR RES.8825 DE 16/N0V/201:
+Consumidor Final
+IDENTIFICACION:222222222222
+2026-07-04 20:24:56.767 0362 015 0222
+PLU DETALLE PRECIO
+1 1/u x 600 V.Ahorro O
+1921293 BOLSA PAPEL EXIT 600A
+Total Item :1
+SUBTOTAL 600
+DESCUENTO 0
+AHORRO 0
+VALOR TOTAL 600
+FORMA PAGO :CONTADO
+EFECTIVO
+CAMBIO: 1.400
+DISCRIMINACION TARIFAS IMPUESTOS
+TARIFA COMPRA BASE IMPUESTO
+A-IVA=19% 600 504 96
+RES.DIANN 18764087010837 VIG 24 MESES
+DEL 2025-01-10 AL 2027-01-10
+RANG.AUT SD9Y90 1 AL SD9%O 1000000
+F Expedicion:2026-07-0420:24:56.767
+| Cufe:FB36F658c4ca015482e5473539128e0at:
+| 15053769dce7743f 0ce405852be9%e58c6b474-
+687b290b533084feb8a64e48f
+ED
+En ebeaT
+| CA Tula
+CAP A
+| [AICA
+. koal Cnmma.s. ai Y
+Line cannot be recognized!!`,
+  },
+  {
+    nombre: "Olímpica",
+    totalCents: 74838100,
+    fecha: null,
+    texto: `y AS
+| OL IMA] í
+| PA T No HA "Moo A
+r 890.107.
+: TA
+DAL GERENTE 1enarnactons
+N os e
+pERENDtogr CTO TOS
+ELE NE > -._26/0
+FECHA E-gal1.— Can < 2707721
+enero ""VP:.=50161 PA 00 as,
+, UN e AO NOSOOD2 y opua.Tetel
+- mt 9 F e Tm..
+nn necob ULTRACE?5"O 2-1
+42 un 5 990 EP 26.6 "|
+9858 RINENTOS ROJ 33
+ka 00 |, D
+03 0 KUN 940 5.990
+980 |
+9 ,
+" 04 “go pANAN Er 190 19.012"
+, 3.400 1
+06 k9,, c/1US S/RABADOO 38.851"
+DATE MI LO
+6 ka 215 ,
+065577 C/NU3 SORABADE , a
+07 ka 10 FIL 1-91 ARI 28.377
+15566 POL g 990 22 NS
+08 ka o FIL 2,020 27.598
+15566 POLLO 699 1/2 PE AT
+09 ka poLLO FIL 1796 E
+15566 POLES 990 12 P L
+10 ka ALA 1.890 57.284
+15560 POLL S/C0e ”
+14.490 1, TI 54.791
+11 ka 0 ALA 504
+15560 POLLO 490 S/Cony si dun"
+12 ka 14 1.9 1 3
+207 POLLO PERNIL *
+Zo POCÍR.00 TodinDa
+15577 C/MUS S/RABAD y 35 190”
+ES 19.490 1,4901 -
+964 PEZ MOJARRA Roy 29.040
+15 ka 16.600 2,254 De
+1112805 P/ALUM TUC ECON 37.416
+16 un 7.450 | E
+1112805 P/ALUM TUC ECON 7.450 |
+17 GS RES COSTILL Y D |
+855 : L 7.
+18 ka 26.536 Te ES 150,
+5028 VISCERA HIGA 38.5
+DO IM 583
+19, k9 11.150 786 1"? E
+176910 RES CARNE MOL E 8.764 —
+20 ka 30.980 1,496”
+» 5087831 GASEOSA COCA-COI 16.346
+21 un 6.950 178 D
+2332292 LIMPIAD ULTRALIMP 6.950
+22 un 2.650 1 D
+2035416 JAB OLIMPICA AZUC 2.650
+23 un 5.890 1 D
+1383 CERDO PULPA PIERNA 5.890
+24 ks 23.400 2,478 *
+5288371 YOGUR ALPINA GRIEG 57.985
+25 un 6400 1 D
+1620896 CALDO MAGGI GALLIN 6.400
+263716 MAZORC” BO LA E 500
+1 BOG LA 0
+27 ka ONE OO” 78, IRA *
+13116 MAZORC BOG LA GIRA 11.707
+28 ka 14.990 777 *
+1639390 MOLDE ALUM DOMINGO 11.647
+2039990 MO 8-00, nd 8 ,
+10 EDF ALUN DOMINGO 000
+21525616 REFRESC CLTGHT 8.000
+31 un A N
+2152516 REFRESC CLIGHT p 3.450
+32 un eso y O D
+2152516 REFRESE CLIGHT poL 3.450
+5: 2450 1 D
+ 2TS2BTZ REFRESC CLIGHT 3.450
+34 un 37as0 y POL D
+2152516 REFRESC CLIGHT 3.450.
+35 un 3,450 11 POL D
+2153426 REFRESC CLIGHT 3.450
+2. 2:00 9.500”
+LS
+37 e REFRESO ELTONT POL 500:
+3 761 coRO70 fR 3.450
+- 38 kg 14.900 ¡24 *
+Insti:0609 RM Más Hu 18.551
+*XSUBTOTAL/TOTHL|---> Ta
+uE Ao Dai kbdae, * 748.381
+Acdeban Multicala ¿2 748.381
+ORIZA-18215" 4 -
+RECIBO 2003698 "o
+camgío 0
+anágeninnaó re rasAAMENE Za PARMEREeNONET
+Total/acun]:23.427 Hasta Ger
+Ced/Ni1 No. 000000001500
+Nombre Cte :LUCTANO Efcncon==saencaa"
+vauranaaaE ENT", pos La
+ToraL ARTICULOS VÉNLOS > Y
+TOTAL LINEAS ARTÍ Un 16
+MOTA" ErNERS POR Ue Nay. ==="
+TOTAL LINEAS POR 0 E
+ne GON 7 LO
+| FORMA DE PAGO: E. TOS “
+ayer rERTTE PUES Pp Imps
+É sm se/1- aa"
+e DETALLE DE 82-976 5 15.005
+|opipo - COMPO- 401. UN L
+=== 93,980 e
+D-19% 93.281, --733 376 1.0
+Delia Guo TE
+Le deenaa 381.0 GONZA -
+zara Y 148.3caós MECO =
+a yaNÉ 1
+— Lo atendio Pa. É , -
+e >: 6 Gu sao
+——] 200 3 - En Y
+me e E =
+| 2 AA AT AN
+—_—. A
+E KANE —
+Ls e ón 2. PUN
+1 OEA 7
+NA`,
+  },
+  {
+    nombre: "Éxito Barranquilla WOW",
+    totalCents: 14514000,
+    fecha: "2026-08-08",
+    texto: `> A 1 / - O810 — EG - A, UY 77
+de (29. uoh. EE.
+006. — E
+EXITO BARRANQUILLA wow | —— . e
+e. CERTIFICACION FINANCIERO Y 0 Ma
+o L he
+un CL SI FA NO DI SI Ll 1 .
+———— FACTURA ELECTRONICA NE VENTA
+A e ALMACENES PARRLOT . ud ——
+DA » RESPONSABLE DE” ce NIT 8909006089
+UE e RETENEDOR IMPUESTA ENE CONTRIBUYENTE —
+——— AUTORRETENEDOR RES 8825 DE 16/00V/2016
+E BLANCO LUCIANO M
+IDENTIFICACIÓN:17502N9 % —
+2026-08-08 19:52:58 992 0097 012 0188
+PLu DETALLE PRECIO a
+—— 10.950/K6H x 44.980 W Ahorro 0 TA
+1763 Uva Verde Sir Se 42,731
+——— % 1-085/KGM x 25.720 V.Ahorra 0 uo
+1101 UVA ROJA SÁ SEM 27,906 A os
+o— Y TU E 23050 Y Mhorro 0
+1568680 APANACON KOKOR 23.050A AND
+— 4 1/4 x 23.050 VAhorro 0
+: 1568680 APANACOMGE KOKOR 23.050A —
+5 1/u x 92.300 .Ahorro 0
+— 537623 MAI? ARA AREPA 9.3008 —
+6 0.945/KGM x 3.940 V.Ahorro O
+———— 1253 Banano 5.723 E
+7 1/4 x 2,280 V.Ahorro O
+mu US Pasta Corriente 2.280E uu _—
+8 1/u x 2,280 V.Ahorro O
+.l 15393 Pasta Corriente 2,280E
+9 1/u x 2.280 V.Ahorro 0 CRA
+45393 Pasta Corriente 2.280E
+—— a 10 1/1 x 2,290 V.Ahorro O ==
+45393 Pasta Corriente 2.280E
+e 11 1/u x 2 280 V.Ahorro O ———
+45393 Pasta Corriente 2.280E
+—— 12 1/u x 2.280 V. Ahorro 0 —————
+45393 Pasta Corriente 2.780E
+Es 13 1/u x 1,700 V.Ahorro 0 No ly
+1883189 Bolsa Reutilizab 1.7008
+Total Item 13 REE
+“ SUBTOTAL 145.140 Mi.
+DESCUENTO 0
+——— AHORRO 0 iii
+VALOR TOTAL 145,140
+——.. FORMA PAGO :CONTADO CONT
+TARJETA DEBITO
+DISCRIMINACION TARIFAS IMPUESTOS
+COMPRA BASE IMPUESTO CONEA
+TE TARIFA
+A-IVA=19% 57.100 47.983 9.117
+a. E-IVA=05% 13.680 13.029 651 TEE
+50 VI ESES
+RES DIANA OSOS TAL 2020-02-06 =
+RANG, AUT s014 1 AL SO14 10000003. * E : CERA`,
+  },
+  {
+    nombre: "Continente / Pepe Ganga",
+    totalCents: 20180000,
+    fecha: "2026-08-08",
+    texto: `, 2 |
+. “2.
+“ N y
+l EN
+—  — x
+« 1 > É NN |
+ha 1 1 * q6l07 FU
+—- -
+/ 7 a «
+3 nm H Y CA 7 N O e
+E) : CONTINENTE Da ,
+NIT 8901012>- / -
+, ( PEPE GANGA NO- 13 a IA €
+CARRERA 518n87-180 C-C VIVA BARRTNQUILLA
+me) Ln BARRANQUILLA - ATLANTICO
+RESPONSABLES DE IUA
+! NO SOMOS GRANDES CONTRIBUYENTES
+ms AUTORIZACION DE NUHERACION DE
+FACTURA ELECTRONTEA: 18764085160296
+VIGENCIA 24 MESES HASTA:11-12-2024
+PREFIJO:PUIS DEL Ho: 1 Al :100000
+a) FAVOR ABSTENERSE DE EFECTUAR RETENCIÓN
+SOMOS AUTORETENEDORES SEGUN RESOLUCIONES
+3 | 0131 DE ABOSTO/95 Y 734 DE DIC.7/97
+Factura Electroñica de Venta: PVIS-34790
+3 caja: BELKYS RODRIGUEZ 08/08/2026
+* Suc.13 Vend. 1308 15:51
+- 1,00/103163 DJ FURBY RAIN 99.900%
+1,00/103283 SLIME MART DO 99,900
+1,00/001000 BOLSA PAPEL G 2.000 ÉL és
+” 3,00 Articulos Facturados —
+Sub-tota) Factura. . . $ 201 800,00
+> —
+TOTAL FACTURA. . . .. $ 201 .800,00
+E 00
+re MASTER DEB. . ... . 8 201.800,
+P Su cambio. . .... .8 4 a
+— - INFORMACION TRIBUTARIA. >
+- Base 19% = 169,579,83 IVA - 2.201 |
+— 1 Mee :LUGTANO BLANCO P
+" | 400 UU -Nir/00  M5DSIO —-
+pi UYreco Mn: NE Le e
+— Telefuno: 2,
+u 300720007-P0S55 -uu 2025000019
+| CUFE: -— E
+d8fSb185c3332036be2bYe 105ep52d8917 co514
+e3351f9546f8480fS6cc199e6343221 1e78aect
+í TÍFbIcA56a58e234d
+Frña: [=] b Tao 1 (m)
+Re re
+« ==, y
+4 r Era A “]_— > |
+l . conato
+, - y . hi " Po. [«
+[A « es 31 edo
+E ; -— _— L= 5 a 1. e LL...`,
+  },
+  {
+    nombre: "Éxito",
+    totalCents: 8083000,
+    fecha: "2026-08-09",
+    texto: `FACTURA ELECTRONICA DE VENTA
+NUMERO: UMI663865 089
+RESPONSABLE, DE LVA-GFON CONTRIBU
+RETE R UESTO ]
+AUT ONRE TENEDOR RES.8825 DE 16/N0V/2016
+Consumidor E inal
+IDENTIEICACION: 222222222224.
+E n=09 18184:32.602 VO": 0211
+PLU DETALLE di
+1 1/u x 24.800 V,Ahorr9 0 24 800
+> e Rena de Leche
+u x 18.250 V, ro
+3648429 Jabon En Suero 18.250
+3 170% 16.350 V.ahorro 6-359 y og0n
+3297463 Lavaplatos en Cr 60 _
+4 1/0 x 16.350 V.Ahorro 6:38 9 990f
+3297463 Lavarlatos en Er
+E 1/u x 6.080 V.Ahorro 9 6.080
+¿216598 Perelf mues hos | mi
+1/u x 5:9407V .Anerr 5.9
+394130 Lim4n Tahits Mag
+1/u x 56,180 AROT 5.180A
+519268 A cier
+1/u x 60 " T 600A
+1921293 BOYSA PH y”
+Total Iten/ :8.
+SUBTOTAL 23.550
+DESCUENTO EA:
+12,720
+kORDA TOTAL contTADO 80.830
+TARJETA DEBITO
+DISCRIMINACION TARIFAS IMPUESTOS
+TARIFA COMPRA BASE IMPUESTO
+A-IVA=19% 44.010 36.983 7.027
+RES, DI
+spp NET E ERETÍ UR ae NES
+RANG.AUT UMIS 1 AL UMI6 100000
+E ENCO on: 2026-08-0918:84:32
+Cufe:e761e8a6f3567e1cb43cb 97 2505
+Sde 471849730 b0r2e41e7TFET20d6AI TES
+%Úab66c5443deb9684b29e2a0
+7 [a]
+Eo ee
+Ma MTC`,
+  },
+  {
+    nombre: "Éxito WOW Buenavista",
+    totalCents: 15530000,
+    fecha: "2026-07-04",
+    texto: `h : 1 4
+* / oOS810 —-
+y e wn
+exITO WOW BUEN — y á
+RA Y REC A
+| COMP OGE 30548790. VIS el o
+20:2 a
+E > 0362 09 0089 22551763 V y ,
+.V.4CU
+N FACTURA ELECTRONICA DE Ver -
+y NÚMERO. 508452268 : ——————.
+EXITO S.A NIT 89
+ALMACENES 09006 -
+RESPONSABLE DE IVA-GRAN CONTRIpOS9 ——
+RETENEDOR INFUESTO o. - NTE
+AUTORRETENEDOR RES. 16/N0v/201c dz
+id Final ——]—
+O TRICACION: 222222222222
+2026-07-04 20:21:18.351 0362 009 0089 a
+] PLU DETALLE ——_—
+- 1 1/4 x 111,800 V.Ahorro O PRECIO ——
+3003680 Tequila Reposado 111.800€ —
+IMP.CONS.LICORES “:26.967 r
+E AO V.Ahorro 14.500 —
+ANACONGE KOKOR No
+=> Total Item :2 | == A.
+SUBTOTAL —————
+=D NESTOENTO 142.100
+AHORRO 14500 pa
+VALOR TOTAL 155.300
+FORMA PAGO :CONTADO —_———]]
+TARJETA DEBITO
+3 * DISCRIMINACION TARIFAS IMPUESTOS EA
+| TARIFA COMPRA BASE IMPUESTO ——]———
+| E-IVA=05% 84,833 80.793 4.040
+A-IVA=19% 45.500 36 555 6 945 | E
+| RES.DIANK 18764087 24 MESES
+DEL 2025-01-10 AL e fa —]]
+RANG.AUT SD84 1 AL sDgg [000000
+F.Expedicion:2026-07-0420:21:18.351 ——
+| Cufe:e04309ead86553e8o.8aab711965579fe
+4d5afa919ea2131bd544e4977815804383726e'- —————
+3 7ada65299a3e6848d62bag_.3
+a e —_———
+Cera)
+3 E «a
+-— aC] AE
+Eo ai
+a Er E]
+Toshiba Global Commerce Solutions A
+Sy | (Colombia) S.A.S NIT 900545074-9 =
+' SuperMarket Application
+efactura Cadena S.A. 890930534-0`,
+  },
+]
