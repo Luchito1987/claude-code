@@ -1,24 +1,24 @@
 import Link from 'next/link'
 import { Badge, Empty, Panel, Table } from '@/components/ui'
-import { CATEGORIES, CATEGORY_LABELS } from '@/lib/categories'
-import { addDays, compare, formatDate, formatPeriod, todayISO } from '@/lib/dates'
+import { CATEGORY_LABELS, MANUAL_EXPENSE_CATEGORIES } from '@/lib/categories'
+import { compare, formatDate, formatPeriod, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 import {
-  buildProjection,
   listAccounts,
-  listBills,
   listCards,
-  listLoans,
-  listRappiOrders,
-  listServices,
-  listTransactions,
-  minBufferCents,
   monthSummary,
-  monthlyIncomeCents,
+  MONTH_GROUP_LABELS,
+  MONTH_GROUP_ORDER,
+  type MonthGroup,
+  type MonthItem,
 } from '@/lib/queries'
-import { buildRecommendations } from '@/lib/recommendations'
-import { analyzeRappi } from '@/lib/parsers/rappi'
-import { saveTransactionAction, toggleBillPaidAction, toggleMonthItemPaidAction } from '@/app/actions/data'
+import {
+  saveTransactionAction,
+  toggleBillPaidAction,
+  toggleMonthItemPaidAction,
+  updateBillAction,
+} from '@/app/actions/data'
+import { FilaColapsable, PanelColapsable } from './Colapsable'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +28,12 @@ export default function Tablero() {
   const cuentas = listAccounts()
   const pendientes = mes.items.filter((i) => !i.paid)
   const pagados = mes.items.filter((i) => i.paid)
+
+  // Los cuatro bloques de compromisos; el gasto variable va aparte porque ya
+  // está pagado y no tiene vencimiento ni estado.
+  const bloques = MONTH_GROUP_ORDER.filter((g) => g !== 'variable')
+    .map((group) => ({ group, items: mes.items.filter((i) => i.group === group) }))
+    .filter((b) => b.items.length > 0)
 
   return (
     <div className="space-y-6">
@@ -48,13 +54,9 @@ export default function Tablero() {
             {pagados.length ? ` · ${formatMoney(mes.paidCents)} ya pagado` : ''}
           </p>
         </div>
-        <div
-          className={`card ${mes.netCents < 0 ? 'border-bad/50' : 'border-good/40'}`}
-        >
+        <div className={`card ${mes.netCents < 0 ? 'border-bad/50' : 'border-good/40'}`}>
           <p className="text-xs uppercase tracking-wide text-muted">Neto después de pagar</p>
-          <p
-            className={`mt-1 text-3xl font-semibold tabular-nums ${mes.netCents < 0 ? 'text-bad' : 'text-good'}`}
-          >
+          <p className={`mt-1 text-3xl font-semibold tabular-nums ${mes.netCents < 0 ? 'text-bad' : 'text-good'}`}>
             {formatMoney(mes.netCents)}
           </p>
           <p className="mt-1 text-xs text-muted">
@@ -74,7 +76,7 @@ export default function Tablero() {
           </Link>
         }
       >
-        {mes.items.length ? (
+        {bloques.length ? (
           <Table
             head={
               <tr>
@@ -86,52 +88,9 @@ export default function Tablero() {
               </tr>
             }
           >
-            {mes.items.map((item) => {
-              const vencido = !item.paid && compare(item.dueDate, today) < 0
-              return (
-                <tr key={`${item.kind}-${item.refId}`} className={item.paid ? 'opacity-55' : ''}>
-                  <td className="td">
-                    <span className="font-medium">{item.label}</span>
-                    <span className="ml-2 text-xs text-muted">{item.detail}</span>
-                  </td>
-                  <td className="td whitespace-nowrap text-muted">{formatDate(item.dueDate)}</td>
-                  <td className="td text-right tabular-nums">{formatMoney(item.cents)}</td>
-                  <td className="td">
-                    {item.paid ? (
-                      <Badge tone="good">pagado</Badge>
-                    ) : vencido ? (
-                      <Badge tone="bad">vencido</Badge>
-                    ) : item.estimated ? (
-                      <Badge tone="neutral">estimado</Badge>
-                    ) : (
-                      <Badge tone="neutral">pendiente</Badge>
-                    )}
-                  </td>
-                  <td className="td text-right">
-                    {item.kind === 'factura' ? (
-                      <form action={toggleBillPaidAction}>
-                        <input type="hidden" name="id" value={item.refId} />
-                        <input type="hidden" name="paid" value={item.paid ? '0' : '1'} />
-                        <button type="submit" className="btn-ghost px-2 py-1 text-xs">
-                          {item.paid ? 'Reabrir' : 'Pagado'}
-                        </button>
-                      </form>
-                    ) : (
-                      <form action={toggleMonthItemPaidAction}>
-                        <input type="hidden" name="kind" value={item.kind} />
-                        <input type="hidden" name="refId" value={item.refId} />
-                        <input type="hidden" name="period" value={mes.period} />
-                        <input type="hidden" name="amount" value={(item.cents / 100).toFixed(2)} />
-                        <input type="hidden" name="paid" value={item.paid ? '0' : '1'} />
-                        <button type="submit" className="btn-ghost px-2 py-1 text-xs">
-                          {item.paid ? 'Reabrir' : 'Pagado'}
-                        </button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+            {bloques.map(({ group, items }) => (
+              <BloqueDelMes key={group} group={group} items={items} period={mes.period} today={today} />
+            ))}
           </Table>
         ) : (
           <Empty>
@@ -143,13 +102,162 @@ export default function Tablero() {
         )}
       </Panel>
 
+      <GastosVariables items={mes.variable} total={mes.variableCents} period={mes.period} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <MovimientoRapido tipo="gasto" cuentas={cuentas} />
         <MovimientoRapido tipo="ingreso" cuentas={cuentas} />
       </div>
-
-      <Recomendaciones today={today} />
     </div>
+  )
+}
+
+/** Un bloque del mes: título con subtotal y sus filas. */
+function BloqueDelMes({
+  group,
+  items,
+  period,
+  today,
+}: {
+  group: MonthGroup
+  items: MonthItem[]
+  period: string
+  today: string
+}) {
+  const total = items.reduce((a, i) => a + i.cents, 0)
+  const falta = items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0)
+
+  return (
+    <FilaColapsable
+      titulo={MONTH_GROUP_LABELS[group]}
+      total={formatMoney(total)}
+      estado={falta > 0 ? `falta ${formatMoney(falta)}` : 'todo pagado'}
+    >
+      {items.map((item) => {
+        const vencido = !item.paid && compare(item.dueDate, today) < 0
+        return (
+          <tr key={`${item.kind}-${item.refId}`} className={item.paid ? 'opacity-55' : ''}>
+            <td className="td">
+              <span className="font-medium">{item.label}</span>
+              <span className="ml-2 text-xs text-muted">{item.detail}</span>
+            </td>
+            <td className="td whitespace-nowrap text-muted">{formatDate(item.dueDate)}</td>
+            <td className="td text-right">
+              {item.editable ? <ImporteEditable item={item} /> : <span className="tabular-nums">{formatMoney(item.cents)}</span>}
+            </td>
+            <td className="td">
+              {item.paid ? (
+                <Badge tone="good">pagado</Badge>
+              ) : vencido ? (
+                <Badge tone="bad">vencido</Badge>
+              ) : item.estimated ? (
+                <Badge tone="neutral">estimado</Badge>
+              ) : (
+                <Badge tone="neutral">pendiente</Badge>
+              )}
+            </td>
+            <td className="td text-right">
+              {item.kind === 'factura' ? (
+                <form action={toggleBillPaidAction}>
+                  <input type="hidden" name="id" value={item.refId} />
+                  <input type="hidden" name="paid" value={item.paid ? '0' : '1'} />
+                  <button type="submit" className="btn-ghost px-2 py-1 text-xs">
+                    {item.paid ? 'Reabrir' : 'Pagado'}
+                  </button>
+                </form>
+              ) : (
+                <form action={toggleMonthItemPaidAction}>
+                  <input type="hidden" name="kind" value={item.kind} />
+                  <input type="hidden" name="refId" value={item.refId} />
+                  <input type="hidden" name="period" value={period} />
+                  <input type="hidden" name="amount" value={(item.cents / 100).toFixed(2)} />
+                  <input type="hidden" name="paid" value={item.paid ? '0' : '1'} />
+                  <button type="submit" className="btn-ghost px-2 py-1 text-xs">
+                    {item.paid ? 'Reabrir' : 'Pagado'}
+                  </button>
+                </form>
+              )}
+            </td>
+          </tr>
+        )
+      })}
+    </FilaColapsable>
+  )
+}
+
+/**
+ * El importe se edita en el lugar. Cerrado muestra el número; abierto, el campo.
+ * Es un `<details>` para que ande sin JavaScript, igual que el resto de la app.
+ */
+function ImporteEditable({ item }: { item: MonthItem }) {
+  return (
+    <details className="text-right">
+      <summary className="cursor-pointer list-none tabular-nums hover:text-brand">
+        {formatMoney(item.cents)}
+        <span className="ml-1 text-xs text-muted">✎</span>
+      </summary>
+      <form action={updateBillAction} className="mt-2 flex items-center justify-end gap-1.5">
+        <input type="hidden" name="id" value={item.refId} />
+        <input
+          name="amount"
+          className="input w-28 px-2 py-1 text-right text-xs"
+          inputMode="decimal"
+          defaultValue={(item.cents / 100).toFixed(2)}
+          aria-label={`Importe de ${item.label}`}
+        />
+        <button type="submit" className="btn-primary px-2 py-1 text-xs">
+          Guardar
+        </button>
+      </form>
+    </details>
+  )
+}
+
+/** Lo que ya se gastó en el mes fuera de los compromisos. */
+function GastosVariables({
+  items,
+  total,
+  period,
+}: {
+  items: Array<{ category: string; cents: number }>
+  total: number
+  period: string
+}) {
+  const max = Math.max(...items.map((i) => i.cents), 1)
+
+  return (
+    <Panel
+      title={MONTH_GROUP_LABELS.variable}
+      subtitle={`Lo que ya salió en ${formatPeriod(period)} por fuera de los compromisos. No incluye lo pagado con tarjeta: eso viaja dentro del resumen.`}
+      action={
+        <Link href="/gastos" className="text-xs text-brand hover:underline">
+          Ver movimientos →
+        </Link>
+      }
+    >
+      {items.length ? (
+        <PanelColapsable titulo="Por rubro" resumen={formatMoney(total)}>
+          <ul className="space-y-2">
+            {items.map((i) => (
+              <li key={i.category}>
+                <div className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="truncate">{CATEGORY_LABELS[i.category] ?? i.category}</span>
+                  <span className="tabular-nums text-muted">{formatMoney(i.cents)}</span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-edge">
+                  <div
+                    className="h-1.5 rounded-full bg-brand"
+                    style={{ width: `${Math.max(2, (i.cents / max) * 100)}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </PanelColapsable>
+      ) : (
+        <Empty>Todavía no hay gastos sueltos cargados este mes.</Empty>
+      )}
+    </Panel>
   )
 }
 
@@ -208,17 +316,43 @@ function MovimientoRapido({
         </div>
         {esGasto && (
           <div>
+            <label className="label" htmlFor={`${tipo}-recurrencia`}>
+              ¿Se repite?
+            </label>
+            <select id={`${tipo}-recurrencia`} name="recurrencia" className="input" defaultValue="">
+              <option value="">Variable · solo esta vez</option>
+              <option value="fijo">Fijo · todos los meses</option>
+            </select>
+            <p className="mt-1 text-xs text-muted">
+              Un gasto fijo queda dado de alta como compromiso y vuelve solo cada mes. No mueve el saldo ni usa
+              tarjeta: se paga desde la lista de arriba.
+            </p>
+          </div>
+        )}
+        {esGasto && (
+          <div>
             <label className="label" htmlFor={`${tipo}-cat`}>
               Categoría
             </label>
             <select id={`${tipo}-cat`} name="category" className="input" defaultValue="">
               <option value="">Automática</option>
-              {CATEGORIES.map((c) => (
+              {MANUAL_EXPENSE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {CATEGORY_LABELS[c]}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-muted">
+              Un servicio va por{' '}
+              <Link href="/facturas" className="text-brand underline">
+                Facturas
+              </Link>{' '}
+              y un consumo con tarjeta entra al{' '}
+              <Link href="/importar" className="text-brand underline">
+                importar el resumen
+              </Link>
+              .
+            </p>
           </div>
         )}
         <div>
@@ -260,80 +394,6 @@ function MovimientoRapido({
           </span>
         </div>
       </form>
-    </Panel>
-  )
-}
-
-function Recomendaciones({ today }: { today: string }) {
-  const projection = buildProjection(today)
-  const orders = listRappiOrders()
-  const recos = buildRecommendations({
-    today,
-    projection,
-    transactions: listTransactions({ from: addDays(today, -120) }),
-    bills: listBills(),
-    services: listServices(),
-    loans: listLoans(),
-    monthlyIncomeCents: monthlyIncomeCents(),
-    minBufferCents: minBufferCents(),
-    rappi: orders.length
-      ? analyzeRappi(
-          orders.map((o) => ({
-            date: o.date,
-            store: o.store,
-            totalCents: o.total_cents,
-            productsCents: o.products_cents,
-            deliveryCents: o.delivery_cents,
-            serviceCents: o.service_cents,
-            tipCents: o.tip_cents,
-            itemsCount: o.items_count,
-            vertical: o.vertical,
-            raw: '',
-          })),
-        )
-      : undefined,
-    windowOpen: true,
-    windowPeriod: '',
-  })
-
-  if (!recos.length) return null
-
-  return (
-    <Panel
-      title="Recomendaciones de la semana"
-      subtitle="Reglas sobre tus propios datos, ordenadas por urgencia"
-      action={
-        <Link href="/reportes" className="text-xs text-brand hover:underline">
-          Exportar informe →
-        </Link>
-      }
-    >
-      <ul className="space-y-3">
-        {recos.slice(0, 4).map((r) => (
-          <li key={r.id} className="rounded-lg border border-edge p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                tone={
-                  r.severity === 'critica'
-                    ? 'bad'
-                    : r.severity === 'alta'
-                      ? 'warn'
-                      : r.severity === 'media'
-                        ? 'info'
-                        : 'neutral'
-                }
-              >
-                {r.severity}
-              </Badge>
-              <h3 className="text-sm font-medium">{r.title}</h3>
-              {r.impactCents > 0 && (
-                <span className="ml-auto text-xs tabular-nums text-muted">{formatMoney(r.impactCents)}</span>
-              )}
-            </div>
-            <p className="mt-1.5 text-sm text-slate-300">{r.body}</p>
-          </li>
-        ))}
-      </ul>
     </Panel>
   )
 }

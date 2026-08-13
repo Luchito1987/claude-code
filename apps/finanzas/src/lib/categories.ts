@@ -40,6 +40,42 @@ export const VARIABLE_CATEGORIES: Category[] = [
 /** Gastos comprometidos: no se recortan de una semana a la otra. */
 export const FIXED_CATEGORIES: Category[] = ['servicios', 'educacion', 'salud', 'impuestos', 'prestamos']
 
+/**
+ * Rubros que quedan fuera del bloque "Gastos variables" del mes: cada uno ya
+ * tiene su propia línea —el resumen de la tarjeta, la cuota del préstamo, la
+ * factura del servicio— o directamente no es un gasto. Sumarlos ahí sería
+ * contarlos dos veces.
+ */
+export const NON_VARIABLE_CATEGORIES: Category[] = [
+  'pago_tarjeta',
+  'transferencias',
+  'servicios',
+  'prestamos',
+  'impuestos',
+  'ingresos',
+]
+
+/**
+ * Las que se ofrecen al cargar un gasto suelto a mano. Es el complemento exacto
+ * de `NON_VARIABLE_CATEGORIES`: elegir cualquier otra haría que el gasto se
+ * guarde pero no aparezca en el bloque de variables.
+ */
+export const MANUAL_EXPENSE_CATEGORIES: Category[] = CATEGORIES.filter(
+  (c) => !NON_VARIABLE_CATEGORIES.includes(c),
+)
+
+/**
+ * Rubros que no puede tener un servicio que se factura mes a mes: una cuota de
+ * préstamo y un resumen de tarjeta se cargan en su propia pantalla y ya tienen
+ * su bloque en el mes, así que darlos de alta también como servicio contaría el
+ * mismo pago dos veces. Un ingreso o una transferencia directamente no son una
+ * factura.
+ */
+const NOT_BILLABLE: Category[] = ['ingresos', 'pago_tarjeta', 'transferencias', 'prestamos']
+
+/** Las que se ofrecen al dar de alta un servicio. */
+export const BILLABLE_CATEGORIES: Category[] = CATEGORIES.filter((c) => !NOT_BILLABLE.includes(c))
+
 const RULES: Array<{ re: RegExp; category: Category }> = [
   // Estas tres van primero: sus palabras aparecen dentro de otros comercios
   // ("PRESTAMO PERSONAL" contra Personal telefonía, "PAGO TARJETA VISA" contra

@@ -30,7 +30,7 @@ import {
   type CardDue,
   type Projection,
 } from './cashflow'
-import type { UserRule } from './categories'
+import { NON_VARIABLE_CATEGORIES, type UserRule } from './categories'
 
 export interface Account {
   id: string
@@ -61,6 +61,8 @@ export interface Service {
   active: number
   autodebit: number
   notes: string
+  /** Cómo nombra el banco a este servicio en el extracto. */
+  match_pattern: string
   created_at: string
 }
 
@@ -68,6 +70,8 @@ export interface Bill {
   id: string
   service_id: string
   name: string
+  /** Categoría del servicio que la origina. Separa "Servicios" de "Gastos fijos". */
+  category: string
   period: string
   amount_cents: number
   due_date: ISODate
@@ -153,7 +157,7 @@ export const listUserRules = (): UserRule[] =>
 
 export function listBills(period?: string): Bill[] {
   const sql = `
-    SELECT b.*, s.name AS name
+    SELECT b.*, s.name AS name, s.category AS category
     FROM bills b JOIN services s ON s.id = b.service_id
     ${period ? 'WHERE b.period = ?' : ''}
     ORDER BY b.due_date, s.name`
@@ -164,7 +168,7 @@ export function listBills(period?: string): Bill[] {
 export function listBillsBetween(from: ISODate, to: ISODate): Bill[] {
   return getDb()
     .prepare(
-      `SELECT b.*, s.name AS name
+      `SELECT b.*, s.name AS name, s.category AS category
        FROM bills b JOIN services s ON s.id = b.service_id
        WHERE b.due_date BETWEEN ? AND ?
        ORDER BY b.due_date`,
@@ -175,7 +179,7 @@ export function listBillsBetween(from: ISODate, to: ISODate): Bill[] {
 export function listPendingBills(): Bill[] {
   return getDb()
     .prepare(
-      `SELECT b.*, s.name AS name
+      `SELECT b.*, s.name AS name, s.category AS category
        FROM bills b JOIN services s ON s.id = b.service_id
        WHERE b.status <> 'pagado'
        ORDER BY b.due_date`,
@@ -362,6 +366,61 @@ export function markBillPaid(billId: string, paid: boolean): void {
     .run(paid ? 'pagado' : 'pendiente', paid ? now() : null, billId)
 }
 
+/**
+ * Da de alta un gasto que se repite todos los meses y deja saldado el mes en
+ * curso. Es el atajo del tablero: crea el mismo servicio que se cargaría desde
+ * Facturas, pidiendo lo mínimo.
+ *
+ * Si ya hay un servicio activo con ese nombre lo reutiliza, para que cargar dos
+ * veces "Gimnasio" no termine en dos gastos fijos que suman doble.
+ */
+export function addFixedExpense(input: {
+  name: string
+  category: string
+  amountCents: number
+  date: ISODate
+}): { serviceId: string; billId: string | null } {
+  const db = getDb()
+  const { name, category, amountCents, date } = input
+  const period = financialMonth(date)
+
+  const existente = db
+    .prepare('SELECT id FROM services WHERE lower(name) = lower(?) AND active = 1')
+    .get(name) as { id: string } | undefined
+
+  let serviceId = existente?.id
+  if (!serviceId) {
+    serviceId = id()
+    db.prepare(
+      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, created_at)
+       VALUES (?, ?, '', ?, ?, ?, 1, 0, '', ?)`,
+    ).run(serviceId, name, category, amountCents, parseISO(date).d, now())
+  }
+
+  ensureBillsForPeriod(period)
+  const bill = db.prepare('SELECT id FROM bills WHERE service_id = ? AND period = ?').get(serviceId, period) as
+    | { id: string }
+    | undefined
+  if (!bill) return { serviceId, billId: null }
+
+  // Confirma el importe (y lo deja rigiendo para los meses siguientes) y lo
+  // marca pagado: se está registrando un gasto que ya se hizo.
+  updateBillAmount(bill.id, amountCents)
+  markBillPaid(bill.id, true)
+  return { serviceId, billId: bill.id }
+}
+
+/**
+ * Confirma el importe de una factura.
+ *
+ * En un gasto fijo el importe no cambia mes a mes: cuando cambia, cambia para
+ * adelante (un aumento de expensas rige de ese mes en más). Así que el valor
+ * nuevo pasa a ser el esperado del servicio y se propaga a los meses siguientes
+ * que todavía están estimados. Un servicio medido —luz, agua, gas— varía todos
+ * los meses, así que ahí el importe vale solo para su propio mes.
+ *
+ * Nunca pisa una factura ya confirmada: propaga solo sobre las estimadas.
+ */
 export function updateBillAmount(billId: string, amountCents: number, dueDate?: ISODate): void {
   const db = getDb()
   if (dueDate) {
@@ -378,6 +437,21 @@ export function updateBillAmount(billId: string, amountCents: number, dueDate?: 
       billId,
     )
   }
+
+  const bill = db
+    .prepare(
+      `SELECT b.service_id, b.period, s.category
+       FROM bills b JOIN services s ON s.id = b.service_id
+       WHERE b.id = ?`,
+    )
+    .get(billId) as { service_id: string; period: string; category: string } | undefined
+  if (!bill || billGroup(bill.category) !== 'fijo') return
+
+  db.prepare('UPDATE services SET expected_amount_cents = ? WHERE id = ?').run(amountCents, bill.service_id)
+  db.prepare(
+    `UPDATE bills SET amount_cents = ?
+     WHERE service_id = ? AND period > ? AND estimated = 1 AND status <> 'pagado'`,
+  ).run(amountCents, bill.service_id, bill.period)
 }
 
 /** Próximas cuotas de cada préstamo, para mostrar en la pantalla de préstamos. */
@@ -470,8 +544,36 @@ export function upcomingDues(days = 30, today: ISODate = todayISO()) {
 
 // ------------------------------------------------- mes financiero y deudas
 
+/**
+ * Los cinco bloques en los que se divide el mes. `variable` no sale de una
+ * factura: es lo que ya se gastó en el mes fuera de los compromisos.
+ */
+export type MonthGroup = 'tarjeta' | 'prestamo' | 'servicio' | 'fijo' | 'variable'
+
+export const MONTH_GROUP_LABELS: Record<MonthGroup, string> = {
+  tarjeta: 'Pagos de tarjetas de crédito',
+  prestamo: 'Pagos de préstamos',
+  servicio: 'Pago de servicios',
+  fijo: 'Gastos fijos',
+  variable: 'Gastos variables',
+}
+
+/** Orden en el que se muestran los bloques en el tablero. */
+export const MONTH_GROUP_ORDER: MonthGroup[] = ['tarjeta', 'prestamo', 'servicio', 'fijo', 'variable']
+
+/**
+ * Una factura es "servicio" si el consumo cambia todos los meses (luz, agua,
+ * gas). El resto de lo que se factura mes a mes por el mismo importe —
+ * expensas, prepaga, colegio — es un gasto fijo.
+ */
+const SERVICE_CATEGORIES = new Set(['servicios'])
+
+export const billGroup = (category: string): 'servicio' | 'fijo' =>
+  SERVICE_CATEGORIES.has(category) ? 'servicio' : 'fijo'
+
 export interface MonthItem {
   kind: 'factura' | 'tarjeta' | 'prestamo'
+  group: MonthGroup
   refId: string
   label: string
   detail: string
@@ -479,6 +581,8 @@ export interface MonthItem {
   cents: number
   paid: boolean
   estimated: boolean
+  /** Solo las facturas se pueden reimportar a mano desde el tablero. */
+  editable: boolean
 }
 
 /** Cuotas de tarjeta pendientes, leídas de los resúmenes ya importados. */
@@ -519,6 +623,7 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
 
   const facturas: MonthItem[] = listBills(period).map((b) => ({
     kind: 'factura' as const,
+    group: billGroup(b.category),
     refId: b.id,
     label: b.name,
     detail: b.estimated === 1 ? 'importe estimado' : 'confirmada',
@@ -526,12 +631,14 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
     cents: b.amount_cents,
     paid: b.status === 'pagado',
     estimated: b.estimated === 1,
+    editable: true,
   }))
 
   const tarjetas: MonthItem[] = allCardDues(today, monthRange(period).start)
     .filter((d) => financialMonth(d.due_date) === period)
     .map((d) => ({
       kind: 'tarjeta' as const,
+      group: 'tarjeta' as const,
       refId: d.cardId,
       label: `Resumen ${d.name}`,
       detail: 'consumos del resumen importado',
@@ -539,6 +646,7 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
       cents: d.amount_cents,
       paid: pagados.has(`tarjeta:${d.cardId}`),
       estimated: false,
+      editable: false,
     }))
 
   const prestamos: MonthItem[] = pendingLoanInstallments(listLoans(), today)
@@ -548,6 +656,7 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
       const fecha = loan ? addMonths(loan.first_due_date, c.number - 1) : end
       return {
         kind: 'prestamo' as const,
+        group: 'prestamo' as const,
         refId: c.loanId,
         label: c.label,
         detail: 'cuota fija',
@@ -555,10 +664,16 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
         cents: c.amountCents,
         paid: pagados.has(`prestamo:${c.loanId}`),
         estimated: false,
+        editable: false,
       }
     })
 
   return [...facturas, ...tarjetas, ...prestamos].sort((a, b) => compare(a.dueDate, b.dueDate))
+}
+
+export interface VariableSpend {
+  category: string
+  cents: number
 }
 
 export interface MonthSummary {
@@ -572,6 +687,33 @@ export interface MonthSummary {
   netCents: number
   items: MonthItem[]
   incomeCents: number
+  /** Gasto variable ya hecho en el mes, por rubro. No entra en `pendingCents`. */
+  variable: VariableSpend[]
+  variableCents: number
+}
+
+/**
+ * Lo que se gastó en el mes fuera de los compromisos: efectivo, débito y
+ * transferencias. Deja afuera lo que se pagó con tarjeta, que ya viaja dentro
+ * del resumen, y los rubros que tienen su propia línea (servicios, préstamos).
+ */
+export function variableSpend(period: string): VariableSpend[] {
+  const { start, end } = monthRange(period)
+  const excluidas = NON_VARIABLE_CATEGORIES.map(() => '?').join(', ')
+  const rows = getDb()
+    .prepare(
+      `SELECT category, SUM(-amount_cents) AS cents
+       FROM transactions
+       WHERE date BETWEEN ? AND ?
+         AND amount_cents < 0
+         AND card_id IS NULL
+         AND category NOT IN (${excluidas})
+       GROUP BY category
+       HAVING cents > 0
+       ORDER BY cents DESC`,
+    )
+    .all(start, end, ...NON_VARIABLE_CATEGORIES) as VariableSpend[]
+  return rows
 }
 
 /** Los tres números de la primera pantalla, más el detalle del mes. */
@@ -584,6 +726,7 @@ export function monthSummary(today: ISODate = todayISO()): MonthSummary {
   const paidCents = items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0)
   const availableCents = totalCashCents()
   const { start, end } = monthRange(period)
+  const variable = variableSpend(period)
 
   return {
     period,
@@ -596,6 +739,8 @@ export function monthSummary(today: ISODate = todayISO()): MonthSummary {
     netCents: availableCents - pendingCents,
     items,
     incomeCents: monthlyIncomeCents(),
+    variable,
+    variableCents: variable.reduce((a, v) => a + v.cents, 0),
   }
 }
 
