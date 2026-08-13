@@ -1,5 +1,5 @@
 import { saveServiceAction } from '@/app/actions/data'
-import { CATEGORIES, CATEGORY_LABELS } from '@/lib/categories'
+import { BILLABLE_CATEGORIES, CATEGORY_LABELS } from '@/lib/categories'
 
 export function ServiceForm() {
   return (
@@ -33,12 +33,32 @@ export function ServiceForm() {
           Categoría
         </label>
         <select id="svc-cat" name="category" className="input" defaultValue="servicios">
-          {CATEGORIES.map((c) => (
+          {BILLABLE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {CATEGORY_LABELS[c]}
             </option>
           ))}
         </select>
+        <p className="mt-1 text-xs text-muted">
+          “Servicios” son los medidos, que cambian todos los meses (luz, agua, gas). El resto entra en Gastos
+          fijos, donde el importe que cargues rige de ese mes en adelante.
+        </p>
+      </div>
+      <div className="sm:col-span-2">
+        <label className="label" htmlFor="svc-match">
+          Cómo aparece en el extracto
+        </label>
+        <input
+          id="svc-match"
+          name="match_pattern"
+          className="input"
+          placeholder="EMPRESA DE ENERGIA AI"
+        />
+        <p className="mt-1 text-xs text-muted">
+          Un pedazo del texto con el que el banco lo nombra. Sirve para que al importar el extracto la factura
+          quede pagada sola y con el importe real. Air-e, por ejemplo, se paga como “PAGO SV EMPRESA DE ENERGIA
+          AI”, y Triple A como “PAGO PSE FIDUCIARIA BANCOLOM”: por el nombre no hay forma de adivinarlo.
+        </p>
       </div>
       <div className="sm:col-span-2">
         <label className="label" htmlFor="svc-notes">

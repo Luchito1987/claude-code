@@ -5,10 +5,11 @@ import { redirect } from 'next/navigation'
 import { getDb, id, now } from '@/db/client'
 import { currentUser } from '@/lib/auth'
 import { fingerprint, parseStatement, type ParsedRow } from '@/lib/parsers/statement'
+import { findAlreadyLoaded, settleBillsFromStatement, type PendingBill, type Reconcilable } from '@/lib/reconcile'
 import { decodeText, parseUploadedFile, type FileParseResult } from '@/lib/parsers/input'
 import { isSpreadsheet, readWorkbook } from '@/lib/parsers/xlsx'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint, type RappiOrder } from '@/lib/parsers/rappi'
-import { listUserRules } from '@/lib/queries'
+import { listUserRules, markBillPaid, updateBillAmount } from '@/lib/queries'
 import { formatMoney } from '@/lib/money'
 import { financialMonth, todayISO, parseISO } from '@/lib/dates'
 import { dueDateFor } from '@/lib/cashflow'
@@ -79,8 +80,32 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     }
   }
 
+  /*
+   * Lo que ya se cargó a mano (foto de ticket o alta rápida) y todavía no está
+   * respaldado por ningún extracto. Si una línea del archivo coincide con
+   * alguno de estos, es el mismo gasto llegando por el otro camino: se enlaza
+   * en vez de insertarlo de nuevo.
+   */
+  const yaCargados = db
+    .prepare(
+      `SELECT id, date, amount_cents AS amountCents FROM transactions
+       WHERE statement_id IS NULL AND source IN ('ticket', 'manual') AND amount_cents < 0`,
+    )
+    .all() as Reconcilable[]
+
+  const conciliar = db.prepare('UPDATE transactions SET statement_id = ? WHERE id = ?')
+  const yaApareados = new Set<string>()
+
+  /*
+   * Cuántas veces vimos un movimiento idéntico en este archivo. Un extracto
+   * real trae seis cobros iguales el mismo día —uno por cada pago hecho— y sin
+   * numerarlos comparten huella y solo entra el primero.
+   */
+  const repeticiones = new Map<string, number>()
+
   let inserted = 0
   let duplicates = 0
+  let conciliados = 0
   let total = 0
 
   const run = db.transaction((rows: ParsedRow[]) => {
@@ -99,6 +124,19 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     )
 
     for (const row of rows) {
+      // Antes de insertar: ¿este gasto ya se había cargado por foto o a mano?
+      const previo = findAlreadyLoaded(yaCargados, row, { used: yaApareados })
+      if (previo) {
+        conciliar.run(statementId, previo.id)
+        yaApareados.add(previo.id)
+        conciliados++
+        continue
+      }
+
+      const clave = `${row.date}|${row.description.toLowerCase()}|${row.amountCents}`
+      const ocurrencia = repeticiones.get(clave) ?? 0
+      repeticiones.set(clave, ocurrencia + 1)
+
       const res = insertTx.run(
         id(),
         row.date,
@@ -113,7 +151,7 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
         statementId,
         row.installment,
         billingPeriod,
-        fingerprint(row, sourceKey),
+        fingerprint(row, sourceKey, ocurrencia),
         now(),
       )
       if (res.changes) {
@@ -125,12 +163,95 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     }
 
     db.prepare('UPDATE statements SET total_cents = ?, rows_count = ? WHERE id = ?').run(total, inserted, statementId)
-    if (inserted === 0) db.prepare('DELETE FROM statements WHERE id = ?').run(statementId)
+    if (inserted === 0 && conciliados === 0) db.prepare('DELETE FROM statements WHERE id = ?').run(statementId)
   })
 
   run(parsed.rows)
 
+  /*
+   * Las facturas del mes que el extracto acaba de confirmar. Una cosa es el
+   * compromiso (la factura) y otra la plata saliendo (el movimiento): sin esto
+   * el tablero seguía diciendo "falta pagar" aunque el pago ya estuviera
+   * importado.
+   */
+  const conciliadas =
+    kind === 'account'
+      ? settleBillsFromStatement(
+          db
+            .prepare(
+              `SELECT b.id, s.name AS serviceName, s.match_pattern AS pattern, b.amount_cents AS amountCents
+               FROM bills b JOIN services s ON s.id = b.service_id
+               WHERE b.status <> 'pagado' AND s.match_pattern <> ''`,
+            )
+            .all() as PendingBill[],
+          parsed.rows,
+        )
+      : []
+
+  for (const c of conciliadas) {
+    // El banco tiene el importe real; la factura solía tener un estimado.
+    if (c.amountChanged) updateBillAmount(c.bill.id, c.paidCents)
+    markBillPaid(c.bill.id, true)
+  }
+
+  /*
+   * El saldo de la cuenta lo manda el banco, no la suma de lo que cargamos a
+   * mano: los movimientos manuales lo van corrigiendo de a poco y siempre queda
+   * corrido. Si el extracto trae la columna de saldo, el del movimiento más
+   * nuevo pasa a ser el saldo de la cuenta.
+   */
+  let saldo: { antes: number; ahora: number; via: 'informado' | 'sumado' } | null = null
+  let saldoViejo = false
+
+  if (kind === 'account') {
+    const cuenta = db.prepare('SELECT balance_cents FROM accounts WHERE id = ?').get(targetId) as
+      | { balance_cents: number }
+      | undefined
+
+    if (cuenta) {
+      let nuevo: number | null = null
+
+      if (parsed.finalBalanceCents !== undefined) {
+        /*
+         * El archivo informa el saldo, pero a la fecha en que cierra: el
+         * consolidado dice cuánto había el 31 de julio, no hoy. Así que se
+         * arranca de ahí y se le suma todo lo posterior que ya esté cargado
+         * —los tickets de agosto, el informe del mes en curso—, sin importar en
+         * qué orden se hayan importado los archivos.
+         */
+        const posteriores = parsed.finalBalanceDate
+          ? (
+              db
+                .prepare(
+                  `SELECT COALESCE(SUM(amount_cents), 0) AS s FROM transactions
+                   WHERE account_id = ? AND date > ?`,
+                )
+                .get(targetId, parsed.finalBalanceDate) as { s: number }
+            ).s
+          : 0
+        nuevo = parsed.finalBalanceCents + posteriores
+        saldoViejo = posteriores !== 0
+      } else if (total !== 0) {
+        // Sin saldo informado —el informe del mes en curso no lo trae— se
+        // arrastra el que había con lo que recién entró. Solo cuenta lo
+        // insertado: los duplicados ya estaban y lo conciliado ya movió el
+        // saldo cuando se cargó por foto o a mano.
+        nuevo = cuenta.balance_cents + total
+      }
+
+      if (nuevo !== null && nuevo !== cuenta.balance_cents) {
+        db.prepare('UPDATE accounts SET balance_cents = ?, updated_at = ? WHERE id = ?').run(nuevo, now(), targetId)
+        saldo = {
+          antes: cuenta.balance_cents,
+          ahora: nuevo,
+          via: parsed.finalBalanceCents !== undefined ? 'informado' : 'sumado',
+        }
+      }
+    }
+  }
+
   revalidatePath('/importar')
+  revalidatePath('/config')
   revalidatePath('/gastos')
   revalidatePath('/')
 
@@ -142,6 +263,32 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     ...parsed.warnings,
   ]
   if (duplicates) detail.push(`${duplicates} movimiento(s) ya estaban importados y no se duplicaron.`)
+  if (conciliados)
+    detail.push(
+      `${conciliados} movimiento(s) ya los habías cargado por foto o a mano: se enlazaron a este extracto en vez de duplicarse.`,
+    )
+  if (saldo)
+    detail.push(
+      saldo.via === 'informado'
+        ? `Saldo de la cuenta actualizado con el que informa el extracto: ${formatMoney(saldo.antes)} → ${formatMoney(saldo.ahora)}.`
+        : `El archivo no informa saldo, así que se le sumaron los movimientos nuevos: ${formatMoney(saldo.antes)} → ${formatMoney(saldo.ahora)}.`,
+    )
+  if (conciliadas.length) {
+    const corregidas = conciliadas.filter((c) => c.amountChanged)
+    detail.push(
+      `${conciliadas.length} factura(s) quedaron pagadas porque el extracto trae su pago: ${conciliadas
+        .map((c) => c.bill.serviceName)
+        .join(', ')}.`,
+    )
+    for (const c of corregidas)
+      detail.push(
+        `${c.bill.serviceName}: estaba en ${formatMoney(c.bill.amountCents)} y se pagó ${formatMoney(c.paidCents)}. Se corrigió con el importe del banco.`,
+      )
+  }
+  if (saldoViejo && saldo)
+    detail.push(
+      `Este extracto cierra el ${parsed.finalBalanceDate}, así que al saldo que informa se le sumaron los movimientos posteriores que ya tenías cargados.`,
+    )
 
   return {
     ok: `${inserted} movimiento(s) importados por ${formatMoney(Math.abs(total))}.`,

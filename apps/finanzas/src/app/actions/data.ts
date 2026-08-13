@@ -8,6 +8,7 @@ import { toCents } from '@/lib/money'
 import { todayISO } from '@/lib/dates'
 import { categorize, extractMerchant } from '@/lib/categories'
 import {
+  addFixedExpense,
   ensureBillsForPeriod,
   listUserRules,
   markBillPaid,
@@ -116,17 +117,18 @@ export async function saveServiceAction(form: FormData): Promise<void> {
     form.get('active') ? 1 : 0,
     form.get('autodebit') ? 1 : 0,
     str(form, 'notes'),
+    str(form, 'match_pattern'),
   ] as const
 
   if (existing) {
     db.prepare(
       `UPDATE services SET name = ?, provider = ?, category = ?, expected_amount_cents = ?,
-       due_day = ?, active = ?, autodebit = ?, notes = ? WHERE id = ?`,
+       due_day = ?, active = ?, autodebit = ?, notes = ?, match_pattern = ? WHERE id = ?`,
     ).run(...args, existing)
   } else {
     db.prepare(
-      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, match_pattern, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id(), ...args, now())
   }
   revalidatePath('/facturas')
@@ -150,6 +152,7 @@ export async function updateBillAction(form: FormData): Promise<void> {
   updateBillAmount(billId, amount, due || undefined)
   revalidatePath('/facturas')
   revalidatePath('/')
+  revalidatePath('/proyeccion')
 }
 
 export async function toggleBillPaidAction(form: FormData): Promise<void> {
@@ -281,6 +284,22 @@ export async function saveTransactionAction(form: FormData): Promise<void> {
   const isIncome = str(form, 'direction') === 'ingreso'
   const amount = isIncome ? rawAmount : -rawAmount
   const category = str(form, 'category') || categorize(description, listUserRules())
+
+  // Un gasto fijo es un compromiso que se repite, no un movimiento suelto: entra
+  // como servicio con su factura del mes. No se crea además la transacción,
+  // porque entonces el mismo gasto contaría en dos bloques del tablero.
+  if (!existing && !isIncome && str(form, 'recurrencia') === 'fijo') {
+    addFixedExpense({
+      name: description,
+      category,
+      amountCents: rawAmount,
+      date: str(form, 'date') || todayISO(),
+    })
+    revalidatePath('/')
+    revalidatePath('/facturas')
+    revalidatePath('/proyeccion')
+    return
+  }
 
   if (existing) {
     db.prepare(

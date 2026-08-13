@@ -40,10 +40,16 @@ export function ImportForm({
             value={kind}
             onChange={(e) => setKind(e.target.value as 'account' | 'card' | 'gastos')}
           >
-            <option value="account">Cuenta (caja de ahorro / corriente)</option>
+            <option value="account">Cuenta (Bancolombia, caja de ahorro / corriente)</option>
             <option value="card">Resumen de tarjeta de crédito</option>
             <option value="gastos">Planilla propia de gastos</option>
           </select>
+          {kind === 'account' && (
+            <p className="mt-1 text-xs text-muted">
+              Lo que ya cargaste por foto de ticket o a mano no se duplica: se cruza por importe y fecha. Si el
+              archivo trae columna de saldo, el saldo de la cuenta se corrige con el del banco.
+            </p>
+          )}
         </div>
         <div>
           <label className="label" htmlFor="imp-target">
