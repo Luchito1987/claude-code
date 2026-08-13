@@ -58,6 +58,25 @@ export function authenticate(email: string, password: string): User | null {
   return { id: row.id, email: row.email, name: row.name }
 }
 
+/**
+ * Si la cookie de sesión viaja solo por HTTPS.
+ *
+ * En producción tiene que ser así, pero esta app suele correr en la red de
+ * casa y se entra desde el celular por `http://192.168.x.x`. Una cookie
+ * `Secure` en HTTP plano el navegador la descarta sin avisar: se ve el login,
+ * se manda bien la clave, y la app rebota al login una y otra vez. Encima no
+ * se nota probando en la misma máquina, porque `localhost` cuenta como
+ * contexto seguro y ahí sí funciona.
+ *
+ * Por eso se puede desactivar a mano con `COOKIE_SECURE=false`. Hacelo solo en
+ * una red en la que confíes: sin HTTPS, la sesión viaja en claro.
+ */
+function cookieIsSecure(): boolean {
+  const forzado = process.env.COOKIE_SECURE
+  if (forzado) return forzado.toLowerCase() === 'true'
+  return process.env.NODE_ENV === 'production'
+}
+
 export function startSession(userId: string): string {
   const db = getDb()
   const sid = randomBytes(32).toString('hex')
@@ -71,7 +90,7 @@ export function startSession(userId: string): string {
   cookies().set(COOKIE, sid, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: cookieIsSecure(),
     path: '/',
     maxAge: SESSION_DAYS * 86400,
   })

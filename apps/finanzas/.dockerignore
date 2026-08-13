@@ -1,0 +1,28 @@
+# Lo que NUNCA tiene que entrar a la imagen.
+#
+# `data/` es lo más importante: ahí viven la base con los movimientos reales y
+# las fotos de los tickets. Sin este archivo, el `COPY . .` del Dockerfile los
+# hornea adentro de la imagen, y cualquiera que la reciba se lleva las finanzas
+# de la casa. En producción esa carpeta es un volumen montado, no parte de la
+# imagen.
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Secretos.
+.env
+.env.local
+.env.*.local
+
+# Se reconstruye adentro.
+node_modules/
+.next/
+
+# No hacen falta para correr.
+tests/
+design/
+documentos/
+.git/
+.gitignore
+README.md
