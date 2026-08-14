@@ -2,7 +2,14 @@ import Database from 'better-sqlite3'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findAlreadyLoaded, settleBillsFromStatement, DEFAULT_WINDOW_DAYS } from '@/lib/reconcile'
+import {
+  findAlreadyLoaded,
+  settleBillsFromStatement,
+  settleCardsFromStatement,
+  settleLoansFromStatement,
+  DEFAULT_WINDOW_DAYS,
+  type Settleable,
+} from '@/lib/reconcile'
 
 const ticket = (id: string, date: string, pesos: number) => ({
   id,
@@ -278,5 +285,152 @@ describe('lo que no tiene que cruzar', () => {
       [mov('2026-08-10', 'PAGO SV EMPRESA DE ENERGIA AI', 879690), mov('2026-08-10', 'PAGO PSE FIDUCIARIA BANCOLOM', 991088)],
     )
     expect(r.map((x) => x.bill.serviceName)).toEqual(['Air-e', 'Triple A'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tarjetas, préstamos y el mes al que pertenece cada compromiso
+// ---------------------------------------------------------------------------
+
+const tarjeta = (id: string, label: string, pattern: string): Settleable => ({
+  id,
+  label,
+  pattern,
+  amountCents: 0,
+})
+
+const prestamo = (id: string, label: string, cuota: number, pattern = ''): Settleable => ({
+  id,
+  label,
+  pattern,
+  amountCents: cuota * 100,
+})
+
+describe('el resumen de tarjeta que el extracto confirma', () => {
+  it('marca la tarjeta pagada aunque el pago no coincida con el resumen', () => {
+    // El caso real: el resumen decía $977.117 y se pagaron $2.731.870.
+    const r = settleCardsFromStatement(
+      [tarjeta('c1', 'Visa Bancolombia', 'PAGO SUC VIRT TC VISA')],
+      [mov('2026-08-04', 'PAGO SUC VIRT TC VISA', 2731870)],
+    )
+    expect(r).toHaveLength(1)
+    expect(r[0].target.label).toBe('Visa Bancolombia')
+    expect(r[0].paidCents).toBe(273187000)
+  })
+
+  it('el mes que salda es el del pago, no el de hoy', () => {
+    const r = settleCardsFromStatement(
+      [tarjeta('c1', 'Visa Bancolombia', 'PAGO SUC VIRT TC VISA')],
+      [mov('2026-07-04', 'PAGO SUC VIRT TC VISA', 2826621)],
+    )
+    expect(r[0].period).toBe('2026-07')
+  })
+
+  it('un extracto de varios meses salda un mes por pago', () => {
+    const r = settleCardsFromStatement(
+      [tarjeta('c1', 'Visa Bancolombia', 'PAGO SUC VIRT TC VISA')],
+      [
+        mov('2026-08-04', 'PAGO SUC VIRT TC VISA', 2731870),
+        mov('2026-07-04', 'PAGO SUC VIRT TC VISA', 2826621),
+      ],
+    )
+    expect(r.map((x) => x.period)).toEqual(['2026-08', '2026-07'])
+  })
+
+  it('no confunde el pago de la Falabella con una compra en Falabella', () => {
+    const r = settleCardsFromStatement(
+      [tarjeta('c1', 'Falabella CMR', 'PAGO PSE BANCO FALABELLA')],
+      [mov('2026-08-08', 'COMPRA EN FALABELLA', 120000)],
+    )
+    expect(r).toHaveLength(0)
+  })
+
+  it('sin patrón configurado no adivina', () => {
+    const r = settleCardsFromStatement(
+      [tarjeta('c1', 'Tuya Éxito', '')],
+      [mov('2026-08-04', 'PAGO SUC VIRT TC VISA', 2731870)],
+    )
+    expect(r).toHaveLength(0)
+  })
+})
+
+describe('la cuota de préstamo que el extracto confirma', () => {
+  it('cruza por importe exacto cuando no hay patrón', () => {
+    const r = settleLoansFromStatement(
+      [prestamo('l1', 'Crédito Bancolombia', 1748074)],
+      [mov('2026-08-04', 'PAGO CREDITO SUC VIRTUAL', 1748074)],
+    )
+    expect(r).toHaveLength(1)
+    expect(r[0].amountChanged).toBe(false)
+  })
+
+  it('el patrón y el importe son dos caminos, no uno u otro', () => {
+    // La misma cuota sale un mes como "PAGO CREDITO SUC VIRTUAL" y otro como
+    // "DEBITO POR ABONO CARTERA". El patrón cubre uno; el importe, el otro.
+    const r = settleLoansFromStatement(
+      [prestamo('l1', 'Crédito Bancolombia', 1748074, 'PAGO CREDITO SUC VIRTUAL')],
+      [
+        mov('2026-08-04', 'PAGO CREDITO SUC VIRTUAL', 1748074),
+        mov('2026-06-04', 'DEBITO POR ABONO CARTERA', 1748074),
+      ],
+    )
+    expect(r.map((x) => x.period)).toEqual(['2026-08', '2026-06'])
+  })
+
+  it('un importe parecido pero distinto no es la cuota', () => {
+    const r = settleLoansFromStatement(
+      [prestamo('l1', 'Crédito Bancolombia', 1748074)],
+      [mov('2026-08-04', 'TRANSFERENCIA CTA SUC VIRTUAL', 1748000)],
+    )
+    expect(r).toHaveLength(0)
+  })
+
+  it('la tarjeta nunca cruza por importe', () => {
+    const r = settleCardsFromStatement(
+      [{ id: 'c1', label: 'Visa', pattern: '', amountCents: 97711700 }],
+      [mov('2026-08-04', 'PAGO SUC VIRT TC VISA', 977117)],
+    )
+    expect(r).toHaveLength(0)
+  })
+})
+
+describe('cada factura pertenece a un mes', () => {
+  const conPeriodo = (id: string, name: string, pattern: string, period: string) => ({
+    id,
+    serviceName: name,
+    pattern,
+    amountCents: 11432700,
+    period,
+  })
+
+  it('la factura de agosto no la paga un movimiento de 2024', () => {
+    // Hay una sola factura por servicio y por mes, y el patrón matchea igual en
+    // todo el historial: sin el filtro por período, el pago del gas de 2024
+    // marcaba pagada —y con el importe equivocado— la factura de 2026.
+    const r = settleBillsFromStatement(
+      [conPeriodo('b1', 'Gases del Caribe', 'GASES DEL CARIBE', '2026-08')],
+      [mov('2024-05-04', 'PAGO SV GASES DEL CARIBE S.A.', 133762)],
+    )
+    expect(r).toHaveLength(0)
+  })
+
+  it('la paga el movimiento de su propio mes', () => {
+    const r = settleBillsFromStatement(
+      [conPeriodo('b1', 'Gases del Caribe', 'GASES DEL CARIBE', '2026-08')],
+      [
+        mov('2024-05-04', 'PAGO SV GASES DEL CARIBE S.A.', 133762),
+        mov('2026-08-04', 'PAGO SV GASES DEL CARIBE S.A.', 114327),
+      ],
+    )
+    expect(r).toHaveLength(1)
+    expect(r[0].paidCents).toBe(11432700)
+  })
+
+  it('sin período declarado sigue cruzando con cualquier mes', () => {
+    const r = settleBillsFromStatement(
+      [factura('b1', 'Air-e', 'ENERGIA AI', 809590)],
+      [mov('2024-05-10', 'PAGO SV EMPRESA DE ENERGIA AI', 700000)],
+    )
+    expect(r).toHaveLength(1)
   })
 })

@@ -289,6 +289,8 @@ export interface TxLike {
   category: string
   method: string
   card_id?: string | null
+  /** Compromiso que paga este movimiento; ver `transactions.commitment`. */
+  commitment?: string | null
 }
 
 /**
@@ -313,6 +315,8 @@ export function dailyBurn(txs: TxLike[], today: ISODate = todayISO(), days = 90)
   let earliest: ISODate | null = null
   for (const t of txs) {
     if (t.amount_cents >= 0) continue
+    // El pago de un compromiso ya entra a la proyección como evento propio.
+    if (t.commitment) continue
     if (compare(t.date, from) < 0 || compare(t.date, today) > 0) continue
     if (excluded.has(t.category)) continue
     total += -t.amount_cents

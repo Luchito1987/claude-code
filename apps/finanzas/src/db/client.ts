@@ -17,6 +17,9 @@ export function dbPath(): string {
 const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
   { table: 'transactions', column: 'billing_period', definition: "TEXT NOT NULL DEFAULT ''" },
   { table: 'services', column: 'match_pattern', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'transactions', column: 'commitment', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'cards', column: 'match_pattern', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'loans', column: 'match_pattern', definition: "TEXT NOT NULL DEFAULT ''" },
 ]
 
 function migrate(conn: Database.Database): void {

@@ -49,6 +49,8 @@ export interface Card {
   due_day: number
   limit_cents: number
   currency: string
+  /** Cómo se llama el pago de esta tarjeta en el extracto de la cuenta. */
+  match_pattern: string
 }
 
 export interface Service {
@@ -92,6 +94,8 @@ export interface Loan {
   first_due_date: ISODate
   rate_annual: number
   active: number
+  /** Cómo se llama la cuota en el extracto. Vacío = se cruza por importe. */
+  match_pattern: string
 }
 
 export interface Income {
@@ -271,13 +275,14 @@ export function unpaidCardDues(today: ISODate = todayISO()): CardDue[] {
 
 export function currentBurnCents(today: ISODate = todayISO()): number {
   const txs = getDb()
-    .prepare('SELECT date, amount_cents, category, method, card_id FROM transactions WHERE date >= ?')
+    .prepare('SELECT date, amount_cents, category, method, card_id, commitment FROM transactions WHERE date >= ?')
     .all(addDays(today, -90)) as Array<{
     date: ISODate
     amount_cents: number
     category: string
     method: string
     card_id: string | null
+    commitment: string
   }>
   return dailyBurn(txs, today)
 }
@@ -696,6 +701,10 @@ export interface MonthSummary {
  * Lo que se gastó en el mes fuera de los compromisos: efectivo, débito y
  * transferencias. Deja afuera lo que se pagó con tarjeta, que ya viaja dentro
  * del resumen, y los rubros que tienen su propia línea (servicios, préstamos).
+ *
+ * `commitment` es el filtro que faltaba: el pago de la factura de luz aparece
+ * en el extracto como un débito más, pero esa plata ya la cuenta el bloque de
+ * servicios. Sin excluirlo se cobraba dos veces en el mismo tablero.
  */
 export function variableSpend(period: string): VariableSpend[] {
   const { start, end } = monthRange(period)
@@ -707,6 +716,7 @@ export function variableSpend(period: string): VariableSpend[] {
        WHERE date BETWEEN ? AND ?
          AND amount_cents < 0
          AND card_id IS NULL
+         AND commitment = ''
          AND category NOT IN (${excluidas})
        GROUP BY category
        HAVING cents > 0
