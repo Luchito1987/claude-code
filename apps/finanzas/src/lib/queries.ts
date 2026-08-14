@@ -739,6 +739,98 @@ export function variableSpend(period: string): VariableSpend[] {
   return rows
 }
 
+// ------------------------------------------------------------------ historial
+
+/**
+ * Mes a partir del cual los números son confiables. Antes de esta fecha
+ * convivían dos cargas de lo mismo —la planilla que se llevaba a mano y el
+ * extracto del banco— y los meses quedaron con el gasto duplicado.
+ *
+ * Vacío significa que no hay corte y todo el historial cuenta igual.
+ */
+export const baselinePeriod = (): string => getSetting('baseline_period', '')
+
+/** Meses financieros que tienen algún movimiento, del más nuevo al más viejo. */
+export function monthsWithActivity(): string[] {
+  const r = getDb().prepare('SELECT MIN(date) AS min, MAX(date) AS max FROM transactions').get() as {
+    min: ISODate | null
+    max: ISODate | null
+  }
+  if (!r.min || !r.max) return []
+
+  const primero = financialMonth(r.min)
+  const ultimo = financialMonth(r.max)
+  const [y1, m1] = primero.split('-').map(Number)
+  const [y2, m2] = ultimo.split('-').map(Number)
+  const cuantos = (y2 - y1) * 12 + (m2 - m1) + 1
+  return nextMonths(cuantos, primero).reverse()
+}
+
+/** Lo que de verdad entró y salió de las cuentas en el mes. */
+export function monthCashFlow(period: string): { inCents: number; outCents: number } {
+  const { start, end } = monthRange(period)
+  const r = getDb()
+    .prepare(
+      `SELECT
+         COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS entro,
+         COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS salio
+       FROM transactions
+       WHERE date BETWEEN ? AND ? AND card_id IS NULL`,
+    )
+    .get(start, end) as { entro: number; salio: number }
+  return { inCents: r.entro, outCents: r.salio }
+}
+
+export interface MonthHistory {
+  period: string
+  label: string
+  start: ISODate
+  end: ISODate
+  /** Movimientos reales de la cuenta, no compromisos. */
+  inCents: number
+  outCents: number
+  netCents: number
+  variableCents: number
+  variable: VariableSpend[]
+  items: MonthItem[]
+  paidCents: number
+  pendingCents: number
+  /** Anterior al mes 0: los números arrastran la carga doble de la planilla. */
+  historical: boolean
+}
+
+/**
+ * Un mes ya cerrado, para consultarlo.
+ *
+ * A diferencia de `monthSummary` no genera las facturas del período ni mira el
+ * saldo de hoy: sobre un mes pasado eso inventaría compromisos que nunca
+ * existieron y mediría la caja actual contra gastos viejos. Acá solo se lee lo
+ * que quedó registrado.
+ */
+export function monthHistory(period: string, today: ISODate = todayISO()): MonthHistory {
+  const { start, end } = monthRange(period)
+  const items = monthItems(period, today)
+  const variable = variableSpend(period)
+  const { inCents, outCents } = monthCashFlow(period)
+  const corte = baselinePeriod()
+
+  return {
+    period,
+    label: formatMonthShort(period),
+    start,
+    end,
+    inCents,
+    outCents,
+    netCents: inCents - outCents,
+    variable,
+    variableCents: variable.reduce((a, v) => a + v.cents, 0),
+    items,
+    paidCents: items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0),
+    pendingCents: items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0),
+    historical: corte !== '' && period < corte,
+  }
+}
+
 /** Los tres números de la primera pantalla, más el detalle del mes. */
 export function monthSummary(today: ISODate = todayISO()): MonthSummary {
   const period = financialMonth(today)

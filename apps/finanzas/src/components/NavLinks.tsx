@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/', label: 'Tablero' },
   { href: '/ticket', label: 'Ticket' },
   { href: '/proyeccion', label: 'Proyección' },
+  { href: '/historial', label: 'Historial' },
   { href: '/deudas', label: 'Deudas' },
   { href: '/facturas', label: 'Facturas' },
   { href: '/gastos', label: 'Gastos' },
