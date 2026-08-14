@@ -795,8 +795,19 @@ export interface MonthHistory {
   items: MonthItem[]
   paidCents: number
   pendingCents: number
-  /** Anterior al mes 0: los números arrastran la carga doble de la planilla. */
+  /**
+   * El mes en el que cae hoy. Todavía no llegó al 27, así que sigue sumando
+   * movimientos y sus totales no son definitivos.
+   */
+  current: boolean
+  /** Ya pasó su fecha de vigencia: cerrado, no se mueve más. */
   historical: boolean
+  /**
+   * Anterior al mes 0. Es otra cosa que estar cerrado: son los meses donde
+   * convivían la planilla y el extracto, así que el gasto está cargado dos
+   * veces y los importes no se pueden comparar contra los de después.
+   */
+  preBaseline: boolean
 }
 
 /**
@@ -813,6 +824,7 @@ export function monthHistory(period: string, today: ISODate = todayISO()): Month
   const variable = variableSpend(period)
   const { inCents, outCents } = monthCashFlow(period)
   const corte = baselinePeriod()
+  const enCurso = financialMonth(today)
 
   return {
     period,
@@ -827,7 +839,9 @@ export function monthHistory(period: string, today: ISODate = todayISO()): Month
     items,
     paidCents: items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0),
     pendingCents: items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0),
-    historical: corte !== '' && period < corte,
+    current: period === enCurso,
+    historical: period < enCurso,
+    preBaseline: corte !== '' && period < corte,
   }
 }
 

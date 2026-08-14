@@ -43,8 +43,8 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
         title="Historial de meses"
         subtitle={
           corte
-            ? `Los meses anteriores a ${formatPeriod(corte)} son de consulta: ahí convivían la planilla que llevabas a mano y el extracto del banco, así que el mismo gasto está cargado dos veces.`
-            : 'Todos los meses con movimientos cargados.'
+            ? `Un mes pasa a histórico cuando cierra, el día 27. Los anteriores a ${formatPeriod(corte)} además arrastran carga doble: ahí convivían la planilla que llevabas a mano y el extracto del banco, así que el mismo gasto entró dos veces.`
+            : 'Un mes pasa a histórico cuando cierra, el día 27.'
         }
       >
         <Table
@@ -70,9 +70,18 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
                     <Badge tone="info">mes 0</Badge>
                   </span>
                 )}
-                {m.historical && (
+                {m.current ? (
                   <span className="ml-2">
-                    <Badge tone="warn">histórico</Badge>
+                    <Badge tone="good">en curso</Badge>
+                  </span>
+                ) : m.historical ? (
+                  <span className="ml-2">
+                    <Badge tone="neutral">histórico</Badge>
+                  </span>
+                ) : null}
+                {m.preBaseline && (
+                  <span className="ml-2">
+                    <Badge tone="warn">carga doble</Badge>
                   </span>
                 )}
               </td>
@@ -111,8 +120,8 @@ function DetalleDelMes({ mes, today }: { mes: MonthHistory; today: string }) {
       <Panel
         title={`Compromisos de ${formatPeriod(mes.period)}`}
         subtitle={`El mes va del ${mes.start} al ${mes.end}.${
-          mes.historical ? ' Mes histórico: los importes pueden estar duplicados.' : ''
-        }`}
+          mes.current ? ' Todavía en curso: cierra el 27 y los totales pueden moverse.' : ''
+        }${mes.preBaseline ? ' Anterior al mes 0: los importes pueden estar duplicados.' : ''}`}
         action={
           mes.pendingCents > 0 ? (
             <span className="text-xs text-warn">{formatMoney(mes.pendingCents)} sin marcar</span>

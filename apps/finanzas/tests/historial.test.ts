@@ -107,20 +107,56 @@ describe('consultar un mes cerrado', () => {
     expect(facturas.n).toBe(0)
   })
 
-  it('marca como histórico lo anterior al mes 0, y no al mes 0 mismo', async () => {
+  /*
+   * Histórico es haber cerrado, no ser dudoso. El mes en el que cae hoy sigue
+   * sumando movimientos hasta el 27, así que no puede mostrarse como cerrado
+   * aunque ya tenga casi todo pago.
+   */
+  it('el mes en el que cae hoy está en curso, no es histórico', async () => {
+    const { q, db } = await load()
+    movimiento(db, '2026-08-05', -100000)
+
+    const agosto = q.monthHistory('2026-08', HOY)
+    expect(agosto.current).toBe(true)
+    expect(agosto.historical).toBe(false)
+  })
+
+  it('pasado el 27 el mes ya cerró y pasa a histórico', async () => {
+    const { q, db } = await load()
+    movimiento(db, '2026-08-05', -100000)
+
+    // El 28 arranca septiembre: recién ahí agosto queda cerrado.
+    expect(q.monthHistory('2026-08', '2026-08-27').current).toBe(true)
+    expect(q.monthHistory('2026-08', '2026-08-28').historical).toBe(true)
+    expect(q.monthHistory('2026-08', '2026-08-28').current).toBe(false)
+  })
+
+  it('un mes ya cerrado es histórico y uno futuro no', async () => {
+    const { q, db } = await load()
+    movimiento(db, '2026-07-10', -100000)
+
+    expect(q.monthHistory('2026-07', HOY).historical).toBe(true)
+    expect(q.monthHistory('2026-09', HOY).historical).toBe(false)
+    expect(q.monthHistory('2026-09', HOY).current).toBe(false)
+  })
+
+  it('la carga doble es independiente de que el mes haya cerrado', async () => {
     const { q, db } = await load()
     movimiento(db, '2026-07-10', -100000)
     q.setSetting('baseline_period', '2026-08')
 
-    expect(q.monthHistory('2026-07', HOY).historical).toBe(true)
-    expect(q.monthHistory('2026-08', HOY).historical).toBe(false)
-    expect(q.monthHistory('2026-09', HOY).historical).toBe(false)
+    // Julio cerró y además arrastra carga doble.
+    expect(q.monthHistory('2026-07', HOY)).toMatchObject({ historical: true, preBaseline: true })
+    // Agosto es el mes 0: en curso y ya con datos limpios.
+    expect(q.monthHistory('2026-08', HOY)).toMatchObject({ current: true, preBaseline: false })
   })
 
-  it('sin mes 0 definido, ningún mes es histórico', async () => {
+  it('sin mes 0 definido, ningún mes arrastra carga doble', async () => {
     const { q, db } = await load()
     movimiento(db, '2024-01-10', -100000)
-    expect(q.monthHistory('2024-01', HOY).historical).toBe(false)
+    expect(q.monthHistory('2024-01', HOY).preBaseline).toBe(false)
+    // Pero sigue siendo histórico: cerró hace rato.
+    expect(q.monthHistory('2024-01', HOY).historical).toBe(true)
   })
 
   it('trae el gasto variable del mes consultado, no el del mes en curso', async () => {
