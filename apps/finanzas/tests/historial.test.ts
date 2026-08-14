@@ -47,18 +47,98 @@ describe('meses con movimientos', () => {
     movimiento(db, '2026-08-10', -200000)
 
     // Mayo, junio, julio y agosto: julio no tiene movimientos y aparece igual.
-    expect(q.monthsWithActivity()).toEqual(['2026-08', '2026-07', '2026-06', '2026-05'])
+    expect(q.historyMonths()).toEqual(['2026-08', '2026-07', '2026-06', '2026-05'])
   })
 
   it('sin movimientos no hay historial', async () => {
     const { q } = await load()
-    expect(q.monthsWithActivity()).toEqual([])
+    expect(q.historyMonths()).toEqual([])
   })
 
   it('el día 28 ya cuenta para el mes siguiente', async () => {
     const { q, db } = await load()
     movimiento(db, '2026-07-28', -100000)
-    expect(q.monthsWithActivity()).toEqual(['2026-08'])
+    expect(q.historyMonths()).toEqual(['2026-08'])
+  })
+
+  it('no lista lo anterior al mes 0: tiene el gasto cargado dos veces', async () => {
+    const { q, db } = await load()
+    movimiento(db, '2026-03-10', -100000)
+    movimiento(db, '2026-08-10', -200000)
+    q.setSetting('baseline_period', '2026-07')
+
+    expect(q.historyMonths()).toEqual(['2026-08', '2026-07'])
+  })
+
+  it('si el mes 0 es posterior a todo lo cargado, no hay nada que listar', async () => {
+    const { q, db } = await load()
+    movimiento(db, '2026-03-10', -100000)
+    q.setSetting('baseline_period', '2026-08')
+
+    expect(q.historyMonths()).toEqual([])
+  })
+})
+
+describe('conciliación de saldos', () => {
+  function cuenta(db: Database.Database, id: string, name: string, balanceCents: number): void {
+    db.prepare(
+      `INSERT INTO accounts (id, name, kind, currency, balance_cents, updated_at)
+       VALUES (?, ?, 'caja_ahorro', 'ARS', ?, '2026-01-01T00:00:00Z')`,
+    ).run(id, name, balanceCents)
+  }
+
+  function movEnCuenta(db: Database.Database, accountId: string, date: string, cents: number): void {
+    db.prepare(
+      `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
+         account_id, source, fingerprint, created_at)
+       VALUES (?, ?, 'mov', '', ?, 'ARS', 'supermercado', 'debito', ?, 'import', ?, '2026-01-01T00:00:00Z')`,
+    ).run(`t-${accountId}-${date}-${cents}`, date, cents, accountId, `fp-${accountId}-${date}-${cents}`)
+  }
+
+  /*
+   * El saldo lo fija el banco, no la suma de movimientos. Por eso la cuenta va
+   * al revés: saldo de hoy menos lo del mes = con cuánto arrancó.
+   */
+  it('deduce el saldo con el que arrancó el mes', async () => {
+    const { q, db } = await load()
+    cuenta(db, 'a1', 'Caja', 500000)
+    movEnCuenta(db, 'a1', '2026-08-05', -200000)
+    movEnCuenta(db, 'a1', '2026-08-06', 100000)
+
+    const [c] = q.accountReconciliation('2026-08', HOY)
+    expect(c).toMatchObject({ openingCents: 600000, inCents: 100000, outCents: 200000, closingCents: 500000 })
+    // Y la cuenta cierra: arrancó + entró - salió = saldo de hoy.
+    expect(c.openingCents + c.inCents - c.outCents).toBe(c.closingCents)
+  })
+
+  it('no toma movimientos posteriores a hoy: descuadrarían el saldo', async () => {
+    const { q, db } = await load()
+    cuenta(db, 'a1', 'Caja', 500000)
+    movEnCuenta(db, 'a1', '2026-08-05', -200000)
+    movEnCuenta(db, 'a1', '2026-08-20', -900000) // futuro respecto de HOY
+
+    const [c] = q.accountReconciliation('2026-08', HOY)
+    expect(c.movements).toBe(1)
+    expect(c.outCents).toBe(200000)
+  })
+
+  it('deja afuera los movimientos de otros meses', async () => {
+    const { q, db } = await load()
+    cuenta(db, 'a1', 'Caja', 500000)
+    movEnCuenta(db, 'a1', '2026-06-15', -700000)
+    movEnCuenta(db, 'a1', '2026-08-05', -200000)
+
+    const [c] = q.accountReconciliation('2026-08', HOY)
+    expect(c.outCents).toBe(200000)
+    expect(c.lastMovement).toBe('2026-08-05')
+  })
+
+  it('una cuenta sin movimientos del mes arranca con lo mismo que tiene hoy', async () => {
+    const { q, db } = await load()
+    cuenta(db, 'a1', 'Caja', 500000)
+
+    const [c] = q.accountReconciliation('2026-08', HOY)
+    expect(c).toMatchObject({ openingCents: 500000, movements: 0, lastMovement: null })
   })
 })
 

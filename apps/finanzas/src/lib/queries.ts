@@ -750,16 +750,26 @@ export function variableSpend(period: string): VariableSpend[] {
  */
 export const baselinePeriod = (): string => getSetting('baseline_period', '')
 
-/** Meses financieros que tienen algún movimiento, del más nuevo al más viejo. */
-export function monthsWithActivity(): string[] {
+/**
+ * Meses que se pueden consultar, del más nuevo al más viejo.
+ *
+ * Arranca en el mes 0 y no antes: lo anterior tiene el gasto cargado dos veces
+ * —la planilla que se llevaba a mano y el extracto del banco— y mostrarlo al
+ * lado de los meses buenos invita a comparar cosas que no son comparables.
+ * Los movimientos viejos siguen en la base y se ven desde Gastos.
+ */
+export function historyMonths(): string[] {
   const r = getDb().prepare('SELECT MIN(date) AS min, MAX(date) AS max FROM transactions').get() as {
     min: ISODate | null
     max: ISODate | null
   }
   if (!r.min || !r.max) return []
 
-  const primero = financialMonth(r.min)
+  const corte = baselinePeriod()
+  const primero = corte && corte > financialMonth(r.min) ? corte : financialMonth(r.min)
   const ultimo = financialMonth(r.max)
+  if (primero > ultimo) return []
+
   const [y1, m1] = primero.split('-').map(Number)
   const [y2, m2] = ultimo.split('-').map(Number)
   const cuantos = (y2 - y1) * 12 + (m2 - m1) + 1
@@ -779,6 +789,61 @@ export function monthCashFlow(period: string): { inCents: number; outCents: numb
     )
     .get(start, end) as { entro: number; salio: number }
   return { inCents: r.entro, outCents: r.salio }
+}
+
+export interface AccountReconciliation {
+  accountId: string
+  name: string
+  /** Saldo con el que arrancó el mes. Se deduce restándole los movimientos al de hoy. */
+  openingCents: number
+  inCents: number
+  outCents: number
+  /** El saldo que tiene cargado la cuenta hoy. */
+  closingCents: number
+  movements: number
+  /** Último movimiento cargado. Si es viejo, al saldo le faltan días. */
+  lastMovement: ISODate | null
+}
+
+/**
+ * Cuánto explica de cada saldo lo que se cargó del mes.
+ *
+ * El saldo de una cuenta no se calcula sumando movimientos: lo fija el banco
+ * —el extracto lo informa, o se carga a mano— porque la app nunca va a tener
+ * todos los movimientos. Así que la cuenta se hace al revés: al saldo de hoy se
+ * le restan los movimientos del mes y sale con cuánto tendría que haber
+ * arrancado. Si ese número no es el que decía el banco al cerrar el mes
+ * anterior, faltan movimientos por cargar.
+ */
+export function accountReconciliation(period: string, today: ISODate = todayISO()): AccountReconciliation[] {
+  const { start, end } = monthRange(period)
+  // El mes en curso se corta en hoy: sumar movimientos futuros descuadraría.
+  const hasta = compare(end, today) > 0 ? today : end
+
+  return listAccounts().map((a) => {
+    const r = getDb()
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS entro,
+           COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS salio,
+           COUNT(*) AS n,
+           MAX(date) AS ultimo
+         FROM transactions
+         WHERE account_id = ? AND date BETWEEN ? AND ?`,
+      )
+      .get(a.id, start, hasta) as { entro: number; salio: number; n: number; ultimo: ISODate | null }
+
+    return {
+      accountId: a.id,
+      name: a.name,
+      openingCents: a.balance_cents - r.entro + r.salio,
+      inCents: r.entro,
+      outCents: r.salio,
+      closingCents: a.balance_cents,
+      movements: r.n,
+      lastMovement: r.ultimo,
+    }
+  })
 }
 
 export interface MonthHistory {

@@ -4,11 +4,13 @@ import { CATEGORY_LABELS } from '@/lib/categories'
 import { formatDate, formatPeriod, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 import {
+  accountReconciliation,
   baselinePeriod,
+  historyMonths,
   monthHistory,
-  monthsWithActivity,
   MONTH_GROUP_LABELS,
   MONTH_GROUP_ORDER,
+  type AccountReconciliation,
   type MonthHistory,
 } from '@/lib/queries'
 
@@ -16,14 +18,14 @@ export const dynamic = 'force-dynamic'
 
 export default function HistorialPage({ searchParams }: { searchParams: { mes?: string } }) {
   const today = todayISO()
-  const meses = monthsWithActivity()
+  const meses = historyMonths()
   const corte = baselinePeriod()
 
   if (!meses.length) {
     return (
       <Panel title="Historial">
         <Empty>
-          Todavía no hay movimientos cargados.{' '}
+          Todavía no hay meses para consultar.{' '}
           <Link href="/importar" className="text-brand underline">
             Importar un extracto
           </Link>
@@ -36,6 +38,7 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
   const elegido = searchParams.mes && meses.includes(searchParams.mes) ? searchParams.mes : meses[0]
   const resumenes = meses.map((p) => monthHistory(p, today))
   const detalle = resumenes.find((r) => r.period === elegido)!
+  const cuentas = accountReconciliation(elegido, today)
 
   return (
     <div className="space-y-6">
@@ -43,7 +46,7 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
         title="Historial de meses"
         subtitle={
           corte
-            ? `Un mes pasa a histórico cuando cierra, el día 27. Los anteriores a ${formatPeriod(corte)} además arrastran carga doble: ahí convivían la planilla que llevabas a mano y el extracto del banco, así que el mismo gasto entró dos veces.`
+            ? `Desde ${formatPeriod(corte)}, el mes 0. Un mes pasa a histórico cuando cierra, el día 27. Lo anterior al mes 0 no se lista: tiene el gasto cargado dos veces y no es comparable, pero los movimientos siguen estando en Gastos.`
             : 'Un mes pasa a histórico cuando cierra, el día 27.'
         }
       >
@@ -79,11 +82,6 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
                     <Badge tone="neutral">histórico</Badge>
                   </span>
                 ) : null}
-                {m.preBaseline && (
-                  <span className="ml-2">
-                    <Badge tone="warn">carga doble</Badge>
-                  </span>
-                )}
               </td>
               <td className="td text-right tabular-nums text-good">{formatMoney(m.inCents)}</td>
               <td className="td text-right tabular-nums">{formatMoney(m.outCents)}</td>
@@ -105,8 +103,88 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
         </p>
       </Panel>
 
+      <Conciliacion cuentas={cuentas} mes={detalle} today={today} />
+
       <DetalleDelMes mes={detalle} today={today} />
     </div>
+  )
+}
+
+/**
+ * Si lo cargado del mes explica el saldo de cada cuenta.
+ *
+ * El saldo lo fija el banco, no la suma de movimientos, así que la única
+ * verificación posible es al revés: restarle los movimientos al saldo de hoy y
+ * mirar con cuánto habría arrancado el mes.
+ */
+function Conciliacion({
+  cuentas,
+  mes,
+  today,
+}: {
+  cuentas: AccountReconciliation[]
+  mes: MonthHistory
+  today: string
+}) {
+  if (!cuentas.length) return null
+
+  const suma = (f: (c: AccountReconciliation) => number) => cuentas.reduce((a, c) => a + f(c), 0)
+
+  return (
+    <Panel
+      title={`Conciliación de saldos · ${formatPeriod(mes.period)}`}
+      subtitle="Al saldo de hoy se le restan los movimientos del mes para ver con cuánto arrancó. Si ese número no es el que informaba el banco al cerrar el mes anterior, faltan movimientos por cargar."
+    >
+      <Table
+        head={
+          <tr>
+            <th className="th">Cuenta</th>
+            <th className="th text-right">Arrancó con</th>
+            <th className="th text-right">Entró</th>
+            <th className="th text-right">Salió</th>
+            <th className="th text-right">Saldo hoy</th>
+            <th className="th">Movimientos</th>
+          </tr>
+        }
+      >
+        {cuentas.map((c) => {
+          // Un saldo con el último movimiento viejo no está mal, pero le faltan días.
+          const desactualizada = mes.current && c.lastMovement !== null && c.lastMovement < today
+
+          return (
+            <tr key={c.accountId}>
+              <td className="td font-medium">{c.name}</td>
+              <td className="td text-right tabular-nums text-muted">{formatMoney(c.openingCents)}</td>
+              <td className="td text-right tabular-nums text-good">{formatMoney(c.inCents)}</td>
+              <td className="td text-right tabular-nums">{formatMoney(c.outCents)}</td>
+              <td className="td text-right tabular-nums font-medium">{formatMoney(c.closingCents)}</td>
+              <td className="td whitespace-nowrap text-xs text-muted">
+                {c.movements === 0 ? (
+                  <Badge tone="warn">sin movimientos</Badge>
+                ) : (
+                  <>
+                    {c.movements} · último {formatDate(c.lastMovement!)}
+                    {desactualizada && (
+                      <span className="ml-2">
+                        <Badge tone="warn">faltan días</Badge>
+                      </span>
+                    )}
+                  </>
+                )}
+              </td>
+            </tr>
+          )
+        })}
+        <tr className="border-t border-edge">
+          <td className="td text-xs font-semibold uppercase tracking-wide text-muted">Total</td>
+          <td className="td text-right tabular-nums text-muted">{formatMoney(suma((c) => c.openingCents))}</td>
+          <td className="td text-right tabular-nums text-good">{formatMoney(suma((c) => c.inCents))}</td>
+          <td className="td text-right tabular-nums">{formatMoney(suma((c) => c.outCents))}</td>
+          <td className="td text-right tabular-nums font-semibold">{formatMoney(suma((c) => c.closingCents))}</td>
+          <td className="td" />
+        </tr>
+      </Table>
+    </Panel>
   )
 }
 
