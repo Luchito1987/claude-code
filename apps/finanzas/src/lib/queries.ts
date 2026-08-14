@@ -19,6 +19,7 @@ import {
   monthlyOutlook,
   pendingInstallments,
   pendingLoanInstallments,
+  settledLoanInstallments,
   type DebtSummary,
   type FutureInstallment,
   type MonthOutlook,
@@ -654,24 +655,36 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
       editable: false,
     }))
 
-  const prestamos: MonthItem[] = pendingLoanInstallments(listLoans(), today)
-    .filter((c) => c.period === period)
-    .map((c) => {
-      const loan = listLoans().find((l) => l.id === c.loanId)
-      const fecha = loan ? addMonths(loan.first_due_date, c.number - 1) : end
-      return {
-        kind: 'prestamo' as const,
-        group: 'prestamo' as const,
-        refId: c.loanId,
-        label: c.label,
-        detail: 'cuota fija',
-        dueDate: compare(fecha, start) < 0 ? start : fecha,
-        cents: c.amountCents,
-        paid: pagados.has(`prestamo:${c.loanId}`),
-        estimated: false,
-        editable: false,
-      }
-    })
+  /*
+   * La cuota del mes se muestra esté paga o no. Las pendientes salen del plan
+   * de pagos; las que ya se saldaron hay que traerlas aparte, porque si no el
+   * préstamo desaparecía de la lista justo cuando terminaba de pagarse.
+   */
+  const prestamosTodos = listLoans()
+  const pendientes = pendingLoanInstallments(prestamosTodos, today).filter((c) => c.period === period)
+  const saldadas = settledLoanInstallments(prestamosTodos, period).filter(
+    (c) => !pendientes.some((p) => p.loanId === c.loanId),
+  )
+
+  const prestamos: MonthItem[] = [
+    ...pendientes.map((c) => ({ cuota: c, saldada: false })),
+    ...saldadas.map((c) => ({ cuota: c, saldada: true })),
+  ].map(({ cuota, saldada }) => {
+    const loan = prestamosTodos.find((l) => l.id === cuota.loanId)
+    const fecha = loan ? addMonths(loan.first_due_date, cuota.number - 1) : end
+    return {
+      kind: 'prestamo' as const,
+      group: 'prestamo' as const,
+      refId: cuota.loanId,
+      label: cuota.label,
+      detail: 'cuota fija',
+      dueDate: compare(fecha, start) < 0 ? start : fecha,
+      cents: cuota.amountCents,
+      paid: saldada || pagados.has(`prestamo:${cuota.loanId}`),
+      estimated: false,
+      editable: false,
+    }
+  })
 
   return [...facturas, ...tarjetas, ...prestamos].sort((a, b) => compare(a.dueDate, b.dueDate))
 }

@@ -126,6 +126,36 @@ export function pendingLoanInstallments(loans: LoanLike[], today: ISODate = toda
   return out.sort((a, b) => a.period.localeCompare(b.period))
 }
 
+/**
+ * Cuotas que ya se pagaron y caen en un mes dado.
+ *
+ * Hace falta porque `pendingLoanInstallments` solo devuelve lo que falta pagar:
+ * en cuanto la cuota del mes quedaba saldada, el préstamo desaparecía entero de
+ * la lista del mes —a diferencia de una factura o un resumen de tarjeta, que se
+ * quedan tildados—. Desde el tablero eso se lee como que el préstamo no se paga
+ * este mes, justo cuando acaba de pagarse.
+ *
+ * No filtra por `active`: una cuota pagada es un hecho del mes en que salió, y
+ * dar de baja el préstamo después no la borra.
+ */
+export function settledLoanInstallments(loans: LoanLike[], period: string): LoanInstallment[] {
+  const out: LoanInstallment[] = []
+  for (const loan of loans) {
+    for (let numero = 1; numero <= loan.installments_paid; numero++) {
+      if (financialMonth(addMonths(loan.first_due_date, numero - 1)) !== period) continue
+      out.push({
+        period,
+        loanId: loan.id,
+        label: `${loan.name} · cuota ${numero}/${loan.installments_total}`,
+        amountCents: Math.abs(loan.installment_cents),
+        number: numero,
+        total: loan.installments_total,
+      })
+    }
+  }
+  return out
+}
+
 export interface MonthOutlook {
   period: string
   serviciosCents: number
