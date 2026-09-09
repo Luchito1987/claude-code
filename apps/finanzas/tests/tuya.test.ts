@@ -45,6 +45,14 @@ describe('reconocer el extracto de Tuya', () => {
     expect(res.rows).toHaveLength(8)
     expect(res.statementDueDate).toBe('2026-09-03')
   })
+
+  it('expone el pago mínimo y el total del resumen para poder cotejarlos', () => {
+    // Salen en el ParseResult genérico, no sólo en el meta de Tuya: el
+    // importador los muestra sin saber de qué banco vino el archivo.
+    const res = parseStatement(EXTRACTO, { kind: 'card' })
+    expect(res.statementMinimumCents).toBe(55000000)
+    expect(res.statementTotalCents).toBe(215000000)
+  })
 })
 
 describe('qué importe se toma de cada fila', () => {

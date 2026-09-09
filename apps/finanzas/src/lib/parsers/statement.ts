@@ -47,6 +47,14 @@ export interface ParseResult {
    * las compras viejas que siguen en cuotas.
    */
   statementDueDate?: ISODate
+  /**
+   * Pago mínimo y pago total que declara el resumen de tarjeta, tal cual salen
+   * impresos. No se usan para calcular nada: están para que quien importa
+   * pueda cotejarlos contra el papel y darse cuenta al toque si el archivo se
+   * leyó entero. La suma de los cargos importados tiene que dar el mínimo.
+   */
+  statementMinimumCents?: number
+  statementTotalCents?: number
 }
 
 const HEADER_HINTS = {

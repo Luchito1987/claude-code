@@ -150,5 +150,14 @@ export function parseTuya(text: string, opts: { userRules?: UserRule[] } = {}): 
     )
   }
 
-  return { rows, skipped, strategy: 'text', warnings, meta, statementDueDate: meta.dueDate }
+  return {
+    rows,
+    skipped,
+    strategy: 'text',
+    warnings,
+    meta,
+    statementDueDate: meta.dueDate,
+    statementMinimumCents: meta.minimumCents,
+    statementTotalCents: meta.totalCents,
+  }
 }

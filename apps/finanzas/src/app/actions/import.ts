@@ -171,6 +171,11 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
   let duplicates = 0
   let conciliados = 0
   let total = 0
+  // Cargos y pagos por separado: sumarlos en un neto esconde el número que uno
+  // quiere cotejar contra el papel. Un resumen con un pago del ciclo anterior
+  // da un neto que no es ni lo gastado ni lo que hay que pagar.
+  let cargos = 0
+  let pagos = 0
 
   const run = db.transaction((rows: ParsedRow[]) => {
     db.prepare(
@@ -226,6 +231,8 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       if (res.changes) {
         inserted++
         total += row.amountCents
+        if (row.amountCents < 0) cargos += -row.amountCents
+        else pagos += row.amountCents
       } else {
         duplicates++
       }
@@ -326,6 +333,23 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     `${parsed.skipped} línea(s) sin fecha o importe se ignoraron.`,
     ...parsed.warnings,
   ]
+  /*
+   * Lo que el resumen declara impreso, para cotejar de un vistazo. El cotejo se
+   * hace contra las filas del archivo y no contra lo insertado: si el resumen se
+   * reimporta, casi todo cae como duplicado y los importados no suman el mínimo,
+   * pero el archivo se leyó igual de bien.
+   */
+  if (parsed.statementMinimumCents || parsed.statementTotalCents) {
+    const declarado: string[] = []
+    if (parsed.statementMinimumCents) declarado.push(`pago mínimo ${formatMoney(parsed.statementMinimumCents)}`)
+    if (parsed.statementTotalCents) declarado.push(`pago total ${formatMoney(parsed.statementTotalCents)}`)
+    detail.push(`El resumen declara ${declarado.join(' y ')}.`)
+
+    const cargosArchivo = parsed.rows.filter((r) => r.amountCents < 0).reduce((a, r) => a + -r.amountCents, 0)
+    // Cien centavos de margen: el resumen redondea cada cuota antes de sumarlas.
+    if (parsed.statementMinimumCents && Math.abs(cargosArchivo - parsed.statementMinimumCents) <= 100)
+      detail.push(`Los ${formatMoney(cargosArchivo)} en cargos del archivo coinciden con ese pago mínimo: se leyó completo.`)
+  }
   if (duplicates) detail.push(`${duplicates} movimiento(s) ya estaban importados y no se duplicaron.`)
   if (conciliados)
     detail.push(
@@ -374,8 +398,12 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       `Este extracto cierra el ${parsed.finalBalanceDate}, así que al saldo que informa se le sumaron los movimientos posteriores que ya tenías cargados.`,
     )
 
+  const importe = cargos && pagos
+    ? `${formatMoney(cargos)} en cargos y ${formatMoney(pagos)} en pagos`
+    : formatMoney(Math.abs(total))
+
   return {
-    ok: `${inserted} movimiento(s) importados por ${formatMoney(Math.abs(total))}.`,
+    ok: `${inserted} movimiento(s) importados: ${importe}.`,
     detail,
   }
 }
