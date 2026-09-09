@@ -1,9 +1,32 @@
 name: CI
 
+# Este CI mide el código del CLI (src/, web/ y sus scripts de build). Corre sólo
+# cuando ese código cambia: sin los `paths` se disparaba también en los cambios
+# de apps/finanzas, que no tiene nada que ver, y fallaba por errores ajenos al
+# PR — un rojo permanente que no decía nada sobre lo que se estaba revisando.
+# La app de finanzas tiene su propio workflow en finanzas.yml.
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'web/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig.json'
+      - 'biome.json'
+      - '.github/workflows/ci.yml'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'web/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig.json'
+      - 'biome.json'
+      - '.github/workflows/ci.yml'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -106,8 +129,12 @@ jobs:
         working-directory: web
         run: bun install --frozen-lockfile
 
+      # `bun run build:web` (raíz) es el esbuild del terminal embebido y no
+      # produce ningún .next. El artefacto que este job sube, y el presupuesto
+      # de bundle que mide el job siguiente, salen del `next build` de web/.
       - name: Build web app
-        run: bun run build:web
+        working-directory: web
+        run: bun run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -129,17 +156,26 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install web dependencies
-        working-directory: web
-        run: bun install --frozen-lockfile
+      # Este job corre en su propia máquina, con un checkout limpio: sin bajar
+      # el artefacto no hay .next que medir y el presupuesto se cumplía sobre
+      # un directorio vacío.
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build-${{ github.sha }}
+          path: web/.next/
 
       - name: Check initial JS bundle < 150 KB gzipped
         working-directory: web
         run: |
-          BUNDLE_SIZE=$(find .next/static/chunks -name "*.js" -not -name "*.map" \
-            | xargs gzip -c 2>/dev/null | wc -c)
+          # "First Load JS": los chunks que el navegador baja para pintar la
+          # primera pantalla, que es lo que este presupuesto quiere acotar. El
+          # comando anterior sumaba todo .next/static/chunks, lazy incluidos:
+          # 2,3 MB contra un tope de 150 KB, midiendo otra cosa que la enunciada.
+          FILES=$(node -p "require('./.next/build-manifest.json').rootMainFiles.map(f => '.next/' + f).join(' ')")
+          BUNDLE_SIZE=$(echo "$FILES" | xargs gzip -c | wc -c)
           BUDGET_BYTES=153600
-          echo "Gzipped bundle size: ${BUNDLE_SIZE} bytes"
+          echo "First Load JS gzipped: ${BUNDLE_SIZE} bytes"
           if [ "$BUNDLE_SIZE" -gt "$BUDGET_BYTES" ]; then
             echo "::error::Bundle size ${BUNDLE_SIZE}B exceeds 150 KB budget (${BUDGET_BYTES}B)"
             exit 1

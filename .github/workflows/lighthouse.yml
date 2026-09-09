@@ -1,7 +1,13 @@
 name: Lighthouse
 
+# Mide la app de web/. Corre sólo cuando esa app cambia: antes se disparaba en
+# cualquier PR, incluidos los de apps/finanzas, que no la tocan.
 on:
   pull_request:
+    paths:
+      - 'web/**'
+      - '.lighthouserc.json'
+      - '.github/workflows/lighthouse.yml'
 
 jobs:
   lighthouse:
@@ -21,8 +27,13 @@ jobs:
         working-directory: web
         run: bun install --frozen-lockfile
 
+      # `bun run build:web` (raíz) es el esbuild del terminal embebido: no deja
+      # ningún .next, y el `next start` de más abajo moría con "Could not find a
+      # production build in the '.next' directory". El build de esta app es el
+      # `build` de web/.
       - name: Build web app
-        run: bun run build:web
+        working-directory: web
+        run: bun run build
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v11
