@@ -16,7 +16,14 @@ const nextConfig = {
     // PDF, no se importan, así que hay que nombrarlas para que viajen al build.
     outputFileTracingIncludes: {
       '/ticket': ['./node_modules/tesseract.js-core/**'],
-      '/importar': ['./node_modules/pdfjs-dist/standard_fonts/**'],
+      '/importar': [
+        // Las fuentes estándar se leen del disco al abrir el PDF.
+        './node_modules/pdfjs-dist/standard_fonts/**',
+        // Y aunque en Node no se levanta un worker de verdad, pdfjs importa
+        // igual este archivo para armar el "worker falso": sin él, abrir un PDF
+        // falla en producción con "Setting up fake worker failed".
+        './node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
+      ],
     },
   },
 }
