@@ -78,16 +78,18 @@ export async function saveCardAction(form: FormData): Promise<void> {
     Math.min(28, Math.max(1, int(form, 'closing_day', 25))),
     Math.min(28, Math.max(1, int(form, 'due_day', 5))),
     cents(form, 'limit'),
+    str(form, 'match_pattern'),
   ] as const
 
   if (existing) {
-    db.prepare('UPDATE cards SET name = ?, issuer = ?, closing_day = ?, due_day = ?, limit_cents = ? WHERE id = ?').run(
-      ...args,
-      existing,
-    )
+    db.prepare(
+      `UPDATE cards SET name = ?, issuer = ?, closing_day = ?, due_day = ?, limit_cents = ?, match_pattern = ?
+       WHERE id = ?`,
+    ).run(...args, existing)
   } else {
     db.prepare(
-      'INSERT INTO cards (id, name, issuer, closing_day, due_day, limit_cents, currency) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      `INSERT INTO cards (id, name, issuer, closing_day, due_day, limit_cents, match_pattern, currency)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id(), ...args, 'ARS')
   }
   revalidatePath('/config')
@@ -98,6 +100,25 @@ export async function deleteCardAction(form: FormData): Promise<void> {
   requireUser()
   getDb().prepare('DELETE FROM cards WHERE id = ?').run(str(form, 'id'))
   revalidatePath('/config')
+}
+
+/**
+ * Cómo se llama en el extracto el pago de una tarjeta o la cuota de un
+ * préstamo. Va en su propia acción porque se edita solo, desde la fila de la
+ * tabla: el alta pide todos los campos, y acá lo único que cambia es esto.
+ */
+export async function saveMatchPatternAction(form: FormData): Promise<void> {
+  requireUser()
+  const kind = str(form, 'kind')
+  const table = kind === 'prestamo' ? 'loans' : 'cards'
+  const rowId = str(form, 'id')
+  if (!rowId) return
+  getDb()
+    .prepare(`UPDATE ${table} SET match_pattern = ? WHERE id = ?`)
+    .run(str(form, 'match_pattern'), rowId)
+  revalidatePath('/config')
+  revalidatePath('/prestamos')
+  revalidatePath('/')
 }
 
 // ---------------------------------------------------------------- servicios
@@ -187,18 +208,20 @@ export async function saveLoanAction(form: FormData): Promise<void> {
     str(form, 'first_due_date') || todayISO(),
     Number(str(form, 'rate_annual')) || 0,
     form.get('active') ? 1 : 0,
+    str(form, 'match_pattern'),
   ] as const
 
   if (existing) {
     db.prepare(
       `UPDATE loans SET name = ?, lender = ?, principal_cents = ?, installment_cents = ?,
-       installments_total = ?, installments_paid = ?, first_due_date = ?, rate_annual = ?, active = ? WHERE id = ?`,
+       installments_total = ?, installments_paid = ?, first_due_date = ?, rate_annual = ?, active = ?,
+       match_pattern = ? WHERE id = ?`,
     ).run(...args, existing)
   } else {
     db.prepare(
       `INSERT INTO loans (id, name, lender, principal_cents, installment_cents, installments_total,
-       installments_paid, first_due_date, rate_annual, active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       installments_paid, first_due_date, rate_annual, active, match_pattern, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id(), ...args, now())
   }
   revalidatePath('/prestamos')

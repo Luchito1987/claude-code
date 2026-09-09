@@ -28,6 +28,22 @@ function createLegacyDb(): void {
   legacy.close()
 }
 
+/**
+ * Base anterior a la conciliación de tarjetas y préstamos: sin `commitment` en
+ * los movimientos ni `match_pattern` en tarjetas y préstamos. Es la que está
+ * corriendo en producción cuando se despliega esto.
+ */
+function createPreCommitmentDb(): void {
+  const legacy = new Database(path)
+  legacy.exec(readFileSync(SCHEMA, 'utf8'))
+  // Se sacan después de crear el esquema: recortar el .sql con regex se rompe
+  // en cuanto alguien reordena una columna.
+  legacy.exec('ALTER TABLE transactions DROP COLUMN commitment')
+  legacy.exec('ALTER TABLE cards DROP COLUMN match_pattern')
+  legacy.exec('ALTER TABLE loans DROP COLUMN match_pattern')
+  legacy.close()
+}
+
 function columnsOf(table: string): string[] {
   const conn = new Database(path, { readonly: true })
   const cols = (conn.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name)
@@ -81,5 +97,49 @@ describe('migración de bases ya creadas', () => {
     const again = await openViaClient()
     expect(columnsOf('transactions')).toContain('billing_period')
     again.close()
+  })
+})
+
+describe('migración de la conciliación de tarjetas y préstamos', () => {
+  it('la base anterior no tiene ninguna de las tres columnas', () => {
+    createPreCommitmentDb()
+    expect(columnsOf('transactions')).not.toContain('commitment')
+    expect(columnsOf('cards')).not.toContain('match_pattern')
+    expect(columnsOf('loans')).not.toContain('match_pattern')
+  })
+
+  it('las agrega al abrir', async () => {
+    createPreCommitmentDb()
+    const db = await openViaClient()
+    expect(columnsOf('transactions')).toContain('commitment')
+    expect(columnsOf('cards')).toContain('match_pattern')
+    expect(columnsOf('loans')).toContain('match_pattern')
+    db.close()
+  })
+
+  it('los movimientos que ya estaban arrancan sin compromiso, no como pagados', async () => {
+    createPreCommitmentDb()
+    const seed = new Database(path)
+    seed
+      .prepare(
+        `INSERT INTO transactions (id, date, description, amount_cents, created_at)
+         VALUES ('t1', '2026-08-01', 'COMPRA EN  EXITO WOW', -14514000, '2026-08-01T00:00:00Z')`,
+      )
+      .run()
+    seed.close()
+
+    const db = await openViaClient()
+    const row = db.prepare('SELECT commitment FROM transactions WHERE id = ?').get('t1')
+    expect(row).toEqual({ commitment: '' })
+    db.close()
+  })
+
+  it('la consulta de gastos variables no rompe en una base recién migrada', async () => {
+    createPreCommitmentDb()
+    const db = await openViaClient()
+    expect(() =>
+      db.prepare("SELECT category FROM transactions WHERE commitment = ''").all(),
+    ).not.toThrow()
+    db.close()
   })
 })

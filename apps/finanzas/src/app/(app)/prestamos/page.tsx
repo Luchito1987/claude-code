@@ -2,7 +2,12 @@ import { Badge, Empty, Panel, Table } from '@/components/ui'
 import { formatDate, todayISO } from '@/lib/dates'
 import { formatMoney, pct } from '@/lib/money'
 import { listLoans, loanProgress, monthlyIncomeCents } from '@/lib/queries'
-import { deleteLoanAction, payInstallmentAction, saveLoanAction } from '@/app/actions/data'
+import {
+  deleteLoanAction,
+  payInstallmentAction,
+  saveLoanAction,
+  saveMatchPatternAction,
+} from '@/app/actions/data'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +51,7 @@ export default function PrestamosPage() {
                 <th className="th">Avance</th>
                 <th className="th">Próxima</th>
                 <th className="th text-right">Pendiente</th>
+                <th className="th">Cómo aparece en el extracto</th>
                 <th className="th" />
               </tr>
             }
@@ -76,6 +82,22 @@ export default function PrestamosPage() {
                   </td>
                   <td className="td text-muted">{p.nextDue ? formatDate(p.nextDue) : '—'}</td>
                   <td className="td text-right tabular-nums">{formatMoney(p.outstandingCents)}</td>
+                  <td className="td">
+                    <form action={saveMatchPatternAction} className="flex gap-1">
+                      <input type="hidden" name="kind" value="prestamo" />
+                      <input type="hidden" name="id" value={l.id} />
+                      <input
+                        name="match_pattern"
+                        className="input py-1 text-xs"
+                        defaultValue={l.match_pattern}
+                        placeholder="PAGO CREDITO SUC VIRTUAL"
+                        aria-label={`Cómo aparece la cuota de ${l.name} en el extracto`}
+                      />
+                      <button type="submit" className="btn-ghost px-2 py-1 text-xs">
+                        Guardar
+                      </button>
+                    </form>
+                  </td>
                   <td className="td">
                     <div className="flex justify-end gap-2">
                       {p.remaining > 0 && (

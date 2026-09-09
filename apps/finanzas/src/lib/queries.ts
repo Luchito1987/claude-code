@@ -19,6 +19,7 @@ import {
   monthlyOutlook,
   pendingInstallments,
   pendingLoanInstallments,
+  settledLoanInstallments,
   type DebtSummary,
   type FutureInstallment,
   type MonthOutlook,
@@ -49,6 +50,8 @@ export interface Card {
   due_day: number
   limit_cents: number
   currency: string
+  /** Cómo se llama el pago de esta tarjeta en el extracto de la cuenta. */
+  match_pattern: string
 }
 
 export interface Service {
@@ -92,6 +95,8 @@ export interface Loan {
   first_due_date: ISODate
   rate_annual: number
   active: number
+  /** Cómo se llama la cuota en el extracto. Vacío = se cruza por importe. */
+  match_pattern: string
 }
 
 export interface Income {
@@ -284,13 +289,14 @@ export function unpaidCardDues(today: ISODate = todayISO()): CardDue[] {
 
 export function currentBurnCents(today: ISODate = todayISO()): number {
   const txs = getDb()
-    .prepare('SELECT date, amount_cents, category, method, card_id FROM transactions WHERE date >= ?')
+    .prepare('SELECT date, amount_cents, category, method, card_id, commitment FROM transactions WHERE date >= ?')
     .all(addDays(today, -90)) as Array<{
     date: ISODate
     amount_cents: number
     category: string
     method: string
     card_id: string | null
+    commitment: string
   }>
   return dailyBurn(txs, today)
 }
@@ -662,24 +668,36 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
       editable: false,
     }))
 
-  const prestamos: MonthItem[] = pendingLoanInstallments(listLoans(), today)
-    .filter((c) => c.period === period)
-    .map((c) => {
-      const loan = listLoans().find((l) => l.id === c.loanId)
-      const fecha = loan ? addMonths(loan.first_due_date, c.number - 1) : end
-      return {
-        kind: 'prestamo' as const,
-        group: 'prestamo' as const,
-        refId: c.loanId,
-        label: c.label,
-        detail: 'cuota fija',
-        dueDate: compare(fecha, start) < 0 ? start : fecha,
-        cents: c.amountCents,
-        paid: pagados.has(`prestamo:${c.loanId}`),
-        estimated: false,
-        editable: false,
-      }
-    })
+  /*
+   * La cuota del mes se muestra esté paga o no. Las pendientes salen del plan
+   * de pagos; las que ya se saldaron hay que traerlas aparte, porque si no el
+   * préstamo desaparecía de la lista justo cuando terminaba de pagarse.
+   */
+  const prestamosTodos = listLoans()
+  const pendientes = pendingLoanInstallments(prestamosTodos, today).filter((c) => c.period === period)
+  const saldadas = settledLoanInstallments(prestamosTodos, period).filter(
+    (c) => !pendientes.some((p) => p.loanId === c.loanId),
+  )
+
+  const prestamos: MonthItem[] = [
+    ...pendientes.map((c) => ({ cuota: c, saldada: false })),
+    ...saldadas.map((c) => ({ cuota: c, saldada: true })),
+  ].map(({ cuota, saldada }) => {
+    const loan = prestamosTodos.find((l) => l.id === cuota.loanId)
+    const fecha = loan ? addMonths(loan.first_due_date, cuota.number - 1) : end
+    return {
+      kind: 'prestamo' as const,
+      group: 'prestamo' as const,
+      refId: cuota.loanId,
+      label: cuota.label,
+      detail: 'cuota fija',
+      dueDate: compare(fecha, start) < 0 ? start : fecha,
+      cents: cuota.amountCents,
+      paid: saldada || pagados.has(`prestamo:${cuota.loanId}`),
+      estimated: false,
+      editable: false,
+    }
+  })
 
   return [...facturas, ...tarjetas, ...prestamos].sort((a, b) => compare(a.dueDate, b.dueDate))
 }
@@ -709,6 +727,10 @@ export interface MonthSummary {
  * Lo que se gastó en el mes fuera de los compromisos: efectivo, débito y
  * transferencias. Deja afuera lo que se pagó con tarjeta, que ya viaja dentro
  * del resumen, y los rubros que tienen su propia línea (servicios, préstamos).
+ *
+ * `commitment` es el filtro que faltaba: el pago de la factura de luz aparece
+ * en el extracto como un débito más, pero esa plata ya la cuenta el bloque de
+ * servicios. Sin excluirlo se cobraba dos veces en el mismo tablero.
  */
 export function variableSpend(period: string): VariableSpend[] {
   const { start, end } = monthRange(period)
@@ -720,6 +742,7 @@ export function variableSpend(period: string): VariableSpend[] {
        WHERE date BETWEEN ? AND ?
          AND amount_cents < 0
          AND card_id IS NULL
+         AND commitment = ''
          AND category NOT IN (${excluidas})
        GROUP BY category
        HAVING cents > 0
@@ -727,6 +750,177 @@ export function variableSpend(period: string): VariableSpend[] {
     )
     .all(start, end, ...NON_VARIABLE_CATEGORIES) as VariableSpend[]
   return rows
+}
+
+// ------------------------------------------------------------------ historial
+
+/**
+ * Mes a partir del cual los números son confiables. Antes de esta fecha
+ * convivían dos cargas de lo mismo —la planilla que se llevaba a mano y el
+ * extracto del banco— y los meses quedaron con el gasto duplicado.
+ *
+ * Vacío significa que no hay corte y todo el historial cuenta igual.
+ */
+export const baselinePeriod = (): string => getSetting('baseline_period', '')
+
+/**
+ * Meses que se pueden consultar, del más nuevo al más viejo.
+ *
+ * Arranca en el mes 0 y no antes: lo anterior tiene el gasto cargado dos veces
+ * —la planilla que se llevaba a mano y el extracto del banco— y mostrarlo al
+ * lado de los meses buenos invita a comparar cosas que no son comparables.
+ * Los movimientos viejos siguen en la base y se ven desde Gastos.
+ */
+export function historyMonths(): string[] {
+  const r = getDb().prepare('SELECT MIN(date) AS min, MAX(date) AS max FROM transactions').get() as {
+    min: ISODate | null
+    max: ISODate | null
+  }
+  if (!r.min || !r.max) return []
+
+  const corte = baselinePeriod()
+  const primero = corte && corte > financialMonth(r.min) ? corte : financialMonth(r.min)
+  const ultimo = financialMonth(r.max)
+  if (primero > ultimo) return []
+
+  const [y1, m1] = primero.split('-').map(Number)
+  const [y2, m2] = ultimo.split('-').map(Number)
+  const cuantos = (y2 - y1) * 12 + (m2 - m1) + 1
+  return nextMonths(cuantos, primero).reverse()
+}
+
+/** Lo que de verdad entró y salió de las cuentas en el mes. */
+export function monthCashFlow(period: string): { inCents: number; outCents: number } {
+  const { start, end } = monthRange(period)
+  const r = getDb()
+    .prepare(
+      `SELECT
+         COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS entro,
+         COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS salio
+       FROM transactions
+       WHERE date BETWEEN ? AND ? AND card_id IS NULL`,
+    )
+    .get(start, end) as { entro: number; salio: number }
+  return { inCents: r.entro, outCents: r.salio }
+}
+
+export interface AccountReconciliation {
+  accountId: string
+  name: string
+  /** Saldo con el que arrancó el mes. Se deduce restándole los movimientos al de hoy. */
+  openingCents: number
+  inCents: number
+  outCents: number
+  /** El saldo que tiene cargado la cuenta hoy. */
+  closingCents: number
+  movements: number
+  /** Último movimiento cargado. Si es viejo, al saldo le faltan días. */
+  lastMovement: ISODate | null
+}
+
+/**
+ * Cuánto explica de cada saldo lo que se cargó del mes.
+ *
+ * El saldo de una cuenta no se calcula sumando movimientos: lo fija el banco
+ * —el extracto lo informa, o se carga a mano— porque la app nunca va a tener
+ * todos los movimientos. Así que la cuenta se hace al revés: al saldo de hoy se
+ * le restan los movimientos del mes y sale con cuánto tendría que haber
+ * arrancado. Si ese número no es el que decía el banco al cerrar el mes
+ * anterior, faltan movimientos por cargar.
+ */
+export function accountReconciliation(period: string, today: ISODate = todayISO()): AccountReconciliation[] {
+  const { start, end } = monthRange(period)
+  // El mes en curso se corta en hoy: sumar movimientos futuros descuadraría.
+  const hasta = compare(end, today) > 0 ? today : end
+
+  return listAccounts().map((a) => {
+    const r = getDb()
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS entro,
+           COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS salio,
+           COUNT(*) AS n,
+           MAX(date) AS ultimo
+         FROM transactions
+         WHERE account_id = ? AND date BETWEEN ? AND ?`,
+      )
+      .get(a.id, start, hasta) as { entro: number; salio: number; n: number; ultimo: ISODate | null }
+
+    return {
+      accountId: a.id,
+      name: a.name,
+      openingCents: a.balance_cents - r.entro + r.salio,
+      inCents: r.entro,
+      outCents: r.salio,
+      closingCents: a.balance_cents,
+      movements: r.n,
+      lastMovement: r.ultimo,
+    }
+  })
+}
+
+export interface MonthHistory {
+  period: string
+  label: string
+  start: ISODate
+  end: ISODate
+  /** Movimientos reales de la cuenta, no compromisos. */
+  inCents: number
+  outCents: number
+  netCents: number
+  variableCents: number
+  variable: VariableSpend[]
+  items: MonthItem[]
+  paidCents: number
+  pendingCents: number
+  /**
+   * El mes en el que cae hoy. Todavía no llegó al 27, así que sigue sumando
+   * movimientos y sus totales no son definitivos.
+   */
+  current: boolean
+  /** Ya pasó su fecha de vigencia: cerrado, no se mueve más. */
+  historical: boolean
+  /**
+   * Anterior al mes 0. Es otra cosa que estar cerrado: son los meses donde
+   * convivían la planilla y el extracto, así que el gasto está cargado dos
+   * veces y los importes no se pueden comparar contra los de después.
+   */
+  preBaseline: boolean
+}
+
+/**
+ * Un mes ya cerrado, para consultarlo.
+ *
+ * A diferencia de `monthSummary` no genera las facturas del período ni mira el
+ * saldo de hoy: sobre un mes pasado eso inventaría compromisos que nunca
+ * existieron y mediría la caja actual contra gastos viejos. Acá solo se lee lo
+ * que quedó registrado.
+ */
+export function monthHistory(period: string, today: ISODate = todayISO()): MonthHistory {
+  const { start, end } = monthRange(period)
+  const items = monthItems(period, today)
+  const variable = variableSpend(period)
+  const { inCents, outCents } = monthCashFlow(period)
+  const corte = baselinePeriod()
+  const enCurso = financialMonth(today)
+
+  return {
+    period,
+    label: formatMonthShort(period),
+    start,
+    end,
+    inCents,
+    outCents,
+    netCents: inCents - outCents,
+    variable,
+    variableCents: variable.reduce((a, v) => a + v.cents, 0),
+    items,
+    paidCents: items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0),
+    pendingCents: items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0),
+    current: period === enCurso,
+    historical: period < enCurso,
+    preBaseline: corte !== '' && period < corte,
+  }
 }
 
 /** Los tres números de la primera pantalla, más el detalle del mes. */

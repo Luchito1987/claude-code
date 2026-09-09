@@ -5,6 +5,7 @@ import {
   parseInstallment,
   pendingInstallments,
   pendingLoanInstallments,
+  settledLoanInstallments,
 } from '@/lib/monthly'
 import { financialMonth, monthRange, nextMonths } from '@/lib/dates'
 
@@ -107,6 +108,30 @@ describe('cuotas de préstamo', () => {
     const cuotas = pendingLoanInstallments(atrasado ? [atrasado] : [], HOY)
     // Las cuotas 6 y 7 vencían en junio y julio: van al mes actual.
     expect(cuotas.filter((c) => c.period === '2026-08')).toHaveLength(3)
+  })
+
+  /*
+   * Con la cuota de agosto ya paga, el préstamo se caía entero de la lista del
+   * mes: la próxima pendiente es la de septiembre y no quedaba nada que mostrar
+   * en agosto. El tablero decía que ese mes no se pagaba ninguna cuota.
+   */
+  it('la cuota ya pagada del mes se sigue pudiendo mostrar', () => {
+    const alDia = { ...prestamo, installments_paid: 8 }
+    expect(pendingLoanInstallments([alDia], HOY).filter((c) => c.period === '2026-08')).toHaveLength(0)
+
+    const saldadas = settledLoanInstallments([alDia], '2026-08')
+    expect(saldadas).toHaveLength(1)
+    expect(saldadas[0]).toMatchObject({ period: '2026-08', number: 8, amountCents: 18500000 })
+  })
+
+  it('un préstamo dado de baja conserva las cuotas que sí pagó', () => {
+    const cerrado = { ...prestamo, active: 0 }
+    expect(pendingLoanInstallments([cerrado], HOY)).toHaveLength(0)
+    expect(settledLoanInstallments([cerrado], '2026-07')).toHaveLength(1)
+  })
+
+  it('no inventa cuotas en un mes donde no vencía ninguna', () => {
+    expect(settledLoanInstallments([prestamo], '2025-12')).toHaveLength(0)
   })
 })
 

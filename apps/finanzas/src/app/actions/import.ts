@@ -5,11 +5,20 @@ import { redirect } from 'next/navigation'
 import { getDb, id, now } from '@/db/client'
 import { currentUser } from '@/lib/auth'
 import { fingerprint, parseStatement, type ParsedRow } from '@/lib/parsers/statement'
-import { findAlreadyLoaded, settleBillsFromStatement, type PendingBill, type Reconcilable } from '@/lib/reconcile'
+import {
+  findAlreadyLoaded,
+  settleBillsFromStatement,
+  settleCardsFromStatement,
+  settleLoansFromStatement,
+  type PendingBill,
+  type Reconcilable,
+  type Settleable,
+  type Settlement,
+} from '@/lib/reconcile'
 import { decodeText, parseUploadedFile, type FileParseResult } from '@/lib/parsers/input'
 import { isSpreadsheet, readWorkbook } from '@/lib/parsers/xlsx'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint, type RappiOrder } from '@/lib/parsers/rappi'
-import { listUserRules, markBillPaid, updateBillAmount } from '@/lib/queries'
+import { listUserRules, markBillPaid, markMonthItemPaid, updateBillAmount } from '@/lib/queries'
 import { formatMoney } from '@/lib/money'
 import { financialMonth, todayISO, parseISO } from '@/lib/dates'
 import { dueDateFor } from '@/lib/cashflow'
@@ -58,8 +67,8 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
 
   const insertTx = db.prepare(
     `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
-       account_id, card_id, statement_id, source, installment, billing_period, fingerprint, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?, ?)
+       account_id, card_id, statement_id, source, installment, billing_period, commitment, fingerprint, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?, ?, ?)
      ON CONFLICT DO NOTHING`,
   )
 
@@ -84,6 +93,56 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       billingPeriod = financialMonth(dueDateFor(card, ultima))
     }
   }
+
+  /*
+   * Qué compromisos del mes viene a confirmar este extracto. Se resuelve antes
+   * de insertar nada porque el resultado decide con qué `commitment` entra cada
+   * línea: una vez marcada, esa plata deja de contar como gasto variable —ya la
+   * cuenta el bloque de la factura, la tarjeta o el préstamo.
+   *
+   * Solo aplica a extractos de cuenta: en un resumen de tarjeta los movimientos
+   * son consumos, no pagos de compromisos.
+   */
+  const facturasPendientes =
+    kind === 'account'
+      ? (db
+          .prepare(
+            `SELECT b.id, b.period, s.name AS serviceName, s.match_pattern AS pattern, b.amount_cents AS amountCents
+             FROM bills b JOIN services s ON s.id = b.service_id
+             WHERE b.status <> 'pagado' AND s.match_pattern <> ''`,
+          )
+          .all() as PendingBill[])
+      : []
+
+  const tarjetas: Settleable[] =
+    kind === 'account'
+      ? (db
+          .prepare(
+            `SELECT id, name AS label, match_pattern AS pattern, 0 AS amountCents
+             FROM cards WHERE match_pattern <> ''`,
+          )
+          .all() as Settleable[])
+      : []
+
+  const prestamos: Settleable[] =
+    kind === 'account'
+      ? (db
+          .prepare(
+            `SELECT id, name AS label, match_pattern AS pattern, installment_cents AS amountCents
+             FROM loans WHERE active = 1`,
+          )
+          .all() as Settleable[])
+      : []
+
+  const conciliadas = settleBillsFromStatement(facturasPendientes, parsed.rows)
+  const tarjetasPagas = settleCardsFromStatement(tarjetas, parsed.rows)
+  const prestamosPagos = settleLoansFromStatement(prestamos, parsed.rows)
+
+  /** Qué línea del extracto paga qué compromiso, por posición en el archivo. */
+  const compromisoDeFila = new Map<number, string>()
+  for (const c of conciliadas) compromisoDeFila.set(c.rowIndex, `factura:${c.target.id}`)
+  for (const c of tarjetasPagas) compromisoDeFila.set(c.rowIndex, `tarjeta:${c.target.id}`)
+  for (const c of prestamosPagos) compromisoDeFila.set(c.rowIndex, `prestamo:${c.target.id}`)
 
   /*
    * Lo que ya se cargó a mano (foto de ticket o alta rápida) y todavía no está
@@ -129,9 +188,12 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       now(),
     )
 
-    for (const row of rows) {
+    for (const [indice, row] of rows.entries()) {
+      const compromiso = compromisoDeFila.get(indice) ?? ''
+
       // Antes de insertar: ¿este gasto ya se había cargado por foto o a mano?
-      const previo = findAlreadyLoaded(yaCargados, row, { used: yaApareados })
+      // Un pago de compromiso nunca se aparea contra un ticket suelto.
+      const previo = compromiso ? null : findAlreadyLoaded(yaCargados, row, { used: yaApareados })
       if (previo) {
         conciliar.run(statementId, previo.id)
         yaApareados.add(previo.id)
@@ -157,6 +219,7 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
         statementId,
         row.installment,
         billingPeriod,
+        compromiso,
         fingerprint(row, sourceKey, ocurrencia),
         now(),
       )
@@ -175,30 +238,25 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
   run(parsed.rows)
 
   /*
-   * Las facturas del mes que el extracto acaba de confirmar. Una cosa es el
-   * compromiso (la factura) y otra la plata saliendo (el movimiento): sin esto
-   * el tablero seguía diciendo "falta pagar" aunque el pago ya estuviera
+   * Los compromisos que el extracto acaba de confirmar. Una cosa es el
+   * compromiso (la factura, el resumen, la cuota) y otra la plata saliendo: sin
+   * esto el tablero seguía diciendo "falta pagar" aunque el pago ya estuviera
    * importado.
    */
-  const conciliadas =
-    kind === 'account'
-      ? settleBillsFromStatement(
-          db
-            .prepare(
-              `SELECT b.id, s.name AS serviceName, s.match_pattern AS pattern, b.amount_cents AS amountCents
-               FROM bills b JOIN services s ON s.id = b.service_id
-               WHERE b.status <> 'pagado' AND s.match_pattern <> ''`,
-            )
-            .all() as PendingBill[],
-          parsed.rows,
-        )
-      : []
-
   for (const c of conciliadas) {
     // El banco tiene el importe real; la factura solía tener un estimado.
     if (c.amountChanged) updateBillAmount(c.bill.id, c.paidCents)
     markBillPaid(c.bill.id, true)
   }
+
+  /*
+   * En tarjetas y préstamos manda el extracto. El resumen decía $977.117 y
+   * salieron $2.731.870 porque se pagó más que el mínimo: lo que movió la caja
+   * es lo segundo, así que el mes se marca con ese número. Si quedó mal, se
+   * corrige a mano desde el tablero.
+   */
+  for (const c of tarjetasPagas) markMonthItemPaid('tarjeta', c.target.id, c.period, c.paidCents, true)
+  for (const c of prestamosPagos) markMonthItemPaid('prestamo', c.target.id, c.period, c.paidCents, true)
 
   /*
    * El saldo de la cuenta lo manda el banco, no la suma de lo que cargamos a
@@ -291,6 +349,26 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
         `${c.bill.serviceName}: estaba en ${formatMoney(c.bill.amountCents)} y se pagó ${formatMoney(c.paidCents)}. Se corrigió con el importe del banco.`,
       )
   }
+  const describir = (c: Settlement) => `${c.target.label} (${c.period}, ${formatMoney(c.paidCents)})`
+  if (tarjetasPagas.length)
+    detail.push(`Tarjeta(s) marcadas como pagadas con el pago que trae el extracto: ${tarjetasPagas.map(describir).join(', ')}.`)
+  if (prestamosPagos.length)
+    detail.push(`Cuota(s) de préstamo marcadas como pagadas: ${prestamosPagos.map(describir).join(', ')}.`)
+
+  /*
+   * Un pago de tarjeta que no se pudo atribuir es peor que no detectarlo: el
+   * tablero sigue diciendo "vencido" sin explicar por qué. Mejor decirlo.
+   */
+  const tarjetasSinPatron = db
+    .prepare("SELECT name FROM cards WHERE match_pattern = ''")
+    .all() as Array<{ name: string }>
+  const hayPagoDeTarjeta = parsed.rows.some((r) => r.category === 'pago_tarjeta')
+  if (kind === 'account' && hayPagoDeTarjeta && tarjetasSinPatron.length)
+    detail.push(
+      `El extracto trae pagos de tarjeta, y estas todavía no tienen configurado cómo se llaman en el extracto: ${tarjetasSinPatron
+        .map((t) => t.name)
+        .join(', ')}. Cargalo en Config → Tarjetas para que se marquen solas.`,
+    )
   if (saldoViejo && saldo)
     detail.push(
       `Este extracto cierra el ${parsed.finalBalanceDate}, así que al saldo que informa se le sumaron los movimientos posteriores que ya tenías cargados.`,

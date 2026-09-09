@@ -24,6 +24,7 @@ desde internet.
 | Qué se paga este mes | Lista única del mes financiero — facturas, resúmenes de tarjeta y cuotas — con tilde de pagado, más alta rápida de un gasto o un ingreso |
 | Qué se viene | Proyección de los próximos 6 meses con el desglose de cada uno, incluidas las cuotas de tarjeta ya comprometidas |
 | Cuánto se debe | Deuda por tarjeta y por préstamo, total, cuánto sale por mes y qué parte del sueldo se lleva |
+| Marcar pagado sin tildar a mano | Al importar el extracto de la cuenta, las facturas, los resúmenes de tarjeta y las cuotas de préstamo que aparecen pagados se marcan solos, con el importe que salió de verdad |
 | Recomendaciones semanales | Diez reglas sobre los datos propios; cada una dice cuánta plata mueve |
 | Exportable para analizar | Informe en Markdown (listo para pegar en un chat), JSON con todo el detalle y CSV de movimientos |
 | Rappi | Detección automática de consumos en la tarjeta + importación del detalle desde los mails de pedido o un CSV, con análisis de ticket, envío, propina y hábito semanal |
@@ -70,10 +71,21 @@ npm run seed -- --reset --email vos@ejemplo.com --password una-clave-larga
 Otros comandos:
 
 ```bash
-npm test          # 243 tests de la lógica de dominio
+npm test          # 310 tests de la lógica de dominio
 npm run typecheck
 npm run build
 ```
+
+Cuando se agregan reglas de categorización nuevas, los movimientos que ya
+estaban en la base siguen con la categoría vieja. Para reprocesarlos:
+
+```bash
+npm run recategorize -- --dry     # muestra qué cambiaría, revierte todo al final
+npm run recategorize              # aplica
+```
+
+Nunca toca lo que cargaste a mano ni lo que trajo tu planilla con su propia
+columna de categoría, y jamás degrada un movimiento a "Otros".
 
 Para cargar archivos sin pasar por el navegador, o para mirar una planilla
 desconocida antes de importarla:
@@ -192,7 +204,8 @@ src/
     money.ts              Centavos, formatos $ 1.234,56 / 1,234.56
     dates.ts              Fechas ISO y la ventana 28 → 15
     auth.ts               scrypt + sesiones en cookie
-    categories.ts         Categorización por comercio (incluye Rappi)
+    categories.ts         Categorización por comercio (Argentina, Colombia y Rappi)
+    reconcile.ts          Cruce del extracto contra tickets y compromisos del mes
     cashflow.ts           Proyección semanal, resúmenes de tarjeta, burn diario
     monthly.ts            Mes financiero: cuotas, proyección a 6 meses y deudas
     recommendations.ts    Las diez reglas semanales
@@ -207,7 +220,7 @@ src/
       rappi.ts            Mails de pedido, CSV y análisis de delivery
   app/                    Pantallas (Next.js App Router) y server actions
   components/             UI compartida y el gráfico semanal en SVG
-tests/                    243 tests sobre parsers, fechas, plata, proyección y reglas
+tests/                    310 tests sobre parsers, fechas, plata, proyección y reglas
 ```
 
 Las únicas dependencias de runtime son Next, React, `better-sqlite3` y `exceljs`

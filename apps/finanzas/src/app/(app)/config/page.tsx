@@ -11,6 +11,7 @@ import {
   saveAccountAction,
   saveCardAction,
   saveIncomeAction,
+  saveMatchPatternAction,
   saveSettingsAction,
 } from '@/app/actions/data'
 import { deleteUserAction } from '@/app/actions/auth'
@@ -151,7 +152,7 @@ export default function ConfigPage() {
 
       <Panel
         title="Tarjetas de crédito"
-        subtitle="El día de cierre y el de vencimiento definen en qué semana impacta cada resumen"
+        subtitle="El día de cierre y el de vencimiento definen en qué semana impacta cada resumen. El patrón del extracto hace que el resumen se marque pagado solo al importar la cuenta"
       >
         <form action={saveCardAction} className="grid gap-3 sm:grid-cols-5">
           <div>
@@ -194,6 +195,7 @@ export default function ConfigPage() {
                   <th className="th">Banco</th>
                   <th className="th">Cierre</th>
                   <th className="th">Vencimiento</th>
+                  <th className="th">Cómo aparece el pago en el extracto</th>
                   <th className="th" />
                 </tr>
               }
@@ -204,6 +206,22 @@ export default function ConfigPage() {
                   <td className="td text-muted">{c.issuer || '—'}</td>
                   <td className="td text-muted">día {c.closing_day}</td>
                   <td className="td text-muted">día {c.due_day}</td>
+                  <td className="td">
+                    <form action={saveMatchPatternAction} className="flex gap-1">
+                      <input type="hidden" name="kind" value="tarjeta" />
+                      <input type="hidden" name="id" value={c.id} />
+                      <input
+                        name="match_pattern"
+                        className="input py-1 text-xs"
+                        defaultValue={c.match_pattern}
+                        placeholder="PAGO SUC VIRT TC VISA"
+                        aria-label={`Cómo aparece el pago de ${c.name} en el extracto`}
+                      />
+                      <button type="submit" className="btn-ghost px-2 py-1 text-xs">
+                        Guardar
+                      </button>
+                    </form>
+                  </td>
                   <td className="td text-right">
                     <form action={deleteCardAction}>
                       <input type="hidden" name="id" value={c.id} />

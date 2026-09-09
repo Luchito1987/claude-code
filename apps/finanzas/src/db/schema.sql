@@ -39,7 +39,12 @@ CREATE TABLE IF NOT EXISTS cards (
   closing_day INTEGER NOT NULL DEFAULT 25,
   due_day     INTEGER NOT NULL DEFAULT 5,
   limit_cents INTEGER NOT NULL DEFAULT 0,
-  currency    TEXT NOT NULL DEFAULT 'ARS'
+  currency    TEXT NOT NULL DEFAULT 'ARS',
+  -- Cómo se llama el pago de esta tarjeta en el extracto de la cuenta. La Visa
+  -- de Bancolombia se paga como "PAGO SUC VIRT TC VISA" y la Falabella como
+  -- "PAGO PSE BANCO FALABELLA S A": sin esto no hay forma de saber a qué
+  -- tarjeta corresponde el pago.
+  match_pattern TEXT NOT NULL DEFAULT ''
 );
 
 -- Servicios recurrentes (luz, gas, internet, colegio, suscripciones...).
@@ -87,7 +92,9 @@ CREATE TABLE IF NOT EXISTS loans (
   first_due_date     TEXT NOT NULL,
   rate_annual        REAL NOT NULL DEFAULT 0,
   active             INTEGER NOT NULL DEFAULT 1,
-  created_at         TEXT NOT NULL
+  created_at         TEXT NOT NULL,
+  -- Cómo aparece la cuota en el extracto ("PAGO CREDITO SUC VIRTUAL").
+  match_pattern      TEXT NOT NULL DEFAULT ''
 );
 
 -- Ingresos recurrentes (sueldos, honorarios) para proyectar el flujo.
@@ -138,6 +145,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   billing_period TEXT NOT NULL DEFAULT '',
   receipt_path TEXT NOT NULL DEFAULT '',
   fingerprint  TEXT NOT NULL DEFAULT '',    -- evita duplicados al reimportar
+  -- El compromiso que este movimiento paga: 'factura:<id>', 'tarjeta:<id>' o
+  -- 'prestamo:<id>'. Esa plata ya está contada en el bloque del mes que le
+  -- corresponde, así que sumarla otra vez en gastos variables es contarla dos
+  -- veces. Vacío = es un gasto por su cuenta.
+  commitment   TEXT NOT NULL DEFAULT '',
   created_at   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_tx_date ON transactions(date);

@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "seed": "tsx src/db/seed.ts",
     "import": "tsx scripts/import-cli.ts",
-    "url": "tsx scripts/url.ts"
+    "url": "tsx scripts/url.ts",
+    "recategorize": "tsx scripts/recategorize.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
