@@ -106,6 +106,21 @@ export function ImportForm({
         )}
       </div>
 
+      {state.conflict && (
+        <div className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-xs">
+          <p className="font-medium text-warn">Ya hay un resumen cargado para ese ciclo</p>
+          <p className="mt-1 text-slate-300">
+            No se importó nada. Si este archivo es el mismo resumen en otro formato, reemplazá el anterior: si
+            entran los dos, cada plan de cuotas se cuenta dos veces y la deuda proyectada queda inflada.
+          </p>
+          <label className="mt-2 flex items-center gap-2 text-slate-200">
+            <input type="checkbox" name="reemplazar" value="si" defaultChecked className="accent-brand" />
+            Reemplazar el resumen anterior de {state.conflict.period}
+          </label>
+          <p className="mt-1 text-muted">Volvé a elegir el archivo: el navegador no lo conserva.</p>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Submit />
         {state.ok && <span className="text-sm text-good">{state.ok}</span>}

@@ -18,15 +18,29 @@ import {
 import { decodeText, parseUploadedFile, type FileParseResult } from '@/lib/parsers/input'
 import { isSpreadsheet, readWorkbook } from '@/lib/parsers/xlsx'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint, type RappiOrder } from '@/lib/parsers/rappi'
-import { listUserRules, markBillPaid, markMonthItemPaid, updateBillAmount } from '@/lib/queries'
+import {
+  cardStatementFor,
+  deleteStatement,
+  type ExistingStatement,
+  listUserRules,
+  markBillPaid,
+  markMonthItemPaid,
+  updateBillAmount,
+} from '@/lib/queries'
 import { formatMoney } from '@/lib/money'
-import { financialMonth, todayISO, parseISO } from '@/lib/dates'
+import { financialMonth, formatMonthShort, todayISO, parseISO } from '@/lib/dates'
 import { dueDateFor } from '@/lib/cashflow'
 
 export interface ImportState {
   error?: string
   ok?: string
   detail?: string[]
+  /**
+   * Ya hay un resumen de esta tarjeta para este ciclo. No se importó nada: el
+   * formulario ofrece reemplazarlo, y para eso hay que volver a elegir el
+   * archivo (el navegador no lo conserva entre envíos).
+   */
+  conflict?: { period: string; fileName: string; rows: number; importedAt: string }
 }
 
 
@@ -91,6 +105,32 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     if (card) {
       const ultima = parsed.rows.reduce((max, r) => (r.date > max ? r.date : max), parsed.rows[0].date)
       billingPeriod = financialMonth(dueDateFor(card, ultima))
+    }
+  }
+
+  /*
+   * Un resumen por tarjeta y por ciclo. Reimportar el mismo ciclo no produce
+   * duplicados a la vista —los movimientos se ven una sola vez en la lista—
+   * pero cada plan de cuotas queda contado dos veces y la deuda proyectada se
+   * infla sin que nada lo delate. Por eso se corta acá, antes de insertar nada,
+   * en vez de confiar en la huella de cada movimiento.
+   */
+  let reemplazado: ExistingStatement | undefined
+  if (kind === 'card' && billingPeriod) {
+    const previo = cardStatementFor(targetId, billingPeriod)
+    if (previo && form.get('reemplazar') !== 'si') {
+      return {
+        error: `Esta tarjeta ya tiene un resumen de ${formatMonthShort(billingPeriod)}.`,
+        conflict: { period: billingPeriod, ...previo },
+        detail: [
+          `Se importó "${previo.fileName}" el ${previo.importedAt.slice(0, 10)}, con ${previo.rows} movimiento(s).`,
+          'No se cargó nada. Si este archivo es el mismo resumen en otro formato, o una versión corregida, marcá "Reemplazar" y volvé a elegirlo.',
+        ],
+      }
+    }
+    if (previo) {
+      deleteStatement(previo.id)
+      reemplazado = previo
     }
   }
 
@@ -350,6 +390,10 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     if (parsed.statementMinimumCents && Math.abs(cargosArchivo - parsed.statementMinimumCents) <= 100)
       detail.push(`Los ${formatMoney(cargosArchivo)} en cargos del archivo coinciden con ese pago mínimo: se leyó completo.`)
   }
+  if (reemplazado)
+    detail.push(
+      `Se reemplazó el resumen anterior de este ciclo ("${reemplazado.fileName}", ${reemplazado.rows} movimiento(s)): sus movimientos se borraron antes de cargar este.`,
+    )
   if (duplicates) detail.push(`${duplicates} movimiento(s) ya estaban importados y no se duplicaron.`)
   if (conciliados)
     detail.push(

@@ -541,6 +541,33 @@ export function deleteStatement(statementId: string): void {
   getDb().prepare('DELETE FROM statements WHERE id = ?').run(statementId)
 }
 
+export interface ExistingStatement {
+  id: string
+  fileName: string
+  rows: number
+  importedAt: string
+}
+
+/**
+ * Resumen ya importado para la misma tarjeta y el mismo ciclo, si lo hay.
+ *
+ * La deduplicación por movimiento no alcanza para esto: el mismo resumen
+ * exportado en PDF y en texto escribe las descripciones distinto, así que las
+ * huellas no coinciden y entra todo dos veces. El síntoma no es un duplicado
+ * visible sino una deuda inflada, porque cada plan de cuotas queda contado dos
+ * veces en la proyección.
+ */
+export function cardStatementFor(cardId: string, period: string): ExistingStatement | undefined {
+  return getDb()
+    .prepare(
+      `SELECT id, file_name AS fileName, rows_count AS rows, imported_at AS importedAt
+       FROM statements
+       WHERE kind = 'card' AND card_id = ? AND period = ?
+       ORDER BY imported_at DESC LIMIT 1`,
+    )
+    .get(cardId, period) as ExistingStatement | undefined
+}
+
 export function upcomingDues(days = 30, today: ISODate = todayISO()) {
   const to = addDays(today, days)
   const bills = listPendingBills()
