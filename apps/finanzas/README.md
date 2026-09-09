@@ -16,7 +16,7 @@ desde internet.
 | Necesidad | Cómo se resuelve |
 |---|---|
 | Saber qué se paga y cuándo, del 28 al 15 | Registro de servicios con día de vencimiento. La app genera las facturas del período y muestra la ventana vigente; los importes arrancan estimados y se confirman con un clic |
-| Subir extractos de tarjeta y de caja de ahorro | Importador de CSV/TSV/XLSX con detección automática de separador, de hoja y de columnas, y parseo de texto pegado (sirve para PDF) |
+| Subir extractos de tarjeta y de caja de ahorro | Importador de PDF/CSV/TSV/XLSX con detección automática de separador, de hoja y de columnas, y parseo de texto pegado |
 | Dejar la planilla de Excel que llevabas | Modo "planilla propia de gastos": los importes positivos entran como gastos y se respeta tu columna de categoría. Se migra el historial una vez y se sigue en la app |
 | Dar de alta préstamos vigentes | Alta con cuota, total de cuotas y cuántas van pagas; las pendientes entran solas en la proyección |
 | Tickets y gastos sueltos | Carga manual con categorización automática por comercio |
@@ -42,9 +42,11 @@ desde internet.
   funcionan están explicadas dentro de la pantalla **Rappi**; la primera (leer los
   consumos `RAPPI*` del resumen de tarjeta) es automática y no requiere cargar
   nada.
-- **No lee PDF directamente.** Se pega el texto del PDF en el importador, que lo
-  parsea línea por línea. Es un paso manual de diez segundos que evita una
-  dependencia pesada y frágil.
+- **Un PDF escaneado no se puede leer.** Los resúmenes en PDF digital sí: se
+  rearman los renglones desde las coordenadas del texto y entran como cualquier
+  otro archivo. Pero si el PDF es una foto o un escaneo no hay texto que
+  extraer; ahí la app lo dice y quedan dos caminos: pedir el PDF digital o usar
+  la carga por foto.
 
 ---
 
@@ -68,7 +70,7 @@ npm run seed -- --reset --email vos@ejemplo.com --password una-clave-larga
 Otros comandos:
 
 ```bash
-npm test          # 118 tests de la lógica de dominio
+npm test          # 243 tests de la lógica de dominio
 npm run typecheck
 npm run build
 ```
@@ -80,7 +82,7 @@ desconocida antes de importarla:
 npm run import -- --inspect --archivo planilla.xlsx
 npm run import -- --tipo gastos  --destino "Caja de ahorro" --archivo gastos-2026.xlsx --dry
 npm run import -- --tipo cuenta  --destino "Caja de ahorro" --archivo extracto.csv
-npm run import -- --tipo tarjeta --destino "Visa"           --archivo resumen.xlsx
+npm run import -- --tipo tarjeta --destino "Visa"           --archivo resumen.pdf
 ```
 
 `--dry` muestra fecha, comercio, importe y categoría de cada línea sin escribir
@@ -198,13 +200,14 @@ src/
     report.ts             Informe Markdown / JSON / CSV
     parsers/
       csv.ts              CSV/TSV sin dependencias
+      pdf.ts              PDF: de fragmentos con coordenadas a un renglón por movimiento
       xlsx.ts             Planillas: hojas a matriz de texto, fechas normalizadas
       input.ts            Entrada única: decide texto o planilla y elige la hoja
       statement.ts        Extractos: columnas por nombre + fallback por líneas
       rappi.ts            Mails de pedido, CSV y análisis de delivery
   app/                    Pantallas (Next.js App Router) y server actions
   components/             UI compartida y el gráfico semanal en SVG
-tests/                    118 tests sobre parsers, fechas, plata, proyección y reglas
+tests/                    243 tests sobre parsers, fechas, plata, proyección y reglas
 ```
 
 Las únicas dependencias de runtime son Next, React, `better-sqlite3` y `exceljs`

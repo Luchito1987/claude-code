@@ -16,6 +16,7 @@ import { getDb, id, now } from '../src/db/client'
 import { fingerprint } from '../src/lib/parsers/statement'
 import { decodeText, parseUploadedFile } from '../src/lib/parsers/input'
 import { describeSheet, isSpreadsheet, readWorkbook } from '../src/lib/parsers/xlsx'
+import { extractPdfText, isPdf } from '../src/lib/parsers/pdf'
 import { parseRappiCsv, parseRappiReceipts, rappiFingerprint } from '../src/lib/parsers/rappi'
 import { formatMoney } from '../src/lib/money'
 import { financialMonth, parseISO, todayISO } from '../src/lib/dates'
@@ -43,7 +44,7 @@ const USO = `Uso:
                         respeta tu columna de categoría)
               rappi   = mails de pedido o CSV/planilla de pedidos
   --destino   Nombre de la cuenta o tarjeta ya cargada (no hace falta para rappi)
-  --archivo   .csv, .tsv, .txt o .xlsx
+  --archivo   .pdf, .csv, .tsv, .txt o .xlsx
   --dry       Muestra el resultado sin escribir en la base
   --inspect   Muestra la estructura del archivo (hojas, filas, primeras celdas)
               sin interpretarlo. Para mirar una planilla desconocida.`
@@ -66,6 +67,14 @@ async function main(): Promise<number> {
 // ------------------------------------------------------------------ inspect
 
 async function inspect(ruta: string, contenido: Buffer): Promise<number> {
+  if (isPdf(ruta)) {
+    const { text, pages, hasTextLayer } = await extractPdfText(contenido)
+    console.log(`\n${ruta}: ${pages} página(s), ${hasTextLayer ? 'con' : 'SIN'} capa de texto\n`)
+    const lineas = text.split(/\r?\n/).filter((l) => l.trim())
+    for (const l of lineas.slice(0, 30)) console.log(`  ${l.slice(0, 160)}`)
+    if (lineas.length > 30) console.log(`  … ${lineas.length - 30} líneas más`)
+    return hasTextLayer ? 0 : 1
+  }
   if (isSpreadsheet(ruta)) {
     const hojas = await readWorkbook(contenido)
     console.log(`\n${ruta}: ${hojas.length} hoja(s)\n`)

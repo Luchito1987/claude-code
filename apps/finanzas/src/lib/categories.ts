@@ -80,10 +80,27 @@ const RULES: Array<{ re: RegExp; category: Category }> = [
   // Estas tres van primero: sus palabras aparecen dentro de otros comercios
   // ("PRESTAMO PERSONAL" contra Personal telefonía, "PAGO TARJETA VISA" contra
   // cualquier consumo con Visa en el detalle).
-  { re: /\bPAGO\s+(DE\s+)?(TARJETA|RESUMEN|VISA|MASTER\s?CARD|MASTERCARD|AMEX|AMERICAN\s?EXPRESS|CABAL)/i, category: 'pago_tarjeta' },
+  { re: /\bPAGO\s+(DE\s+)?(TARJETA|RESUMEN|VISA|MASTER\s?CARD|MASTERCARD|AMEX|AMERICAN\s?EXPRESS|CABAL|TUYA|BANCOLOMBIA|DAVIVIENDA)/i, category: 'pago_tarjeta' },
   { re: /\bCUOTA\s?PRESTAMO|PRESTAMO|CREDITO\s?PERSONAL|REFINANCIACION/i, category: 'prestamos' },
   { re: /\bRAPPI|RAPI\*|RAPPIPRO|RAPPI\s?FAVOR/i, category: 'delivery' },
   { re: /\bPEDIDOS\s?YA|PEDIDOSYA|UBER\s?EATS|MC\s?DELIVERY|GLOVO/i, category: 'delivery' },
+
+  // Comercios de Colombia. Van antes que los de Argentina solo por cercanía de
+  // lectura; entre sí no se pisan porque los nombres no se repiten.
+  { re: /\bDIDI\s?FOOD|IFOOD|DOMICILIOS\s?COM/i, category: 'delivery' },
+  { re: /\bEXITO|CARULLA|OLIMPICA|SURTIMAX|SUPERINTER|MERCADERIA|\bARA\b|\bD1\b|METRO\s?EXPRESS/i, category: 'supermercado' },
+  { re: /\bDROGUERIA|DROGAS|CRUZ\s?VERDE|FARMATODO|LA\s?REBAJA|COPIDROGAS|LOCATEL/i, category: 'farmacia' },
+  { re: /\bTERPEL|TEXACO|BIOMAX|PRIMAX|\bESSO\b|MOBIL\b|ZEUSS/i, category: 'combustible' },
+  { re: /\bTRANSMILENIO|\bTULLAVE|METRO\s?DE\s?MEDELLIN|CIVICA\b/i, category: 'transporte' },
+  { re: /\bEPM\b|AIR\-?E\b|AFINIA|ELECTRICARIBE|CELSIA|ENEL\b|VANTI\b|GASES\s?DEL\s?CARIBE|TRIPLE\s?A|ACUEDUCTO|EMCALI/i, category: 'servicios' },
+  { re: /\bTIGO\b|\bETB\b|\bWOM\b|CLARO\s?HOGAR|DIRECTV/i, category: 'servicios' },
+  { re: /\bSURA\b|SANITAS|COOMEVA|COMPENSAR|NUEVA\s?EPS|COLSUBSIDIO|CAFESALUD|\bEPS\b/i, category: 'salud' },
+  { re: /\bALKOSTO|HOMECENTER|KTRONIX|FALABELLA\s?HOGAR|CORONA\b/i, category: 'hogar' },
+  { re: /\bARTURO\s?CALLE|\bKOAJ\b|TENNIS\s?S\.?A|\bVELEZ\b|PATPRIMO|\bSTUDIO\s?F/i, category: 'indumentaria' },
+  { re: /\bFRISBY|EL\s?CORRAL|CREPES\s?(&|Y)\s?WAFFLES|JUAN\s?VALDEZ|\bQBANO\b|\bPRESTO\b|TOSTAO/i, category: 'restaurante' },
+  { re: /\bCINE\s?COLOMBIA|ROYAL\s?FILMS|PROCINAL|CINEPOLIS/i, category: 'entretenimiento' },
+  { re: /\bDIAN\b|PREDIAL|IMPUESTO\s?VEHICULAR|SEC\.?\s?HACIENDA/i, category: 'impuestos' },
+  { re: /\bNEQUI|DAVIPLATA|\bPSE\b|TRANSFIYA/i, category: 'transferencias' },
   { re: /\bCARREFOUR|COTO|JUMBO|DIA%|DIA\b|VEA\b|DISCO\b|LIBERTAD|CHANGOMAS|MAKRO|VITAL\b/i, category: 'supermercado' },
   { re: /\bFARMACITY|FARMACIA|FARMAONLINE|DR\.?\s?AHORRO|SIMILARES/i, category: 'farmacia' },
   { re: /\bYPF|SHELL|AXION|PUMA\s?ENERGY|GNC\b/i, category: 'combustible' },

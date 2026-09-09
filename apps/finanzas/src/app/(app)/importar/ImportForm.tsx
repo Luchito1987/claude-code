@@ -73,13 +73,13 @@ export function ImportForm({
 
       <div>
         <label className="label" htmlFor="imp-file">
-          Archivo (.csv, .tsv, .txt, .xlsx)
+          Archivo (.pdf, .csv, .tsv, .txt, .xlsx)
         </label>
         <input
           id="imp-file"
           name="file"
           type="file"
-          accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv,text/plain"
+          accept=".csv,.tsv,.txt,.xlsx,.xlsm,.pdf,text/csv,text/plain,application/pdf"
           className="input"
         />
       </div>
@@ -96,7 +96,7 @@ export function ImportForm({
           placeholder={'05/07/2026  RAPPI*BURGER  -12.450,00\n06/07/2026  COTO CICSA  -38.900,00'}
         />
         <p className="mt-1 text-xs text-muted">
-          Sirve para PDF: abrí el resumen, seleccioná el detalle de movimientos y pegalo acá.
+          Solo hace falta si el PDF es un escaneo, o si el archivo no viene bien: copiá el detalle de movimientos del resumen y pegalo acá.
         </p>
         {kind === 'gastos' && (
           <p className="mt-2 rounded-lg border border-edge bg-ink p-2 text-xs text-slate-300">
