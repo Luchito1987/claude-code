@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "tsx src/db/seed.ts",
-    "import": "tsx scripts/import-cli.ts"
+    "import": "tsx scripts/import-cli.ts",
+    "url": "tsx scripts/url.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
