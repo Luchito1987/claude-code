@@ -289,6 +289,12 @@ export interface TxLike {
   category: string
   method: string
   card_id?: string | null
+  /**
+   * Vencimiento del resumen donde apareció el movimiento, cuando el archivo lo
+   * declara. Manda sobre la fecha de la compra: en un resumen con planes de
+   * cuotas, una compra del año pasado se sigue pagando en el ciclo actual.
+   */
+  statement_due?: ISODate | null
 }
 
 /**
@@ -366,7 +372,7 @@ export function cardDues(
   for (const t of txs) {
     if (t.card_id !== card.id) continue
     if (t.amount_cents >= 0) continue
-    const due = dueDateFor(card, t.date)
+    const due = t.statement_due || dueDateFor(card, t.date)
     byDue.set(due, (byDue.get(due) ?? 0) + -t.amount_cents)
   }
 

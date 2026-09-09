@@ -109,6 +109,9 @@ CREATE TABLE IF NOT EXISTS statements (
   account_id  TEXT REFERENCES accounts(id) ON DELETE SET NULL,
   file_name   TEXT NOT NULL DEFAULT '',
   period      TEXT NOT NULL DEFAULT '',
+  -- Vencimiento que declara el propio extracto, cuando lo trae. Es el que ubica
+  -- el resumen en su mes, en vez de deducirlo del día de cierre de la tarjeta.
+  due_date    TEXT NOT NULL DEFAULT '',
   total_cents INTEGER NOT NULL DEFAULT 0,
   rows_count  INTEGER NOT NULL DEFAULT 0,
   imported_by TEXT REFERENCES users(id) ON DELETE SET NULL,

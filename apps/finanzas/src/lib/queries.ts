@@ -244,8 +244,21 @@ export function monthlyIncomeCents(): number {
 
 export function allCardDues(today: ISODate = todayISO(), since: ISODate = today): CardDue[] {
   const txs = getDb()
-    .prepare('SELECT date, amount_cents, category, method, card_id FROM transactions WHERE card_id IS NOT NULL')
-    .all() as Array<{ date: ISODate; amount_cents: number; category: string; method: string; card_id: string }>
+    .prepare(
+      `SELECT t.date, t.amount_cents, t.category, t.method, t.card_id,
+              NULLIF(s.due_date, '') AS statement_due
+       FROM transactions t
+       LEFT JOIN statements s ON s.id = t.statement_id
+       WHERE t.card_id IS NOT NULL`,
+    )
+    .all() as Array<{
+    date: ISODate
+    amount_cents: number
+    category: string
+    method: string
+    card_id: string
+    statement_due: ISODate | null
+  }>
   return listCards().flatMap((card) => computeCardDues(card, txs, today, since))
 }
 

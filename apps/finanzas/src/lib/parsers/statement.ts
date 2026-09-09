@@ -13,6 +13,7 @@ import { toCents } from '../money'
 import { categorize, extractMerchant, isRappi, mapCategoryName, type UserRule } from '../categories'
 import { compare, type ISODate } from '../dates'
 import { isBancolombiaCsv, parseBancolombia } from './bancolombia'
+import { isTuyaStatement, parseTuya } from './tuya'
 
 export interface ParsedRow {
   date: ISODate
@@ -40,6 +41,12 @@ export interface ParseResult {
    */
   finalBalanceCents?: number
   finalBalanceDate?: ISODate
+  /**
+   * Vencimiento que declara el propio extracto. Vale más que deducirlo del día
+   * de cierre de la tarjeta, y es el único dato que ubica en el mes correcto a
+   * las compras viejas que siguen en cuotas.
+   */
+  statementDueDate?: ISODate
 }
 
 const HEADER_HINTS = {
@@ -169,6 +176,9 @@ export function parseStatement(text: string, opts: ParseOptions): ParseResult {
   // Bancolombia va primero: su CSV no trae encabezados, así que el detector
   // genérico no lo reconoce y el archivo entero se perdería.
   if (isBancolombiaCsv(text)) return parseBancolombia(text, { userRules: opts.userRules })
+  // Tuya también necesita el suyo: el último número de cada línea es el plan de
+  // cuotas, no el importe, y el parser genérico cargaría cualquier cosa.
+  if (isTuyaStatement(text)) return parseTuya(text, { userRules: opts.userRules })
   const csv = tryParseCsv(text, opts)
   if (csv && csv.rows.length) return csv
   return parseFreeText(text, opts)

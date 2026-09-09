@@ -207,8 +207,12 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
 
   if (!parsed.rows.length) return 1
 
-  // Mes de resumen: ancla de las cuotas. Se deduce del último consumo del archivo.
-  const billingPeriod =
+  // Mes de resumen: ancla de las cuotas. Si el extracto declara su vencimiento
+  // ese manda; si no, se deduce del último consumo del archivo.
+  const statementDue = parsed.statementDueDate ?? ''
+  const billingPeriod = statementDue
+    ? financialMonth(statementDue)
+    :
     kind === 'card' && target.closing_day && target.due_day
       ? financialMonth(
           dueDateFor(
@@ -228,6 +232,11 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
 
   const statementId = id()
   const sourceKey = `${kind}:${target.id}`
+
+  // Un extracto puede traer filas idénticas de verdad —tres avances de 600.000
+  // el mismo día— y la firma las colapsaría en una. Se numera la repetición,
+  // que al ser estable no rompe la detección de duplicados entre archivos.
+  const repeticiones = new Map<string, number>()
   const insertTx = db.prepare(
     `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
        account_id, card_id, statement_id, source, installment, billing_period, fingerprint, created_at)
@@ -240,22 +249,26 @@ async function importarExtracto(contenido: Buffer, nombreArchivo: string, anio: 
 
   db.transaction(() => {
     db.prepare(
-      `INSERT INTO statements (id, kind, card_id, account_id, file_name, period, total_cents, rows_count, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+      `INSERT INTO statements (id, kind, card_id, account_id, file_name, period, due_date, total_cents, rows_count, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
     ).run(
       statementId, kind,
       kind === 'card' ? target.id : null,
       kind === 'card' ? null : target.id,
-      nombreArchivo, billingPeriod || parsed.rows[0].date.slice(0, 7), now(),
+      nombreArchivo, billingPeriod || parsed.rows[0].date.slice(0, 7), statementDue, now(),
     )
 
     for (const r of parsed.rows) {
+      const clave = `${r.date}|${r.description.toLowerCase()}|${r.amountCents}`
+      const ocurrencia = repeticiones.get(clave) ?? 0
+      repeticiones.set(clave, ocurrencia + 1)
+
       const res = insertTx.run(
         id(), r.date, r.description, r.merchant, r.amountCents, r.currency, r.category,
         metodo,
         kind === 'card' ? null : target.id,
         kind === 'card' ? target.id : null,
-        statementId, r.installment, billingPeriod, fingerprint(r, sourceKey), now(),
+        statementId, r.installment, billingPeriod, fingerprint(r, sourceKey, ocurrencia), now(),
       )
       if (res.changes) {
         nuevos++
