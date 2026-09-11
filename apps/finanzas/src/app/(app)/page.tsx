@@ -11,6 +11,7 @@ import {
   MONTH_GROUP_ORDER,
   type MonthGroup,
   type MonthItem,
+  type Remesa,
 } from '@/lib/queries'
 import {
   saveTransactionAction,
@@ -68,6 +69,8 @@ export default function Tablero() {
           </p>
         </div>
       </section>
+
+      {mes.remesa ? <BloqueRemesa remesa={mes.remesa} /> : null}
 
       <Panel
         title={`Pagos de ${formatPeriod(mes.period)}`}
@@ -400,5 +403,51 @@ function MovimientoRapido({
         </div>
       </form>
     </Panel>
+  )
+}
+
+
+/**
+ * Lo que sobra del sueldo argentino después de pagar lo de Argentina.
+ *
+ * Va desglosado y no como un ingreso más de la lista: es plata que todavía no
+ * cruzó, que depende de que allá entre el sueldo y de a cuánto se consiga
+ * cambiarla. Mostrar sólo el total en pesos colombianos escondería las dos
+ * cosas que pueden fallar.
+ */
+function BloqueRemesa({ remesa }: { remesa: Remesa }) {
+  if (remesa.enRojo) {
+    return (
+      <section className="card border-bad/50">
+        <p className="text-xs uppercase tracking-wide text-muted">Desde Argentina</p>
+        <p className="mt-1 text-lg font-semibold text-bad">Este mes no sobra nada para mandar</p>
+        <p className="mt-1 text-sm text-muted">
+          El sueldo de allá ({formatMoney(remesa.ingresoCents, 'ARS')}) no alcanza a cubrir los compromisos de
+          allá ({formatMoney(remesa.compromisosCents, 'ARS')}). Faltan{' '}
+          {formatMoney(-remesa.remanenteCents, 'ARS')}, así que el mes de acá tiene que salir del ingreso de acá.
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="card">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs uppercase tracking-wide text-muted">Desde Argentina</p>
+        {remesa.fx ? (
+          <p className="text-xs text-muted">a COP {remesa.fx} por ARS</p>
+        ) : (
+          <p className="text-xs text-warn">falta cargar el tipo de cambio en Config</p>
+        )}
+      </div>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-good">
+        {remesa.fx ? formatMoney(remesa.enBaseCents, 'COP') : formatMoney(remesa.remanenteCents, 'ARS')}
+      </p>
+      <p className="mt-1 text-sm text-muted">
+        Sobran {formatMoney(remesa.remanenteCents, 'ARS')} del sueldo de allá:{' '}
+        {formatMoney(remesa.ingresoCents, 'ARS')} menos {formatMoney(remesa.compromisosCents, 'ARS')} de
+        compromisos.
+      </p>
+    </section>
   )
 }

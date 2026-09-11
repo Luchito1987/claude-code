@@ -32,7 +32,7 @@ import {
   type Projection,
 } from './cashflow'
 import { NON_VARIABLE_CATEGORIES, type UserRule } from './categories'
-import { MONEDA_BASE, type Moneda } from './money'
+import { convertir, MONEDA_BASE, type Moneda } from './money'
 
 export interface Account {
   id: string
@@ -832,6 +832,34 @@ export interface MonthSummary {
   /** Gasto variable ya hecho en el mes, por rubro. No entra en `pendingCents`. */
   variable: VariableSpend[]
   variableCents: number
+  /** Lo que sobra del otro país y puede cruzar. Sólo en la vista que lo recibe. */
+  remesa?: Remesa
+}
+
+/**
+ * Lo que queda del sueldo argentino después de pagar lo que se paga en
+ * Argentina, visto desde Colombia.
+ *
+ * Es el puente entre los dos bolsillos: el sueldo entra allá, allá se pagan las
+ * cuotas y los gastos de las chicas, y recién lo que sobra puede cruzar. Se
+ * calcula sobre el piso del ingreso y sobre los compromisos completos del mes,
+ * que es la lectura prudente: si con ese número alcanza, alcanza.
+ */
+export interface Remesa {
+  /** Lo que sobra allá, en pesos argentinos. */
+  remanenteCents: number
+  /** Ese mismo remanente en pesos colombianos, si hay cotización cargada. */
+  enBaseCents: number
+  /** Ingreso y compromisos que dan el remanente, para poder mostrarlo desglosado. */
+  ingresoCents: number
+  compromisosCents: number
+  /** Cuántos COP por ARS se usaron. Cero si todavía no se cargó ninguno. */
+  fx: number
+  /**
+   * Los compromisos de allá se comen el sueldo de allá: no sobra nada para
+   * mandar, y la vida de acá tiene que salir del ingreso de acá.
+   */
+  enRojo: boolean
 }
 
 /**
@@ -1060,6 +1088,39 @@ export function monthSummary(today: ISODate = todayISO(), currency: Moneda = MON
     incomeCents: monthlyIncomeCents(currency),
     variable,
     variableCents: variable.reduce((a, v) => a + v.cents, 0),
+    remesa: currency === 'COP' ? remesaDesdeArgentina(today) : undefined,
+  }
+}
+
+/**
+ * El remanente del mes argentino traído a pesos colombianos.
+ *
+ * Vale la pena verlo desde Colombia porque es plata con la que se cuenta acá,
+ * pero que depende de dos cosas que pasan allá: que el sueldo entre y que las
+ * cuotas no se lo lleven entero. Por eso se muestra desglosado y no como un
+ * ingreso más: el día que el remanente da negativo, lo que hay que mirar es el
+ * otro bolsillo.
+ */
+export function remesaDesdeArgentina(today: ISODate = todayISO()): Remesa | undefined {
+  const ingresoCents = monthlyIncomeCents('ARS')
+  const items = monthItems(financialMonth(today), today, 'ARS')
+  // No se descuenta sólo lo impago: el mes completo es lo que hay que cubrir
+  // allá antes de que sobre algo, se haya pagado ya o no.
+  const compromisosCents = items.reduce((a, i) => a + i.cents, 0)
+
+  // Sin nada cargado del lado argentino no hay remesa que mostrar, y una línea
+  // en cero sólo agrega ruido al tablero.
+  if (!ingresoCents && !compromisosCents) return undefined
+
+  const remanenteCents = ingresoCents - compromisosCents
+  const fx = fxArsCop()
+  return {
+    remanenteCents,
+    enBaseCents: remanenteCents > 0 ? convertir(remanenteCents, 'ARS', 'COP', fx) : 0,
+    ingresoCents,
+    compromisosCents,
+    fx,
+    enRojo: remanenteCents <= 0,
   }
 }
 
