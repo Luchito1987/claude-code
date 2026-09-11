@@ -1,0 +1,38 @@
+{
+  "name": "finanzas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3100",
+    "build": "next build",
+    "start": "next start --port ${PORT:-3100}",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "seed": "tsx src/db/seed.ts",
+    "import": "tsx scripts/import-cli.ts",
+    "url": "tsx scripts/url.ts",
+    "recategorize": "tsx scripts/recategorize.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "exceljs": "^4.4.0",
+    "next": "^14.2.15",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

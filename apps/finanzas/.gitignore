@@ -1,0 +1,14 @@
+node_modules
+.next
+.env
+.env.local
+data/
+*.db
+*.db-journal
+
+# Documentos personales: facturas, extractos, resúmenes. Nunca van al repo.
+documentos/*
+!documentos/LEEME.md
+*.pdf
+*.xlsx
+!tests/**/*.xlsx

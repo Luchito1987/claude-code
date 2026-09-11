@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prototipos de frontend — Finanzas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#111213;color:#f2f2f0;}
+  iframe{background:#fff;}
+</style>
+</head>
+<body class="min-h-screen p-6">
+  <h1 class="text-xl font-semibold">Propuestas de frontend — con qué te quedás</h1>
+  <p class="mt-1 text-sm text-white/60 max-w-2xl">
+    Tres direcciones distintas para la app, mismos datos de ejemplo en las tres. Elegí una,
+    combiná partes de varias, o pedí ajustes — recién ahí se empieza a implementar sobre el código real.
+  </p>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <div>
+      <div class="mb-2 flex items-baseline justify-between">
+        <h2 class="text-sm font-semibold">A · Aurora</h2>
+        <a href="a-aurora.html" target="_blank" class="text-xs text-blue-400 hover:underline">abrir en pestaña completa ↗</a>
+      </div>
+      <p class="mb-2 text-xs text-white/50">Claro, tipo Copilot Money. Hero number grande, cards suaves, mucho aire.</p>
+      <iframe src="a-aurora.html" class="h-[700px] w-full rounded-xl border border-white/10"></iframe>
+    </div>
+    <div>
+      <div class="mb-2 flex items-baseline justify-between">
+        <h2 class="text-sm font-semibold">B · Ledger Pro</h2>
+        <a href="b-ledgerpro.html" target="_blank" class="text-xs text-blue-400 hover:underline">abrir en pestaña completa ↗</a>
+      </div>
+      <p class="mb-2 text-xs text-white/50">Oscuro y denso, tipo Monarch Money. Sidebar completo, bento grid, más datos por pantalla.</p>
+      <iframe src="b-ledgerpro.html" class="h-[700px] w-full rounded-xl border border-white/10"></iframe>
+    </div>
+    <div>
+      <div class="mb-2 flex items-baseline justify-between">
+        <h2 class="text-sm font-semibold">C · Envelope</h2>
+        <a href="c-envelope.html" target="_blank" class="text-xs text-blue-400 hover:underline">abrir en pestaña completa ↗</a>
+      </div>
+      <p class="mb-2 text-xs text-white/50">Cálido, tipo YNAB. Categorías como sobres de presupuesto, foco en "cuánto me queda".</p>
+      <iframe src="c-envelope.html" class="h-[700px] w-full rounded-xl border border-white/10"></iframe>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+services:
+  finanzas:
+    build: .
+    ports:
+      - '3100:3100'
+    volumes:
+      # La base vive acá: sin este volumen se pierde todo al recrear el contenedor.
+      - finanzas-data:/data
+    environment:
+      TZ: America/Argentina/Buenos_Aires
+      # Se entra desde el celular por http://192.168.x.x, sin HTTPS. Una cookie
+      # Secure el navegador la descarta en HTTP plano y el login rebota para
+      # siempre. Ponelo en true el día que haya certificado.
+      COOKIE_SECURE: 'false'
+    restart: unless-stopped
+
+volumes:
+  finanzas-data:

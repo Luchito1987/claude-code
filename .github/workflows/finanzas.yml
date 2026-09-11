@@ -1,0 +1,67 @@
+# La app de finanzas vive en apps/finanzas con su propio package.json y npm, así
+# que el CI del repo —que mira src/ y web/ con bun— no la toca. Este workflow
+# corre lo suyo, y solo cuando algo de esa carpeta cambia.
+name: Finanzas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/finanzas/**'
+      - '.github/workflows/finanzas.yml'
+  pull_request:
+    paths:
+      - 'apps/finanzas/**'
+      - '.github/workflows/finanzas.yml'
+
+concurrency:
+  group: finanzas-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/finanzas
+
+jobs:
+  check:
+    name: Tests y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/finanzas/package-lock.json
+
+      # `npm ci` y no `install`: si el lock quedó desactualizado, que falle acá.
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # El build de producción es donde aparecen los problemas que el modo
+      # desarrollo esconde: el rastreo de archivos de `output: standalone` deja
+      # afuera lo que se carga por ruta en tiempo de ejecución.
+      - name: Build de producción
+        run: npm run build
+
+      # Los dos que ya se escaparon una vez: el .wasm del OCR y el worker de
+      # pdfjs. Si vuelven a quedar afuera, mejor enterarse acá que en el celular.
+      - name: Verificar que los archivos cargados en runtime viajen al build
+        run: |
+          for archivo in \
+            .next/standalone/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs \
+            .next/standalone/node_modules/pdfjs-dist/standard_fonts/FoxitFixed.pfb
+          do
+            if [ ! -f "$archivo" ]; then
+              echo "Falta en el build: $archivo"
+              exit 1
+            fi
+            echo "OK: $archivo"
+          done
