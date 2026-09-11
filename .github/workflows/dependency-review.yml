@@ -1,7 +1,19 @@
 name: Dependency Review
 
+# Revisa las dependencias que un PR agrega o cambia, así que corre sólo cuando
+# se toca algún manifiesto.
+#
+# Requiere que el repositorio tenga habilitado "Dependency graph" en
+# Settings → Code security and analysis; sin eso la acción termina con
+# "Dependency review is not supported on this repository", que es una opción del
+# repositorio y no algo que el PR pueda arreglar.
 on:
   pull_request:
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - 'bun.lock'
+      - '.github/workflows/dependency-review.yml'
 
 permissions:
   contents: read
