@@ -1,0 +1,26 @@
+# Caddy resuelve el certificado solo: pide uno a Let's Encrypt la primera vez
+# que alguien entra y lo renueva antes de que venza, sin cron ni recordatorios.
+{$DOMINIO} {
+	reverse_proxy finanzas:3100
+
+	# La app corre detrás del proxy: sin esto vería todas las visitas viniendo
+	# de la IP interna del contenedor.
+	header {
+		# Un año de HSTS: una vez que el navegador la vio por HTTPS, no vuelve a
+		# intentar por HTTP ni aunque se escriba a mano.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	encode gzip
+
+	log {
+		output file /data/acceso.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}

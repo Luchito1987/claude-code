@@ -1,0 +1,54 @@
+# Construye la imagen de la app y la publica.
+#
+# El servidor donde corre es una e2-micro con 1 GB de RAM: ahí `next build` y la
+# compilación de better-sqlite3 desde fuente no entran. Se compila acá, donde
+# sobra memoria, y la máquina sólo baja la imagen ya hecha.
+name: Imagen finanzas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/finanzas/**'
+      - '.github/workflows/imagen-finanzas.yml'
+  workflow_dispatch:
+
+env:
+  IMAGEN: ghcr.io/${{ github.repository_owner }}/finanzas
+
+jobs:
+  publicar:
+    name: Construir y publicar
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Entrar al registro de GitHub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # El nombre del repositorio en ghcr va siempre en minúsculas, y el del
+      # dueño acá no lo está: sin esto el push falla con "invalid reference".
+      - name: Normalizar el nombre de la imagen
+        id: nombre
+        run: echo "ref=$(echo '${{ env.IMAGEN }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Construir y subir
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/finanzas
+          push: true
+          tags: |
+            ${{ steps.nombre.outputs.ref }}:latest
+            ${{ steps.nombre.outputs.ref }}:${{ github.sha }}
+          # La caché entre corridas evita recompilar better-sqlite3 cada vez.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

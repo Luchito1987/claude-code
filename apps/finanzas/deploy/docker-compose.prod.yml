@@ -1,0 +1,50 @@
+# La app publicada en internet.
+#
+# Difiere del compose de casa en tres cosas: la imagen viene hecha en vez de
+# construirse acá (en 1 GB de RAM no entra un `next build`), delante hay un
+# proxy que resuelve el certificado, y la cookie de sesión viaja sólo por HTTPS.
+
+services:
+  finanzas:
+    image: ${IMAGEN:-ghcr.io/luchito1987/finanzas:latest}
+    # Sin puertos publicados: a la app se llega únicamente por el proxy, así el
+    # 3100 no queda expuesto en la IP pública sin cifrar.
+    expose:
+      - '3100'
+    volumes:
+      - finanzas-data:/data
+    environment:
+      TZ: ${TZ:-America/Bogota}
+      # Ahora sí hay certificado: la cookie de sesión no debe viajar en claro.
+      COOKIE_SECURE: 'true'
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      DOMINIO: ${DOMINIO}
+    restart: unless-stopped
+    depends_on:
+      - finanzas
+
+  # Mira cada cinco minutos si hay una imagen nueva publicada y, si la hay,
+  # recrea el contenedor con ella. Es lo que hace que un push al repositorio
+  # termine en la app actualizada sin que nadie entre al servidor.
+  actualizador:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup --include-restarting finanzas-finanzas-1
+    restart: unless-stopped
+
+volumes:
+  finanzas-data:
+  caddy-data:
+  caddy-config:
