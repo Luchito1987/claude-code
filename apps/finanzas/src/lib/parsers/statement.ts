@@ -9,7 +9,7 @@
 
 import { createHash } from 'node:crypto'
 import { parseCsv } from './csv'
-import { toCents } from '../money'
+import { MONEDA_BASE, toCents, type Moneda } from '../money'
 import { categorize, extractMerchant, isRappi, mapCategoryName, type UserRule } from '../categories'
 import { compare, type ISODate } from '../dates'
 import { isBancolombiaCsv, parseBancolombia } from './bancolombia'
@@ -174,6 +174,11 @@ export interface ParseOptions {
    *               la columna de categoría, si existe, la puso el usuario.
    */
   kind: 'card' | 'account' | 'gastos'
+  /**
+   * Moneda de los movimientos: la de la cuenta o tarjeta a la que se importan.
+   * Un extracto no dice en qué moneda está, pero la cuenta que lo emitió sí.
+   */
+  currency?: Moneda
   userRules?: UserRule[]
   fallbackYear?: number
   /** Identifica el origen para el fingerprint anti-duplicados. */
@@ -267,7 +272,7 @@ export function parseRows(rows: string[][], opts: ParseOptions): ParseResult | n
         description,
         cents,
         installment: cols.installment !== -1 ? (r[cols.installment] ?? '').trim() : '',
-        currency: cols.currency !== -1 ? normalizeCurrency(r[cols.currency]) : 'ARS',
+        currency: cols.currency !== -1 ? normalizeCurrency(r[cols.currency], opts.currency ?? MONEDA_BASE) : (opts.currency ?? MONEDA_BASE),
         sheetCategory: cols.category !== -1 ? (r[cols.category] ?? '').trim() : '',
         raw: r.join(' | '),
         opts,
@@ -313,7 +318,7 @@ function parseFreeText(text: string, opts: ParseOptions): ParseResult {
         description: rest,
         cents,
         installment: cuota ? `${cuota[1]}/${cuota[2]}` : '',
-        currency: 'ARS',
+        currency: opts.currency ?? MONEDA_BASE,
         raw: line.trim(),
         opts,
       }),
@@ -329,10 +334,17 @@ function parseFreeText(text: string, opts: ParseOptions): ParseResult {
   }
 }
 
-function normalizeCurrency(raw: string | undefined): string {
+/**
+ * Qué moneda declara la columna del archivo, cuando la trae. Si no dice nada
+ * reconocible manda la de la cuenta destino: el extracto de una caja de ahorro
+ * colombiana está en pesos colombianos aunque no lo aclare en ningún renglón.
+ */
+function normalizeCurrency(raw: string | undefined, porDefecto: Moneda): string {
   const s = (raw ?? '').toUpperCase()
   if (s.includes('USD') || s.includes('DOLAR') || s.includes('U$S')) return 'USD'
-  return 'ARS'
+  if (s.includes('COP') || s.includes('COL')) return 'COP'
+  if (s.includes('ARS') || s.includes('AR$')) return 'ARS'
+  return porDefecto
 }
 
 function buildRow(args: {

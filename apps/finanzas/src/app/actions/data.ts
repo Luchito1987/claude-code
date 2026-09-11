@@ -13,9 +13,11 @@ import {
   listUserRules,
   markBillPaid,
   markMonthItemPaid,
+  setFxArsCop,
   setSetting,
   updateBillAmount,
 } from '@/lib/queries'
+import { monedaActual, setPaisPorDefecto, setVista } from '@/lib/vista'
 import { financialMonth } from '@/lib/dates'
 
 function requireUser() {
@@ -51,7 +53,7 @@ export async function saveAccountAction(form: FormData): Promise<void> {
   } else {
     db.prepare(
       'INSERT INTO accounts (id, name, kind, currency, balance_cents, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(id(), name, str(form, 'kind') || 'caja_ahorro', 'ARS', toCents(str(form, 'balance')), now())
+    ).run(id(), name, str(form, 'kind') || 'caja_ahorro', monedaActual(), toCents(str(form, 'balance')), now())
   }
   revalidatePath('/config')
   revalidatePath('/')
@@ -90,7 +92,7 @@ export async function saveCardAction(form: FormData): Promise<void> {
     db.prepare(
       `INSERT INTO cards (id, name, issuer, closing_day, due_day, limit_cents, match_pattern, currency)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id(), ...args, 'ARS')
+    ).run(id(), ...args, monedaActual())
   }
   revalidatePath('/config')
   revalidatePath('/')
@@ -253,22 +255,31 @@ export async function saveIncomeAction(form: FormData): Promise<void> {
   const existing = str(form, 'id')
   const name = str(form, 'name')
   if (!name) return
+  const nominal = cents(form, 'amount')
+  // Sin piso declarado, el ingreso se toma entero: es el sueldo que se cobra
+  // completo y en fecha. Un piso mayor al nominal sería un error de carga.
+  const piso = Math.min(cents(form, 'floor') || nominal, nominal)
+  const moneda = str(form, 'currency') === 'ARS' ? 'ARS' : 'COP'
+
   const args = [
     name,
     str(form, 'owner'),
-    cents(form, 'amount'),
+    nominal,
+    piso,
+    moneda,
     Math.min(31, Math.max(1, int(form, 'day_of_month', 1))),
     form.get('active') ? 1 : 0,
   ] as const
 
   if (existing) {
-    db.prepare('UPDATE incomes SET name = ?, owner = ?, amount_cents = ?, day_of_month = ?, active = ? WHERE id = ?').run(
-      ...args,
-      existing,
-    )
+    db.prepare(
+      `UPDATE incomes SET name = ?, owner = ?, amount_cents = ?, floor_cents = ?, currency = ?,
+       day_of_month = ?, active = ? WHERE id = ?`,
+    ).run(...args, existing)
   } else {
     db.prepare(
-      'INSERT INTO incomes (id, name, owner, amount_cents, day_of_month, active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      `INSERT INTO incomes (id, name, owner, amount_cents, floor_cents, currency, day_of_month, active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id(), ...args, now())
   }
   revalidatePath('/config')
@@ -343,13 +354,14 @@ export async function saveTransactionAction(form: FormData): Promise<void> {
     db.prepare(
       `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category,
        method, account_id, card_id, source, created_at)
-       VALUES (?, ?, ?, ?, ?, 'ARS', ?, ?, ?, ?, 'manual', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?)`,
     ).run(
       id(),
       str(form, 'date') || todayISO(),
       description,
       extractMerchant(description),
       amount,
+      monedaActual(),
       category,
       method,
       str(form, 'account_id') || null,
@@ -439,5 +451,35 @@ export async function toggleMonthItemPaidAction(form: FormData): Promise<void> {
     cents(form, 'amount'),
     str(form, 'paid') === '1',
   )
+  revalidatePath('/')
+}
+
+// ------------------------------------------------------------------ vista
+
+export async function setVistaAction(form: FormData): Promise<void> {
+  requireUser()
+  const codigo = String(form.get('pais') ?? '')
+  if (codigo !== 'CO' && codigo !== 'AR') return
+  setVista(codigo)
+  // La vista cambia lo que muestra cada pantalla, no sólo la actual.
+  revalidatePath('/', 'layout')
+}
+
+export async function setPaisPorDefectoAction(form: FormData): Promise<void> {
+  requireUser()
+  const codigo = String(form.get('pais_default') ?? '')
+  if (codigo !== 'CO' && codigo !== 'AR') return
+  setPaisPorDefecto(codigo)
+  revalidatePath('/config')
+}
+
+export async function setFxAction(form: FormData): Promise<void> {
+  requireUser()
+  // El tipo de cambio se escribe como "0,28" o "0.28": cuántos COP vale un ARS.
+  const crudo = String(form.get('fx') ?? '').trim().replace(',', '.')
+  const valor = Number(crudo)
+  if (!Number.isFinite(valor) || valor <= 0) return
+  setFxArsCop(valor)
+  revalidatePath('/config')
   revalidatePath('/')
 }

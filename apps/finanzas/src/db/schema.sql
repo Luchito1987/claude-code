@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,
   kind          TEXT NOT NULL DEFAULT 'caja_ahorro',
-  currency      TEXT NOT NULL DEFAULT 'ARS',
+  currency      TEXT NOT NULL DEFAULT 'COP',
   balance_cents INTEGER NOT NULL DEFAULT 0,
   updated_at    TEXT NOT NULL
 );
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS cards (
   closing_day INTEGER NOT NULL DEFAULT 25,
   due_day     INTEGER NOT NULL DEFAULT 5,
   limit_cents INTEGER NOT NULL DEFAULT 0,
-  currency    TEXT NOT NULL DEFAULT 'ARS',
+  currency    TEXT NOT NULL DEFAULT 'COP',
   -- Cómo se llama el pago de esta tarjeta en el extracto de la cuenta. La Visa
   -- de Bancolombia se paga como "PAGO SUC VIRT TC VISA" y la Falabella como
   -- "PAGO PSE BANCO FALABELLA S A": sin esto no hay forma de saber a qué
@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS services (
   -- paga como "PAGO SV EMPRESA DE ENERGIA AI": ni el nombre ni el importe
   -- coinciden, así que sin esto no hay forma de cruzarlos.
   match_pattern         TEXT NOT NULL DEFAULT '',
+  currency              TEXT NOT NULL DEFAULT 'COP',
   created_at            TEXT NOT NULL
 );
 
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS loans (
   installments_paid  INTEGER NOT NULL DEFAULT 0,
   first_due_date     TEXT NOT NULL,
   rate_annual        REAL NOT NULL DEFAULT 0,
+  currency           TEXT NOT NULL DEFAULT 'COP',
   active             INTEGER NOT NULL DEFAULT 1,
   created_at         TEXT NOT NULL,
   -- Cómo aparece la cuota en el extracto ("PAGO CREDITO SUC VIRTUAL").
@@ -102,7 +104,15 @@ CREATE TABLE IF NOT EXISTS incomes (
   id           TEXT PRIMARY KEY,
   name         TEXT NOT NULL,
   owner        TEXT NOT NULL DEFAULT '',
+  -- Lo que corresponde cobrar: el sueldo nominal, completo y en fecha.
   amount_cents INTEGER NOT NULL DEFAULT 0,
+  -- El piso: lo que entra seguro incluso en un mal mes. Un sueldo que se cobra
+  -- entero y puntual lleva el mismo valor en los dos campos; uno que a veces
+  -- llega tarde o en partes lleva acá lo que nunca falta. La proyección usa
+  -- este número y no el de arriba: si dice que el mes cierra, cierra. Lo que
+  -- entre por encima es margen, no algo con lo que ya se contaba.
+  floor_cents  INTEGER NOT NULL DEFAULT 0,
+  currency     TEXT NOT NULL DEFAULT 'COP',
   day_of_month INTEGER NOT NULL DEFAULT 1,
   active       INTEGER NOT NULL DEFAULT 1,
   created_at   TEXT NOT NULL
@@ -132,7 +142,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   description  TEXT NOT NULL,
   merchant     TEXT NOT NULL DEFAULT '',
   amount_cents INTEGER NOT NULL,           -- negativo = gasto, positivo = ingreso
-  currency     TEXT NOT NULL DEFAULT 'ARS',
+  currency     TEXT NOT NULL DEFAULT 'COP',
   category     TEXT NOT NULL DEFAULT 'otros',
   method       TEXT NOT NULL DEFAULT 'debito', -- debito | credito | efectivo | transferencia
   account_id   TEXT REFERENCES accounts(id) ON DELETE SET NULL,

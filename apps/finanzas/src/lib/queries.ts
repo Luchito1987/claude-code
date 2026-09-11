@@ -32,6 +32,7 @@ import {
   type Projection,
 } from './cashflow'
 import { NON_VARIABLE_CATEGORIES, type UserRule } from './categories'
+import { MONEDA_BASE, type Moneda } from './money'
 
 export interface Account {
   id: string
@@ -103,7 +104,11 @@ export interface Income {
   id: string
   name: string
   owner: string
+  /** Lo que corresponde cobrar. */
   amount_cents: number
+  /** Lo que entra seguro hasta en un mal mes; es el número con el que se proyecta. */
+  floor_cents: number
+  currency: Moneda
   day_of_month: number
   active: number
 }
@@ -140,34 +145,57 @@ export interface RappiOrderRow {
 
 // ---------------------------------------------------------------- lecturas
 
-export const listAccounts = (): Account[] =>
-  getDb().prepare('SELECT * FROM accounts ORDER BY name').all() as Account[]
+/*
+ * Los listados aceptan una moneda para quedarse con un solo bolsillo. Sin ella
+ * devuelven todo, que es lo que quiere Configuración: ahí se administran las
+ * cuentas de los dos países a la vez.
+ */
+const filtroMoneda = (currency?: Moneda) => (currency ? 'WHERE currency = ?' : '')
+const argsMoneda = (currency?: Moneda) => (currency ? [currency] : [])
 
-export const listCards = (): Card[] =>
-  getDb().prepare('SELECT * FROM cards ORDER BY name').all() as Card[]
-
-export const listServices = (onlyActive = false): Service[] =>
+export const listAccounts = (currency?: Moneda): Account[] =>
   getDb()
-    .prepare(`SELECT * FROM services ${onlyActive ? 'WHERE active = 1' : ''} ORDER BY due_day, name`)
-    .all() as Service[]
+    .prepare(`SELECT * FROM accounts ${filtroMoneda(currency)} ORDER BY name`)
+    .all(...argsMoneda(currency)) as Account[]
 
-export const listLoans = (): Loan[] =>
-  getDb().prepare('SELECT * FROM loans ORDER BY active DESC, name').all() as Loan[]
+export const listCards = (currency?: Moneda): Card[] =>
+  getDb()
+    .prepare(`SELECT * FROM cards ${filtroMoneda(currency)} ORDER BY name`)
+    .all(...argsMoneda(currency)) as Card[]
 
-export const listIncomes = (): Income[] =>
-  getDb().prepare('SELECT * FROM incomes ORDER BY day_of_month').all() as Income[]
+export const listServices = (onlyActive = false, currency?: Moneda): Service[] => {
+  const filtros = [onlyActive ? 'active = 1' : '', currency ? 'currency = ?' : ''].filter(Boolean)
+  return getDb()
+    .prepare(
+      `SELECT * FROM services ${filtros.length ? `WHERE ${filtros.join(' AND ')}` : ''} ORDER BY due_day, name`,
+    )
+    .all(...(currency ? [currency] : [])) as Service[]
+}
+
+export const listLoans = (currency?: Moneda): Loan[] =>
+  getDb()
+    .prepare(`SELECT * FROM loans ${filtroMoneda(currency)} ORDER BY active DESC, name`)
+    .all(...argsMoneda(currency)) as Loan[]
+
+export const listIncomes = (currency?: Moneda): Income[] =>
+  getDb()
+    .prepare(`SELECT * FROM incomes ${filtroMoneda(currency)} ORDER BY day_of_month`)
+    .all(...argsMoneda(currency)) as Income[]
 
 export const listUserRules = (): UserRule[] =>
   getDb().prepare('SELECT pattern, category, priority FROM category_rules ORDER BY priority').all() as UserRule[]
 
-export function listBills(period?: string): Bill[] {
+export function listBills(period?: string, currency?: Moneda): Bill[] {
+  // La moneda de una factura es la del servicio que la emite: el recibo de la
+  // luz de Barranquilla no cambia de moneda porque se lo mire desde otra vista.
+  const filtros = [period ? 'b.period = ?' : '', currency ? 's.currency = ?' : ''].filter(Boolean)
   const sql = `
     SELECT b.*, s.name AS name, s.category AS category
     FROM bills b JOIN services s ON s.id = b.service_id
-    ${period ? 'WHERE b.period = ?' : ''}
+    ${filtros.length ? `WHERE ${filtros.join(' AND ')}` : ''}
     ORDER BY b.due_date, s.name`
-  const stmt = getDb().prepare(sql)
-  return (period ? stmt.all(period) : stmt.all()) as Bill[]
+  const args = [period, currency].filter((v): v is string => Boolean(v))
+  return getDb().prepare(sql).all(...args) as Bill[]
 }
 
 export function listBillsBetween(from: ISODate, to: ISODate): Bill[] {
@@ -233,18 +261,69 @@ export const horizonWeeks = (): number => Number(getSetting('horizon_weeks', '8'
 
 // ---------------------------------------------------------------- derivadas
 
-export function totalCashCents(): number {
+export function totalCashCents(currency: Moneda = MONEDA_BASE): number {
   const row = getDb()
-    .prepare("SELECT COALESCE(SUM(balance_cents), 0) AS total FROM accounts WHERE currency = 'ARS'")
-    .get() as { total: number }
+    .prepare('SELECT COALESCE(SUM(balance_cents), 0) AS total FROM accounts WHERE currency = ?')
+    .get(currency) as { total: number }
   return row.total
 }
 
-export function monthlyIncomeCents(): number {
+/**
+ * Con qué ingreso mensual se proyecta, en una moneda dada.
+ *
+ * Suma el piso de cada ingreso, no lo que corresponde cobrar: un sueldo que
+ * llega tarde y en partes vale, para planificar, lo que nunca falta. Proyectar
+ * con el nominal daría un mes que cierra en la pantalla y no cierra en la
+ * cuenta, y justamente en los meses malos, que son los que hay que ver claros.
+ *
+ * `COALESCE(NULLIF(floor_cents, 0), amount_cents)`: un ingreso sin piso
+ * declarado se toma entero, que es el caso del sueldo fijo y puntual.
+ */
+export function monthlyIncomeCents(currency: Moneda = MONEDA_BASE): number {
   const row = getDb()
-    .prepare('SELECT COALESCE(SUM(amount_cents), 0) AS total FROM incomes WHERE active = 1')
-    .get() as { total: number }
+    .prepare(
+      `SELECT COALESCE(SUM(COALESCE(NULLIF(floor_cents, 0), amount_cents)), 0) AS total
+       FROM incomes WHERE active = 1 AND currency = ?`,
+    )
+    .get(currency) as { total: number }
   return row.total
+}
+
+/** Lo que correspondería cobrar, para contrastarlo con el piso. */
+export function monthlyIncomeNominalCents(currency: Moneda = MONEDA_BASE): number {
+  const row = getDb()
+    .prepare('SELECT COALESCE(SUM(amount_cents), 0) AS total FROM incomes WHERE active = 1 AND currency = ?')
+    .get(currency) as { total: number }
+  return row.total
+}
+
+/**
+ * Cuántos pesos colombianos vale un peso argentino, según lo último que cargó
+ * la persona. Cero mientras no haya cargado nada: sin tipo de cambio no se
+ * inventa una conversión.
+ */
+export function fxArsCop(): number {
+  const row = getDb().prepare("SELECT value FROM settings WHERE key = 'fx_ars_cop'").get() as
+    | { value: string }
+    | undefined
+  return row ? Number(row.value) || 0 : 0
+}
+
+export function setFxArsCop(copPorArs: number): void {
+  const db = getDb()
+  db.prepare(
+    "INSERT INTO settings (key, value) VALUES ('fx_ars_cop', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(String(copPorArs))
+  db.prepare(
+    "INSERT INTO settings (key, value) VALUES ('fx_ars_cop_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(new Date().toISOString())
+}
+
+export function fxArsCopAt(): string {
+  const row = getDb().prepare("SELECT value FROM settings WHERE key = 'fx_ars_cop_at'").get() as
+    | { value: string }
+    | undefined
+  return row?.value ?? ''
 }
 
 export function allCardDues(today: ISODate = todayISO(), since: ISODate = today): CardDue[] {
@@ -663,11 +742,15 @@ function paidSet(period: string): Set<string> {
  * Todo lo que hay que pagar en un mes financiero: facturas de servicios,
  * resúmenes de tarjeta que vencen en el mes y cuotas de préstamo.
  */
-export function monthItems(period: string, today: ISODate = todayISO()): MonthItem[] {
+export function monthItems(
+  period: string,
+  today: ISODate = todayISO(),
+  currency: Moneda = MONEDA_BASE,
+): MonthItem[] {
   const pagados = paidSet(period)
   const { start, end } = monthRange(period)
 
-  const facturas: MonthItem[] = listBills(period).map((b) => ({
+  const facturas: MonthItem[] = listBills(period, currency).map((b) => ({
     kind: 'factura' as const,
     group: billGroup(b.category),
     refId: b.id,
@@ -680,8 +763,9 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
     editable: true,
   }))
 
+  const tarjetasDeLaVista = new Set(listCards(currency).map((c) => c.id))
   const tarjetas: MonthItem[] = allCardDues(today, monthRange(period).start)
-    .filter((d) => financialMonth(d.due_date) === period)
+    .filter((d) => financialMonth(d.due_date) === period && tarjetasDeLaVista.has(d.cardId))
     .map((d) => ({
       kind: 'tarjeta' as const,
       group: 'tarjeta' as const,
@@ -700,7 +784,7 @@ export function monthItems(period: string, today: ISODate = todayISO()): MonthIt
    * de pagos; las que ya se saldaron hay que traerlas aparte, porque si no el
    * préstamo desaparecía de la lista justo cuando terminaba de pagarse.
    */
-  const prestamosTodos = listLoans()
+  const prestamosTodos = listLoans(currency)
   const pendientes = pendingLoanInstallments(prestamosTodos, today).filter((c) => c.period === period)
   const saldadas = settledLoanInstallments(prestamosTodos, period).filter(
     (c) => !pendientes.some((p) => p.loanId === c.loanId),
@@ -759,7 +843,7 @@ export interface MonthSummary {
  * en el extracto como un débito más, pero esa plata ya la cuenta el bloque de
  * servicios. Sin excluirlo se cobraba dos veces en el mismo tablero.
  */
-export function variableSpend(period: string): VariableSpend[] {
+export function variableSpend(period: string, currency: Moneda = MONEDA_BASE): VariableSpend[] {
   const { start, end } = monthRange(period)
   const excluidas = NON_VARIABLE_CATEGORIES.map(() => '?').join(', ')
   const rows = getDb()
@@ -767,6 +851,7 @@ export function variableSpend(period: string): VariableSpend[] {
       `SELECT category, SUM(-amount_cents) AS cents
        FROM transactions
        WHERE date BETWEEN ? AND ?
+         AND currency = ?
          AND amount_cents < 0
          AND card_id IS NULL
          AND commitment = ''
@@ -775,7 +860,7 @@ export function variableSpend(period: string): VariableSpend[] {
        HAVING cents > 0
        ORDER BY cents DESC`,
     )
-    .all(start, end, ...NON_VARIABLE_CATEGORIES) as VariableSpend[]
+    .all(start, end, currency, ...NON_VARIABLE_CATEGORIES) as VariableSpend[]
   return rows
 }
 
@@ -951,16 +1036,16 @@ export function monthHistory(period: string, today: ISODate = todayISO()): Month
 }
 
 /** Los tres números de la primera pantalla, más el detalle del mes. */
-export function monthSummary(today: ISODate = todayISO()): MonthSummary {
+export function monthSummary(today: ISODate = todayISO(), currency: Moneda = MONEDA_BASE): MonthSummary {
   const period = financialMonth(today)
   ensureBillsForPeriod(period)
 
-  const items = monthItems(period, today)
+  const items = monthItems(period, today, currency)
   const pendingCents = items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0)
   const paidCents = items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0)
-  const availableCents = totalCashCents()
+  const availableCents = totalCashCents(currency)
   const { start, end } = monthRange(period)
-  const variable = variableSpend(period)
+  const variable = variableSpend(period, currency)
 
   return {
     period,
@@ -972,16 +1057,16 @@ export function monthSummary(today: ISODate = todayISO()): MonthSummary {
     paidCents,
     netCents: availableCents - pendingCents,
     items,
-    incomeCents: monthlyIncomeCents(),
+    incomeCents: monthlyIncomeCents(currency),
     variable,
     variableCents: variable.reduce((a, v) => a + v.cents, 0),
   }
 }
 
 /** Estimación por servicio para los meses que todavía no tienen factura. */
-function serviceEstimates(): Array<{ name: string; cents: number }> {
+function serviceEstimates(currency?: Moneda): Array<{ name: string; cents: number }> {
   const db = getDb()
-  return listServices(true).map((s) => {
+  return listServices(true, currency).map((s) => {
     if (s.expected_amount_cents > 0) return { name: s.name, cents: s.expected_amount_cents }
     const rows = db
       .prepare(
@@ -995,36 +1080,48 @@ function serviceEstimates(): Array<{ name: string; cents: number }> {
   })
 }
 
-export function monthlyProjection(months = 6, today: ISODate = todayISO()): MonthOutlook[] {
+export function monthlyProjection(
+  months = 6,
+  today: ISODate = todayISO(),
+  currency: Moneda = MONEDA_BASE,
+): MonthOutlook[] {
+  const tarjetas = new Set(listCards(currency).map((c) => c.id))
   return monthlyOutlook({
     months: nextMonths(months, financialMonth(today)),
-    bills: listBills().map((b) => ({
+    bills: listBills(undefined, currency).map((b) => ({
       name: b.name,
       period: b.period,
       amount_cents: b.amount_cents,
       estimated: b.estimated,
     })),
-    serviceEstimates: serviceEstimates(),
-    loans: listLoans(),
-    installments: cardInstallments(today),
-    cardDues: unpaidCardDues(today),
-    incomeMonthlyCents: monthlyIncomeCents(),
+    serviceEstimates: serviceEstimates(currency),
+    loans: listLoans(currency),
+    installments: cardInstallments(today).filter((i) => tarjetas.has(i.cardId)),
+    cardDues: unpaidCardDues(today).filter((d) => tarjetas.has(d.cardId)),
+    incomeMonthlyCents: monthlyIncomeCents(currency),
     dailyBurnCents: currentBurnCents(today),
     today,
   })
 }
 
-export function debts(today: ISODate = todayISO()): DebtSummary {
+/**
+ * Las deudas de un solo bolsillo, medidas contra el ingreso de ese mismo
+ * bolsillo. Las cuotas argentinas no se comparan con el sueldo colombiano ni
+ * al revés: cada lado se paga con lo que entra de su lado.
+ */
+export function debts(today: ISODate = todayISO(), currency: Moneda = MONEDA_BASE): DebtSummary {
+  const tarjetas = listCards(currency)
+  const ids = new Set(tarjetas.map((c) => c.id))
   const resumen = debtSummary({
-    cards: listCards().map((c) => ({ id: c.id, name: c.name })),
-    loans: listLoans(),
-    installments: cardInstallments(today),
-    cardDues: unpaidCardDues(today),
-    incomeMonthlyCents: monthlyIncomeCents(),
+    cards: tarjetas.map((c) => ({ id: c.id, name: c.name })),
+    loans: listLoans(currency),
+    installments: cardInstallments(today).filter((i) => ids.has(i.cardId)),
+    cardDues: unpaidCardDues(today).filter((d) => ids.has(d.cardId)),
+    incomeMonthlyCents: monthlyIncomeCents(currency),
     today,
   })
   // El nombre de la entidad no viaja en el módulo de cálculo: se completa acá.
-  const prestamos = listLoans()
+  const prestamos = listLoans(currency)
   return {
     ...resumen,
     loans: resumen.loans.map((l) => ({

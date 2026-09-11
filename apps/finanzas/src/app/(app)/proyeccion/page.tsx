@@ -3,12 +3,14 @@ import { formatDate, formatMonthShort, formatPeriod, monthRange, todayISO } from
 import { formatMoney } from '@/lib/money'
 import { buildProjection, cardInstallments, minBufferCents, monthlyProjection } from '@/lib/queries'
 import { WeeklyChart } from '@/components/WeeklyChart'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
 export default function ProyeccionPage() {
   const today = todayISO()
-  const meses = monthlyProjection(6, today)
+  const moneda = monedaActual()
+  const meses = monthlyProjection(6, today, moneda)
   const cuotas = cardInstallments(today)
   const semanal = buildProjection(today)
   const buffer = minBufferCents()
@@ -23,12 +25,12 @@ export default function ProyeccionPage() {
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Gasto proyectado · 6 meses</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(totalSalidas)}</p>
-          <p className="mt-1 text-xs text-muted">Promedio {formatMoney(Math.round(totalSalidas / meses.length))}/mes</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(totalSalidas, moneda)}</p>
+          <p className="mt-1 text-xs text-muted">Promedio {formatMoney(Math.round(totalSalidas / meses.length), moneda)}/mes</p>
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Ingresos proyectados</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(totalIngresos)}</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(totalIngresos, moneda)}</p>
           <p className="mt-1 text-xs text-muted">Con los ingresos fijos cargados</p>
         </div>
         <div className="card">
@@ -36,7 +38,7 @@ export default function ProyeccionPage() {
           <p
             className={`mt-1 text-2xl font-semibold tabular-nums ${peor.netoCents < 0 ? 'text-bad' : 'text-good'}`}
           >
-            {formatMoney(peor.netoCents)}
+            {formatMoney(peor.netoCents, moneda)}
           </p>
           <p className="mt-1 text-xs text-muted">{formatPeriod(peor.period)}</p>
         </div>
@@ -64,19 +66,19 @@ export default function ProyeccionPage() {
             <tr key={m.period}>
               <td className="td whitespace-nowrap font-medium">{formatMonthShort(m.period)}</td>
               <td className="td text-right tabular-nums">
-                {formatMoney(m.serviciosCents)}
+                {formatMoney(m.serviciosCents, moneda)}
                 {m.serviciosEstimados && <span className="ml-1 text-xs text-muted">est.</span>}
               </td>
-              <td className="td text-right tabular-nums">{formatMoney(m.prestamosCents)}</td>
+              <td className="td text-right tabular-nums">{formatMoney(m.prestamosCents, moneda)}</td>
               <td className="td text-right tabular-nums">
-                {formatMoney(m.tarjetasCents)}
+                {formatMoney(m.tarjetasCents, moneda)}
                 {m.tarjetasEstimadas && <span className="ml-1 text-xs text-muted">est.</span>}
               </td>
-              <td className="td text-right tabular-nums text-muted">{formatMoney(m.variableCents)}</td>
-              <td className="td text-right font-medium tabular-nums">{formatMoney(m.totalCents)}</td>
-              <td className="td text-right tabular-nums text-good">{formatMoney(m.ingresosCents)}</td>
+              <td className="td text-right tabular-nums text-muted">{formatMoney(m.variableCents, moneda)}</td>
+              <td className="td text-right font-medium tabular-nums">{formatMoney(m.totalCents, moneda)}</td>
+              <td className="td text-right tabular-nums text-good">{formatMoney(m.ingresosCents, moneda)}</td>
               <td className={`td text-right font-medium tabular-nums ${m.netoCents < 0 ? 'text-bad' : 'text-good'}`}>
-                {formatMoney(m.netoCents)}
+                {formatMoney(m.netoCents, moneda)}
               </td>
             </tr>
           ))}
@@ -107,7 +109,7 @@ export default function ProyeccionPage() {
                       {formatDate(start)} – {formatDate(end)}
                     </span>
                   </h3>
-                  <span className="text-sm tabular-nums">{formatMoney(m.totalCents)}</span>
+                  <span className="text-sm tabular-nums">{formatMoney(m.totalCents, moneda)}</span>
                 </div>
 
                 <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-ink">
@@ -116,7 +118,7 @@ export default function ProyeccionPage() {
                       key={p.label}
                       className={p.tone}
                       style={{ width: `${(p.cents / m.totalCents) * 100}%` }}
-                      title={`${p.label}: ${formatMoney(p.cents)}`}
+                      title={`${p.label}: ${formatMoney(p.cents, moneda)}`}
                     />
                   ))}
                 </div>
@@ -128,7 +130,7 @@ export default function ProyeccionPage() {
                       {m.detalle.servicios.slice(0, 6).map((s, i) => (
                         <li key={`${s.label}-${i}`} className="flex justify-between gap-2">
                           <span className="truncate">{s.label}</span>
-                          <span className="tabular-nums text-muted">{formatMoney(s.cents)}</span>
+                          <span className="tabular-nums text-muted">{formatMoney(s.cents, moneda)}</span>
                         </li>
                       ))}
                       {!m.detalle.servicios.length && <li className="text-muted">—</li>}
@@ -140,7 +142,7 @@ export default function ProyeccionPage() {
                       {m.detalle.prestamos.map((p, i) => (
                         <li key={`${p.label}-${i}`} className="flex justify-between gap-2">
                           <span className="truncate">{p.label}</span>
-                          <span className="tabular-nums text-muted">{formatMoney(p.cents)}</span>
+                          <span className="tabular-nums text-muted">{formatMoney(p.cents, moneda)}</span>
                         </li>
                       ))}
                       {!m.detalle.prestamos.length && <li className="text-muted">—</li>}
@@ -152,7 +154,7 @@ export default function ProyeccionPage() {
                       {m.detalle.tarjetas.slice(0, 6).map((t, i) => (
                         <li key={`${t.label}-${i}`} className="flex justify-between gap-2">
                           <span className="truncate">{t.label}</span>
-                          <span className="tabular-nums text-muted">{formatMoney(t.cents)}</span>
+                          <span className="tabular-nums text-muted">{formatMoney(t.cents, moneda)}</span>
                         </li>
                       ))}
                       {m.detalle.tarjetas.length > 6 && (
@@ -192,7 +194,7 @@ export default function ProyeccionPage() {
                     {c.number}/{c.total}
                   </Badge>
                 </td>
-                <td className="td text-right tabular-nums">{formatMoney(c.amountCents)}</td>
+                <td className="td text-right tabular-nums">{formatMoney(c.amountCents, moneda)}</td>
               </tr>
             ))}
           </Table>

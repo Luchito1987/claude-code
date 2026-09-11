@@ -21,7 +21,7 @@
  * documento, importe, oficina, C/D, y cuatro vacías.
  */
 
-import { toCents } from '../money'
+import { toCents, MONEDA_BASE } from '../money'
 import { categorize, extractMerchant, type UserRule } from '../categories'
 import type { ISODate } from '../dates'
 import type { ParsedRow, ParseResult } from './statement'
@@ -162,7 +162,7 @@ export function parseBancolombia(text: string, opts: BancolombiaOptions = {}): P
       amountCents: cents,
       category: categorize(description, opts.userRules ?? []),
       installment: '',
-      currency: 'ARS',
+      currency: MONEDA_BASE,
       rappi: false,
       raw: line.trim(),
     })

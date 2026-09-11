@@ -74,7 +74,7 @@ describe('gasto variable del mes', () => {
     description: 'x',
     merchant: '',
     amount_cents: -1000,
-    currency: 'ARS',
+    currency: 'COP',
     category: 'otros',
     method: 'debito',
     account_id: null,
@@ -103,7 +103,7 @@ describe('gasto variable del mes', () => {
     const { q, db } = await load()
     db.prepare(
       `INSERT INTO cards (id, name, issuer, closing_day, due_day, limit_cents, currency)
-       VALUES ('c1', 'Visa', '', 25, 5, 0, 'ARS')`,
+       VALUES ('c1', 'Visa', '', 25, 5, 0, 'COP')`,
     ).run()
     await insertTxs(db, [
       { category: 'supermercado', amount_cents: -50000, card_id: null },

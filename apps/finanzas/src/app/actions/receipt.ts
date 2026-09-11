@@ -12,6 +12,7 @@ import { extractMerchant } from '@/lib/categories'
 import { readImageText } from '@/lib/ocr'
 import { parseReceipt } from '@/lib/parsers/receipt'
 import { listUserRules } from '@/lib/queries'
+import { monedaActual } from '@/lib/vista'
 
 function requireUser() {
   const user = currentUser()
@@ -81,13 +82,14 @@ export async function saveReceiptAction(form: FormData): Promise<void> {
   db.prepare(
     `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category,
      method, account_id, source, receipt_path, created_at)
-     VALUES (?, ?, ?, ?, ?, 'ARS', ?, 'efectivo', ?, 'ticket', ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'efectivo', ?, 'ticket', ?, ?)`,
   ).run(
     id(),
     str(form, 'date') || todayISO(),
     description,
     extractMerchant(description),
     amount,
+    monedaActual(),
     str(form, 'category') || 'otros',
     accountId,
     str(form, 'foto'),

@@ -36,7 +36,7 @@ function movimiento(db: Database.Database, date: string, cents: number, category
   db.prepare(
     `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
        source, fingerprint, created_at)
-     VALUES (?, ?, ?, '', ?, 'ARS', ?, 'debito', 'import', ?, '2026-01-01T00:00:00Z')`,
+     VALUES (?, ?, ?, '', ?, 'COP', ?, 'debito', 'import', ?, '2026-01-01T00:00:00Z')`,
   ).run(`t-${date}-${cents}`, date, `mov ${date}`, cents, category, `fp-${date}-${cents}`)
 }
 
@@ -83,7 +83,7 @@ describe('conciliación de saldos', () => {
   function cuenta(db: Database.Database, id: string, name: string, balanceCents: number): void {
     db.prepare(
       `INSERT INTO accounts (id, name, kind, currency, balance_cents, updated_at)
-       VALUES (?, ?, 'caja_ahorro', 'ARS', ?, '2026-01-01T00:00:00Z')`,
+       VALUES (?, ?, 'caja_ahorro', 'COP', ?, '2026-01-01T00:00:00Z')`,
     ).run(id, name, balanceCents)
   }
 
@@ -91,7 +91,7 @@ describe('conciliación de saldos', () => {
     db.prepare(
       `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
          account_id, source, fingerprint, created_at)
-       VALUES (?, ?, 'mov', '', ?, 'ARS', 'supermercado', 'debito', ?, 'import', ?, '2026-01-01T00:00:00Z')`,
+       VALUES (?, ?, 'mov', '', ?, 'COP', 'supermercado', 'debito', ?, 'import', ?, '2026-01-01T00:00:00Z')`,
     ).run(`t-${accountId}-${date}-${cents}`, date, cents, accountId, `fp-${accountId}-${date}-${cents}`)
   }
 
@@ -159,7 +159,7 @@ describe('plata que se movió en el mes', () => {
     db.prepare(
       `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
          card_id, source, fingerprint, created_at)
-       VALUES ('t-card', '2026-08-06', 'compra', '', -900000, 'ARS', 'supermercado', 'credito',
+       VALUES ('t-card', '2026-08-06', 'compra', '', -900000, 'COP', 'supermercado', 'credito',
                'c1', 'import', 'fp-card', '2026-01-01T00:00:00Z')`,
     ).run()
 

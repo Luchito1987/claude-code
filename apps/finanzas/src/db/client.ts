@@ -21,7 +21,42 @@ const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }
   { table: 'transactions', column: 'commitment', definition: "TEXT NOT NULL DEFAULT ''" },
   { table: 'cards', column: 'match_pattern', definition: "TEXT NOT NULL DEFAULT ''" },
   { table: 'loans', column: 'match_pattern', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'loans', column: 'currency', definition: "TEXT NOT NULL DEFAULT 'COP'" },
+  { table: 'incomes', column: 'currency', definition: "TEXT NOT NULL DEFAULT 'COP'" },
+  { table: 'incomes', column: 'floor_cents', definition: 'INTEGER NOT NULL DEFAULT 0' },
+  { table: 'services', column: 'currency', definition: "TEXT NOT NULL DEFAULT 'COP'" },
 ]
+
+/**
+ * Corrige la moneda de los datos que entraron antes de que la app supiera que
+ * existía más de una.
+ *
+ * El esquema nacía con 'ARS' por defecto, así que todo lo cargado hasta acá
+ * —cuentas de Bancolombia, la tarjeta de Éxito, cada movimiento de esos
+ * extractos— quedó marcado como pesos argentinos siendo colombiano. El importe
+ * nunca estuvo mal; la etiqueta sí, y eso deja de ser cosmético en cuanto
+ * convivan las dos monedas.
+ *
+ * Corre una sola vez y deja constancia: un ARS cargado a conciencia después de
+ * esto es un ARS de verdad y no hay que tocarlo.
+ */
+function migrarMonedaBase(conn: Database.Database): void {
+  const hecha = conn.prepare("SELECT value FROM settings WHERE key = 'moneda_base_migrada'").get() as
+    | { value: string }
+    | undefined
+  if (hecha) return
+
+  for (const tabla of ['accounts', 'cards', 'transactions']) {
+    const columnas = conn.prepare(`PRAGMA table_info(${tabla})`).all() as Array<{ name: string }>
+    if (!columnas.some((c) => c.name === 'currency')) continue
+    conn.prepare(`UPDATE ${tabla} SET currency = 'COP' WHERE currency = 'ARS'`).run()
+  }
+  // Un ingreso sin piso declarado se toma por entero: es el caso del sueldo que
+  // se cobra completo y puntual.
+  conn.prepare('UPDATE incomes SET floor_cents = amount_cents WHERE floor_cents = 0').run()
+
+  conn.prepare("INSERT INTO settings (key, value) VALUES ('moneda_base_migrada', ?)").run(new Date().toISOString())
+}
 
 function migrate(conn: Database.Database): void {
   for (const { table, column, definition } of ADDED_COLUMNS) {
@@ -40,6 +75,7 @@ export function getDb(): Database.Database {
   db.pragma('foreign_keys = ON')
   db.exec(readFileSync(resolve(process.cwd(), 'src/db/schema.sql'), 'utf8'))
   migrate(db)
+  migrarMonedaBase(db)
   return db
 }
 
