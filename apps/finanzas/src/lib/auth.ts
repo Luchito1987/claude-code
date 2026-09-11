@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
 import { getDb, id, now } from '@/db/client'
+import { generarSecreto, verificarCodigo } from './totp'
 
 const COOKIE = 'finz_session'
 const SESSION_DAYS = 30
@@ -125,4 +126,67 @@ export function currentUser(): User | null {
 export function hasUsers(): boolean {
   const row = getDb().prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }
   return row.n > 0
+}
+
+// ------------------------------------------------------------------ 2FA
+
+/**
+ * Si la cuenta tiene el segundo factor activo.
+ *
+ * Se pregunta por id y no por el objeto de sesión porque hace falta saberlo
+ * antes de que haya sesión: en medio del login, con la clave ya verificada.
+ */
+export function totpActivo(userId: string): boolean {
+  const row = getDb().prepare('SELECT totp_enabled FROM users WHERE id = ?').get(userId) as
+    | { totp_enabled: number }
+    | undefined
+  return row?.totp_enabled === 1
+}
+
+export function totpSecreto(userId: string): string {
+  const row = getDb().prepare('SELECT totp_secret FROM users WHERE id = ?').get(userId) as
+    | { totp_secret: string }
+    | undefined
+  return row?.totp_secret ?? ''
+}
+
+/**
+ * Prepara el segundo factor sin activarlo todavía.
+ *
+ * Guarda un secreto nuevo y deja `totp_enabled` en cero. Recién se activa
+ * cuando la persona escribe un código válido: si se activara acá, un QR mal
+ * escaneado la dejaría afuera de su propia cuenta sin manera de volver a
+ * entrar. Regenerar el secreto en cada intento también evita que quede vivo el
+ * de una configuración abandonada a medias.
+ */
+export function prepararTotp(userId: string): string {
+  const secreto = generarSecreto()
+  getDb().prepare('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?').run(secreto, userId)
+  return secreto
+}
+
+/** Activa el segundo factor si el código demuestra que el teléfono quedó bien. */
+export function confirmarTotp(userId: string, codigo: string): boolean {
+  const secreto = totpSecreto(userId)
+  if (!secreto || !verificarCodigo(secreto, codigo)) return false
+  getDb().prepare('UPDATE users SET totp_enabled = 1 WHERE id = ?').run(userId)
+  return true
+}
+
+/**
+ * Apaga el segundo factor, pero sólo con un código válido en la mano.
+ *
+ * Pedirlo para desactivar es lo que impide que alguien que se sentó frente a
+ * una sesión abierta lo saque de un clic y deje la cuenta con la clave sola.
+ */
+export function desactivarTotp(userId: string, codigo: string): boolean {
+  const secreto = totpSecreto(userId)
+  if (!secreto || !verificarCodigo(secreto, codigo)) return false
+  getDb().prepare("UPDATE users SET totp_enabled = 0, totp_secret = '' WHERE id = ?").run(userId)
+  return true
+}
+
+export function verificarTotpDe(userId: string, codigo: string): boolean {
+  const secreto = totpSecreto(userId)
+  return Boolean(secreto) && verificarCodigo(secreto, codigo)
 }

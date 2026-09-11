@@ -10,6 +10,13 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT NOT NULL UNIQUE,
   name          TEXT NOT NULL,
   password_hash TEXT NOT NULL,
+  -- Segundo factor. El secreto se guarda apenas se genera, pero recién cuenta
+  -- cuando totp_enabled pasa a 1: eso ocurre cuando la persona demuestra, con
+  -- un código válido, que el teléfono quedó bien configurado. Sin ese paso,
+  -- activarlo dejaría a alguien afuera de su propia cuenta por un QR mal
+  -- escaneado.
+  totp_secret   TEXT NOT NULL DEFAULT '',
+  totp_enabled  INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL
 );
 

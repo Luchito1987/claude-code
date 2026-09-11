@@ -45,11 +45,34 @@ export function LoginForm({ bootstrap }: { bootstrap: boolean }) {
           autoComplete={bootstrap ? 'new-password' : 'current-password'}
           required
           minLength={bootstrap ? 10 : undefined}
+          defaultValue={state.pideCodigo ? undefined : ''}
         />
         {bootstrap && <p className="mt-1 text-xs text-muted">Mínimo 10 caracteres.</p>}
       </div>
+      {state.pideCodigo && (
+        <div className="rounded-lg border border-brand/40 bg-brand/10 p-3">
+          <label className="label" htmlFor="codigo">
+            Código del teléfono
+          </label>
+          <input
+            id="codigo"
+            name="codigo"
+            className="input tracking-[0.3em]"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9 ]*"
+            maxLength={7}
+            placeholder="000000"
+            autoFocus
+            required
+          />
+          <p className="mt-1 text-xs text-muted">
+            Los seis dígitos que muestra ahora tu app de autenticación. Cambian cada treinta segundos.
+          </p>
+        </div>
+      )}
       {state.error && <p className="text-sm text-bad">{state.error}</p>}
-      <Submit>{bootstrap ? 'Crear usuario y entrar' : 'Entrar'}</Submit>
+      <Submit>{bootstrap ? 'Crear usuario y entrar' : state.pideCodigo ? 'Confirmar' : 'Entrar'}</Submit>
     </form>
   )
 }

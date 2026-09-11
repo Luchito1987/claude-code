@@ -25,6 +25,8 @@ const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }
   { table: 'incomes', column: 'currency', definition: "TEXT NOT NULL DEFAULT 'COP'" },
   { table: 'incomes', column: 'floor_cents', definition: 'INTEGER NOT NULL DEFAULT 0' },
   { table: 'services', column: 'currency', definition: "TEXT NOT NULL DEFAULT 'COP'" },
+  { table: 'users', column: 'totp_secret', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'users', column: 'totp_enabled', definition: 'INTEGER NOT NULL DEFAULT 0' },
 ]
 
 /**
