@@ -19,15 +19,27 @@ import { setFxAction, setPaisPorDefectoAction } from '@/app/actions/data'
 import { monedaActual, paisPorDefecto, PAISES } from '@/lib/vista'
 import { fxArsCop, fxArsCopAt } from '@/lib/queries'
 import { UserForm } from './UserForm'
+import { ConfirmarTotp, DesactivarTotp } from './Seguridad'
+import { prepararTotpAction } from '@/app/actions/auth'
+import { totpActivo, totpSecreto } from '@/lib/auth'
+import { otpauthUrl } from '@/lib/totp'
+import QRCode from 'qrcode'
 
 export const dynamic = 'force-dynamic'
 
-export default function ConfigPage() {
+export default async function ConfigPage() {
   const me = currentUser()
   const accounts = listAccounts()
   const cards = listCards()
   const incomes = listIncomes()
   const moneda = monedaActual()
+  // El secreto existe apenas se pide el alta; `totp_enabled` recién cuando se
+  // confirmó con un código, así que son dos estados distintos y no uno.
+  const totpListo = me ? totpActivo(me.id) : false
+  const secretoTotp = me && !totpListo ? totpSecreto(me.id) : ''
+  const qrTotp = secretoTotp && me
+    ? await QRCode.toDataURL(otpauthUrl(secretoTotp, me.email), { margin: 1, width: 320 })
+    : ''
   const paisDefecto = paisPorDefecto()
   const fx = fxArsCop()
   const rules = getDb().prepare('SELECT id, pattern, category FROM category_rules ORDER BY pattern').all() as Array<{
@@ -242,6 +254,27 @@ export default function ConfigPage() {
           </div>
         ) : (
           <Empty>Sin tarjetas cargadas.</Empty>
+        )}
+      </Panel>
+
+      <Panel
+        title="Seguridad"
+        subtitle="Segundo factor: además de la contraseña, un código que cambia cada treinta segundos en tu teléfono"
+      >
+        {totpListo ? (
+          <DesactivarTotp />
+        ) : secretoTotp ? (
+          <ConfirmarTotp qr={qrTotp} secreto={secretoTotp} />
+        ) : (
+          <form action={prepararTotpAction}>
+            <p className="text-sm text-slate-300">
+              Con el segundo factor activo, saber tu contraseña no alcanza para entrar: hace falta también el
+              teléfono. Es lo que hace que la app pueda estar publicada en internet sin que eso sea un problema.
+            </p>
+            <button type="submit" className="btn-primary mt-3">
+              Configurar en mi teléfono
+            </button>
+          </form>
         )}
       </Panel>
 
