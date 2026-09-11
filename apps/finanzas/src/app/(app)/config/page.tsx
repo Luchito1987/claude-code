@@ -15,6 +15,9 @@ import {
   saveSettingsAction,
 } from '@/app/actions/data'
 import { deleteUserAction } from '@/app/actions/auth'
+import { setFxAction, setPaisPorDefectoAction } from '@/app/actions/data'
+import { monedaActual, paisPorDefecto, PAISES } from '@/lib/vista'
+import { fxArsCop, fxArsCopAt } from '@/lib/queries'
 import { UserForm } from './UserForm'
 
 export const dynamic = 'force-dynamic'
@@ -24,6 +27,9 @@ export default function ConfigPage() {
   const accounts = listAccounts()
   const cards = listCards()
   const incomes = listIncomes()
+  const moneda = monedaActual()
+  const paisDefecto = paisPorDefecto()
+  const fx = fxArsCop()
   const rules = getDb().prepare('SELECT id, pattern, category FROM category_rules ORDER BY pattern').all() as Array<{
     id: string
     pattern: string
@@ -239,8 +245,63 @@ export default function ConfigPage() {
         )}
       </Panel>
 
-      <Panel title="Ingresos" subtitle="Sueldos y entradas fijas: definen cuándo entra la plata en la proyección">
-        <form action={saveIncomeAction} className="grid gap-3 sm:grid-cols-5">
+      <Panel
+        title="País"
+        subtitle="Desde dónde se mira la app. Cada país muestra su propio bolsillo: su moneda, sus deudas, su mes"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <form action={setPaisPorDefectoAction} className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="label" htmlFor="pais-def">
+                Con qué país abre la app
+              </label>
+              <select id="pais-def" name="pais_default" className="input" defaultValue={paisDefecto.codigo}>
+                {PAISES.map((p) => (
+                  <option key={p.codigo} value={p.codigo}>
+                    {p.nombre} ({p.moneda})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted">
+                El día de la mudanza se cambia acá y la app queda mirando al otro lado. Para alternar sin cambiar
+                esto, están los botones CO/AR de arriba.
+              </p>
+            </div>
+            <button type="submit" className="btn-primary">
+              Guardar
+            </button>
+          </form>
+
+          <form action={setFxAction} className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="label" htmlFor="fx">
+                Cuántos COP vale un ARS
+              </label>
+              <input
+                id="fx"
+                name="fx"
+                className="input"
+                inputMode="decimal"
+                placeholder="0,28"
+                defaultValue={fx || ''}
+              />
+              <p className="mt-1 text-xs text-muted">
+                El que conseguís vos al pasar la plata, no el oficial.{' '}
+                {fxArsCopAt() ? `Actualizado el ${fxArsCopAt().slice(0, 10)}.` : 'Todavía sin cargar.'}
+              </p>
+            </div>
+            <button type="submit" className="btn-primary">
+              Guardar
+            </button>
+          </form>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Ingresos"
+        subtitle="Con qué plata se cuenta cada mes. La proyección usa el piso, no lo que corresponde cobrar"
+      >
+        <form action={saveIncomeAction} className="grid gap-3 sm:grid-cols-6">
           <div>
             <label className="label" htmlFor="in-name">
               Concepto
@@ -255,9 +316,27 @@ export default function ConfigPage() {
           </div>
           <div>
             <label className="label" htmlFor="in-amount">
-              Importe
+              Lo que corresponde
             </label>
             <input id="in-amount" name="amount" className="input" inputMode="decimal" required />
+          </div>
+          <div>
+            <label className="label" htmlFor="in-floor">
+              Lo que entra seguro
+            </label>
+            <input id="in-floor" name="floor" className="input" inputMode="decimal" placeholder="igual al de al lado" />
+            <p className="mt-1 text-xs text-muted">
+              Dejalo vacío si se cobra completo y en fecha.
+            </p>
+          </div>
+          <div>
+            <label className="label" htmlFor="in-currency">
+              Moneda
+            </label>
+            <select id="in-currency" name="currency" className="input" defaultValue={moneda}>
+              <option value="COP">COP (Colombia)</option>
+              <option value="ARS">ARS (Argentina)</option>
+            </select>
           </div>
           <div>
             <label className="label" htmlFor="in-day">
@@ -284,7 +363,8 @@ export default function ConfigPage() {
                   <th className="th">Concepto</th>
                   <th className="th">De quién</th>
                   <th className="th">Día</th>
-                  <th className="th text-right">Importe</th>
+                  <th className="th text-right">Corresponde</th>
+                  <th className="th text-right">Piso</th>
                   <th className="th" />
                 </tr>
               }
@@ -294,7 +374,13 @@ export default function ConfigPage() {
                   <td className="td">{i.name}</td>
                   <td className="td text-muted">{i.owner || '—'}</td>
                   <td className="td text-muted">{i.day_of_month}</td>
-                  <td className="td text-right tabular-nums">{formatMoney(i.amount_cents)}</td>
+                  <td className="td text-right tabular-nums">{formatMoney(i.amount_cents, i.currency)}</td>
+                  <td className="td text-right tabular-nums">
+                    {formatMoney(i.floor_cents || i.amount_cents, i.currency)}
+                    {i.floor_cents > 0 && i.floor_cents < i.amount_cents ? (
+                      <span className="ml-1 text-xs text-warn">variable</span>
+                    ) : null}
+                  </td>
                   <td className="td text-right">
                     <form action={deleteIncomeAction}>
                       <input type="hidden" name="id" value={i.id} />

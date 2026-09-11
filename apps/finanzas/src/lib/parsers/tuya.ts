@@ -21,7 +21,7 @@
  */
 
 import { categorize, extractMerchant, isRappi, type UserRule } from '../categories'
-import { toCents } from '../money'
+import { toCents, MONEDA_BASE } from '../money'
 import type { ISODate } from '../dates'
 import type { ParsedRow, ParseResult } from './statement'
 
@@ -120,7 +120,7 @@ export function parseTuya(text: string, opts: { userRules?: UserRule[] } = {}): 
       amountCents: esPago ? cents : -cents,
       category: esPago ? 'pago_tarjeta' : categorize(descripcion, opts.userRules ?? []),
       installment: plan > 0 ? `${Number(cobradas)}/${plan}` : '',
-      currency: 'ARS',
+      currency: MONEDA_BASE,
       rappi: isRappi(descripcion),
       raw: linea.trim(),
     })
@@ -135,7 +135,7 @@ export function parseTuya(text: string, opts: { userRules?: UserRule[] } = {}): 
       amountCents: -interestCents,
       category: 'prestamos',
       installment: '',
-      currency: 'ARS',
+      currency: MONEDA_BASE,
       rappi: false,
       raw: 'recuadro del pago mínimo',
     })

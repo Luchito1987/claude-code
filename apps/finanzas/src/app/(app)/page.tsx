@@ -19,12 +19,14 @@ import {
   updateBillAction,
 } from '@/app/actions/data'
 import { FilaColapsable, PanelColapsable } from './Colapsable'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
 export default function Tablero() {
   const today = todayISO()
-  const mes = monthSummary(today)
+  const moneda = monedaActual()
+  const mes = monthSummary(today, moneda)
   const cuentas = listAccounts()
   const pendientes = mes.items.filter((i) => !i.paid)
   const pagados = mes.items.filter((i) => i.paid)
@@ -41,27 +43,27 @@ export default function Tablero() {
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Dinero disponible</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(mes.availableCents)}</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(mes.availableCents, moneda)}</p>
           <p className="mt-1 text-xs text-muted">
             {cuentas.length ? cuentas.map((c) => c.name).join(' · ') : 'Sin cuentas cargadas'}
           </p>
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Falta pagar en {formatPeriod(mes.period)}</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums text-warn">{formatMoney(mes.pendingCents)}</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-warn">{formatMoney(mes.pendingCents, moneda)}</p>
           <p className="mt-1 text-xs text-muted">
             {pendientes.length} pendiente(s)
-            {pagados.length ? ` · ${formatMoney(mes.paidCents)} ya pagado` : ''}
+            {pagados.length ? ` · ${formatMoney(mes.paidCents, moneda)} ya pagado` : ''}
           </p>
         </div>
         <div className={`card ${mes.netCents < 0 ? 'border-bad/50' : 'border-good/40'}`}>
           <p className="text-xs uppercase tracking-wide text-muted">Neto después de pagar</p>
           <p className={`mt-1 text-3xl font-semibold tabular-nums ${mes.netCents < 0 ? 'text-bad' : 'text-good'}`}>
-            {formatMoney(mes.netCents)}
+            {formatMoney(mes.netCents, moneda)}
           </p>
           <p className="mt-1 text-xs text-muted">
             {mes.netCents < 0
-              ? `Faltan ${formatMoney(-mes.netCents)} para cubrir el mes`
+              ? `Faltan ${formatMoney(-mes.netCents, moneda)} para cubrir el mes`
               : 'Queda disponible después de los compromisos'}
           </p>
         </div>
@@ -124,14 +126,15 @@ function BloqueDelMes({
   period: string
   today: string
 }) {
+  const moneda = monedaActual()
   const total = items.reduce((a, i) => a + i.cents, 0)
   const falta = items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0)
 
   return (
     <FilaColapsable
       titulo={MONTH_GROUP_LABELS[group]}
-      total={formatMoney(total)}
-      estado={falta > 0 ? `falta ${formatMoney(falta)}` : 'todo pagado'}
+      total={formatMoney(total, moneda)}
+      estado={falta > 0 ? `falta ${formatMoney(falta, moneda)}` : 'todo pagado'}
     >
       {items.map((item) => {
         const vencido = !item.paid && compare(item.dueDate, today) < 0
@@ -143,7 +146,7 @@ function BloqueDelMes({
             </td>
             <td className="td whitespace-nowrap text-muted">{formatDate(item.dueDate)}</td>
             <td className="td text-right">
-              {item.editable ? <ImporteEditable item={item} /> : <span className="tabular-nums">{formatMoney(item.cents)}</span>}
+              {item.editable ? <ImporteEditable item={item} /> : <span className="tabular-nums">{formatMoney(item.cents, moneda)}</span>}
             </td>
             <td className="td">
               {item.paid ? (
@@ -190,10 +193,11 @@ function BloqueDelMes({
  * Es un `<details>` para que ande sin JavaScript, igual que el resto de la app.
  */
 function ImporteEditable({ item }: { item: MonthItem }) {
+  const moneda = monedaActual()
   return (
     <details className="text-right">
       <summary className="cursor-pointer list-none tabular-nums hover:text-brand">
-        {formatMoney(item.cents)}
+        {formatMoney(item.cents, moneda)}
         <span className="ml-1 text-xs text-muted">✎</span>
       </summary>
       <form action={updateBillAction} className="mt-2 flex items-center justify-end gap-1.5">
@@ -223,6 +227,7 @@ function GastosVariables({
   total: number
   period: string
 }) {
+  const moneda = monedaActual()
   const max = Math.max(...items.map((i) => i.cents), 1)
 
   return (
@@ -236,13 +241,13 @@ function GastosVariables({
       }
     >
       {items.length ? (
-        <PanelColapsable titulo="Por rubro" resumen={formatMoney(total)}>
+        <PanelColapsable titulo="Por rubro" resumen={formatMoney(total, moneda)}>
           <ul className="space-y-2">
             {items.map((i) => (
               <li key={i.category}>
                 <div className="flex items-baseline justify-between gap-2 text-sm">
                   <span className="truncate">{CATEGORY_LABELS[i.category] ?? i.category}</span>
-                  <span className="tabular-nums text-muted">{formatMoney(i.cents)}</span>
+                  <span className="tabular-nums text-muted">{formatMoney(i.cents, moneda)}</span>
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-edge">
                   <div

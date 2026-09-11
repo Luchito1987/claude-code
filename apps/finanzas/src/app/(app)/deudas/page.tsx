@@ -3,12 +3,14 @@ import { Badge, Empty, Panel, Table } from '@/components/ui'
 import { formatDate, formatMonthShort, formatPeriod, todayISO } from '@/lib/dates'
 import { formatMoney, pct } from '@/lib/money'
 import { debts } from '@/lib/queries'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
 export default function DeudasPage() {
   const today = todayISO()
-  const d = debts(today)
+  const moneda = monedaActual()
+  const d = debts(today, moneda)
   const maxMes = Math.max(...d.porMes.map((m) => m.cents), 1)
   const sinDeuda = d.totalCents === 0
 
@@ -17,21 +19,21 @@ export default function DeudasPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Deuda total</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(d.totalCents)}</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(d.totalCents, moneda)}</p>
           <p className="mt-1 text-xs text-muted">Tarjetas + préstamos, todo lo que falta pagar</p>
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Sale este mes</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums text-warn">{formatMoney(d.proximoMesCents)}</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-warn">{formatMoney(d.proximoMesCents, moneda)}</p>
           <p className="mt-1 text-xs text-muted">
             {d.ingresoMensualCents
-              ? `${d.pesoSobreIngreso}% del ingreso (${formatMoney(d.ingresoMensualCents)})`
+              ? `${d.pesoSobreIngreso}% del ingreso (${formatMoney(d.ingresoMensualCents, moneda)})`
               : 'Cargá tus ingresos para ver el peso'}
           </p>
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Promedio mensual</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(d.promedioMensualCents)}</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatMoney(d.promedioMensualCents, moneda)}</p>
           <p className="mt-1 text-xs text-muted">Mientras dure la deuda</p>
         </div>
         <div className="card">
@@ -71,10 +73,10 @@ export default function DeudasPage() {
           </div>
           <div className="mt-2 flex justify-between text-xs text-muted">
             <span>
-              Deuda {formatMoney(d.proximoMesCents)} · {d.pesoSobreIngreso}%
+              Deuda {formatMoney(d.proximoMesCents, moneda)} · {d.pesoSobreIngreso}%
             </span>
             <span>
-              Queda {formatMoney(Math.max(0, d.ingresoMensualCents - d.proximoMesCents))} para todo lo demás
+              Queda {formatMoney(Math.max(0, d.ingresoMensualCents - d.proximoMesCents), moneda)} para todo lo demás
             </span>
           </div>
           <p className="mt-3 text-sm text-slate-300">
@@ -104,15 +106,15 @@ export default function DeudasPage() {
               <tr key={c.cardId}>
                 <td className="td font-medium">{c.name}</td>
                 <td className="td text-right tabular-nums">
-                  {c.resumenCents ? formatMoney(c.resumenCents) : '—'}
+                  {c.resumenCents ? formatMoney(c.resumenCents, moneda) : '—'}
                   {c.resumenDue && <span className="ml-2 text-xs text-muted">{formatDate(c.resumenDue)}</span>}
                 </td>
                 <td className="td text-right tabular-nums">
-                  {c.cuotasCents ? formatMoney(c.cuotasCents) : '—'}
+                  {c.cuotasCents ? formatMoney(c.cuotasCents, moneda) : '—'}
                   {c.cuotasCount > 0 && <span className="ml-2 text-xs text-muted">{c.cuotasCount} cuota(s)</span>}
                 </td>
                 <td className="td text-muted">{c.ultimoMes ? formatMonthShort(c.ultimoMes) : '—'}</td>
-                <td className="td text-right font-medium tabular-nums">{formatMoney(c.totalCents)}</td>
+                <td className="td text-right font-medium tabular-nums">{formatMoney(c.totalCents, moneda)}</td>
               </tr>
             ))}
           </Table>
@@ -140,7 +142,7 @@ export default function DeudasPage() {
                   <span className="font-medium">{l.name}</span>
                   {l.lender && <span className="ml-2 text-xs text-muted">{l.lender}</span>}
                 </td>
-                <td className="td text-right tabular-nums">{formatMoney(l.installmentCents)}</td>
+                <td className="td text-right tabular-nums">{formatMoney(l.installmentCents, moneda)}</td>
                 <td className="td">
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-16 rounded-full bg-edge">
@@ -155,7 +157,7 @@ export default function DeudasPage() {
                   </div>
                 </td>
                 <td className="td text-muted">{l.ultimoMes ? formatMonthShort(l.ultimoMes) : '—'}</td>
-                <td className="td text-right font-medium tabular-nums">{formatMoney(l.totalCents)}</td>
+                <td className="td text-right font-medium tabular-nums">{formatMoney(l.totalCents, moneda)}</td>
               </tr>
             ))}
           </Table>
@@ -172,7 +174,7 @@ export default function DeudasPage() {
                 <div className="flex items-baseline justify-between gap-2 text-sm">
                   <span>{formatMonthShort(m.period)}</span>
                   <span className="tabular-nums text-muted">
-                    {formatMoney(m.cents)}
+                    {formatMoney(m.cents, moneda)}
                     {d.ingresoMensualCents > 0 && (
                       <span className="ml-2">{pct(m.cents, d.ingresoMensualCents)}% del ingreso</span>
                     )}
