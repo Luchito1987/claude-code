@@ -36,11 +36,19 @@ async function load() {
   return { q, db: getDb() }
 }
 
-function ingreso(db: Database.Database, id: string, nombre: string, nominal: number, piso: number, currency: string): void {
+function ingreso(
+  db: Database.Database,
+  id: string,
+  nombre: string,
+  duenio: string,
+  nominal: number,
+  piso: number,
+  currency: string,
+): void {
   db.prepare(
     `INSERT INTO incomes (id, name, owner, amount_cents, floor_cents, currency, day_of_month, active, created_at)
-     VALUES (?, ?, '', ?, ?, ?, 1, 1, '2026-01-01T00:00:00Z')`,
-  ).run(id, nombre, nominal, piso, currency)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1, '2026-01-01T00:00:00Z')`,
+  ).run(id, nombre, duenio, nominal, piso, currency)
 }
 
 function cuenta(db: Database.Database, id: string, saldo: number, currency: string): void {
@@ -63,7 +71,7 @@ describe('el ingreso con el que se proyecta', () => {
     const { q, db } = await load()
     // Un sueldo que debería ser 3.000.000 pero del que sólo entran seguros
     // 1.500.000: para planificar vale el segundo número.
-    ingreso(db, 'i1', 'Sueldo esposa', 300000000, 150000000, 'COP')
+    ingreso(db, 'i1', 'Sueldo esposa', '', 300000000, 150000000, 'COP')
 
     expect(q.monthlyIncomeCents('COP')).toBe(150000000)
     expect(q.monthlyIncomeNominalCents('COP')).toBe(300000000)
@@ -72,15 +80,15 @@ describe('el ingreso con el que se proyecta', () => {
   it('un sueldo sin piso declarado se toma entero', async () => {
     const { q, db } = await load()
     // El caso del sueldo fijo y puntual: no hace falta cargar el piso aparte.
-    ingreso(db, 'i1', 'Sueldo fijo', 200000000, 0, 'ARS')
+    ingreso(db, 'i1', 'Sueldo fijo', '', 200000000, 0, 'ARS')
 
     expect(q.monthlyIncomeCents('ARS')).toBe(200000000)
   })
 
   it('no mezcla el sueldo de un país con el del otro', async () => {
     const { q, db } = await load()
-    ingreso(db, 'i1', 'Sueldo Colombia', 300000000, 150000000, 'COP')
-    ingreso(db, 'i2', 'Sueldo Argentina', 200000000, 200000000, 'ARS')
+    ingreso(db, 'i1', 'Sueldo Colombia', '', 300000000, 150000000, 'COP')
+    ingreso(db, 'i2', 'Sueldo Argentina', '', 200000000, 200000000, 'ARS')
 
     expect(q.monthlyIncomeCents('COP')).toBe(150000000)
     expect(q.monthlyIncomeCents('ARS')).toBe(200000000)
@@ -101,8 +109,8 @@ describe('cada bolsillo con lo suyo', () => {
     const { q, db } = await load()
     prestamo(db, 'l1', 10000000, 'COP')
     prestamo(db, 'l2', 50000000, 'ARS')
-    ingreso(db, 'i1', 'Sueldo Colombia', 100000000, 100000000, 'COP')
-    ingreso(db, 'i2', 'Sueldo Argentina', 100000000, 100000000, 'ARS')
+    ingreso(db, 'i1', 'Sueldo Colombia', '', 100000000, 100000000, 'COP')
+    ingreso(db, 'i2', 'Sueldo Argentina', '', 100000000, 100000000, 'ARS')
 
     const co = q.debts(HOY, 'COP')
     const ar = q.debts(HOY, 'ARS')
@@ -172,5 +180,70 @@ describe('la migración de la moneda base', () => {
     // conciencia después no se toca.
     const fila = db.prepare("SELECT currency FROM accounts WHERE id = 'vieja'").get() as { currency: string }
     expect(fila.currency).toBe('ARS')
+  })
+})
+
+describe('la remesa: lo que sobra allá y puede cruzar', () => {
+  it('es el sueldo argentino menos los compromisos argentinos', async () => {
+    const { q, db } = await load()
+    ingreso(db, 'i1', 'Sueldo', 'Luciano', 200000000, 200000000, 'ARS')
+    prestamo(db, 'l1', 25000000, 'ARS')
+    q.setFxArsCop(0.28)
+
+    const r = q.remesaDesdeArgentina(HOY)!
+    expect(r.ingresoCents).toBe(200000000)
+    expect(r.compromisosCents).toBe(25000000)
+    expect(r.remanenteCents).toBe(175000000)
+    // 1.750.000 ARS a 0,28 son 490.000 COP.
+    expect(r.enBaseCents).toBe(49000000)
+    expect(r.enRojo).toBe(false)
+  })
+
+  it('usa el piso del sueldo, no lo que corresponde cobrar', async () => {
+    const { q, db } = await load()
+    ingreso(db, 'i1', 'Sueldo', 'Luciano', 200000000, 120000000, 'ARS')
+    q.setFxArsCop(0.28)
+
+    // Lo prudente: si con el piso alcanza, alcanza.
+    expect(q.remesaDesdeArgentina(HOY)!.remanenteCents).toBe(120000000)
+  })
+
+  it('avisa cuando los compromisos de allá se comen el sueldo de allá', async () => {
+    const { q, db } = await load()
+    ingreso(db, 'i1', 'Sueldo', 'Luciano', 50000000, 50000000, 'ARS')
+    prestamo(db, 'l1', 40000000, 'ARS')
+    prestamo(db, 'l2', 30000000, 'ARS')
+    q.setFxArsCop(0.28)
+
+    const r = q.remesaDesdeArgentina(HOY)!
+    expect(r.enRojo).toBe(true)
+    expect(r.remanenteCents).toBeLessThan(0)
+    // Nada que convertir: no se manda una deuda.
+    expect(r.enBaseCents).toBe(0)
+  })
+
+  it('sin tipo de cambio cargado muestra el remanente pero no lo convierte', async () => {
+    const { q, db } = await load()
+    ingreso(db, 'i1', 'Sueldo', 'Luciano', 200000000, 200000000, 'ARS')
+
+    const r = q.remesaDesdeArgentina(HOY)!
+    expect(r.remanenteCents).toBe(200000000)
+    expect(r.fx).toBe(0)
+    expect(r.enBaseCents).toBe(0)
+  })
+
+  it('sin nada cargado del lado argentino no hay remesa que mostrar', async () => {
+    const { q } = await load()
+    expect(q.remesaDesdeArgentina(HOY)).toBeUndefined()
+  })
+
+  it('aparece en el resumen de Colombia y no en el de Argentina', async () => {
+    const { q, db } = await load()
+    ingreso(db, 'i1', 'Sueldo', 'Luciano', 200000000, 200000000, 'ARS')
+    q.setFxArsCop(0.28)
+
+    expect(q.monthSummary(HOY, 'COP').remesa).toBeDefined()
+    // Desde Argentina la remesa no es un ingreso: es plata que se va.
+    expect(q.monthSummary(HOY, 'ARS').remesa).toBeUndefined()
   })
 })
