@@ -92,7 +92,10 @@ export default async function ConfigPage() {
         </form>
       </Panel>
 
-      <Panel title="Cuentas" subtitle="El saldo de estas cuentas es el punto de partida de la proyección">
+      <Panel
+        title="Cuentas"
+        subtitle="El saldo de estas cuentas es el dinero disponible. Corregilo contra el banco cuando no coincida"
+      >
         <form action={saveAccountAction} className="grid gap-3 sm:grid-cols-4">
           <div>
             <label className="label" htmlFor="acc-name">
@@ -138,7 +141,7 @@ export default async function ConfigPage() {
                 </div>
                 <div className="w-40">
                   <label className="label" htmlFor={`acc-b-${a.id}`}>
-                    Saldo
+                    Saldo real
                   </label>
                   <input
                     id={`acc-b-${a.id}`}
@@ -159,8 +162,13 @@ export default async function ConfigPage() {
             <p className="pt-2 text-sm">
               Total disponible:{' '}
               <strong className="tabular-nums">
-                {formatMoney(accounts.reduce((s, a) => s + a.balance_cents, 0))}
+                {formatMoney(accounts.reduce((s, a) => s + a.balance_cents, 0), moneda)}
               </strong>
+            </p>
+            <p className="text-xs text-muted">
+              Si un saldo no coincide con el del banco, escribí el del banco y guardá: la app se corrige y deja
+              anotada la diferencia como un movimiento de ajuste, para que el historial siga explicando el número.
+              Un saldo negativo en una caja de ahorro casi siempre significa que falta importar movimientos.
             </p>
           </div>
         ) : (
