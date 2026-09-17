@@ -15,6 +15,7 @@ import {
   type ISODate,
 } from './dates'
 import type { CardDue } from './cashflow'
+import { venceEnPeriodo, type ConFrecuencia } from './frecuencia'
 
 export interface InstallmentTx {
   id: string
@@ -174,12 +175,22 @@ export interface MonthOutlook {
   }
 }
 
+/**
+ * Lo que se espera gastar en un servicio, con cada cuánto vence. Sin la
+ * frecuencia, un mes sin facturas generadas arrastraría todos los servicios
+ * activos —incluida la renta anual— y proyectaría un gasto que no existe.
+ */
+export interface ServiceEstimate extends ConFrecuencia {
+  name: string
+  cents: number
+}
+
 export interface OutlookInput {
   months: string[]
   /** Facturas ya generadas, con su período. */
   bills: Array<{ name: string; period: string; amount_cents: number; estimated: number }>
   /** Estimación por servicio activo, para los meses que todavía no tienen factura. */
-  serviceEstimates: Array<{ name: string; cents: number }>
+  serviceEstimates: ServiceEstimate[]
   loans: LoanLike[]
   installments: FutureInstallment[]
   /** Resúmenes de tarjeta ya importados, con su vencimiento real. */
@@ -236,7 +247,9 @@ export function monthlyOutlook(input: OutlookInput): MonthOutlook[] {
     const facturas = billsPorMes.get(period) ?? []
     const servicios = facturas.length
       ? facturas.map((b) => ({ label: b.name, cents: b.amount_cents, estimado: b.estimated === 1 }))
-      : input.serviceEstimates.map((s) => ({ label: s.name, cents: s.cents, estimado: true }))
+      : input.serviceEstimates
+          .filter((s) => venceEnPeriodo(s, period))
+          .map((s) => ({ label: s.name, cents: s.cents, estimado: true }))
 
     const cuotasPrestamo = (prestamosPorMes.get(period) ?? []).map((p) => ({
       label: p.label,
