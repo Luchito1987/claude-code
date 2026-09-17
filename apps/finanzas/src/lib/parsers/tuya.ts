@@ -45,10 +45,29 @@ function fechaLarga(texto: string): ISODate | null {
 export interface TuyaMeta {
   /** Cierre del período. */
   closingDate?: ISODate
-  /** Fecha límite de pago: es el vencimiento real, mejor que deducirlo. */
+  /**
+   * Fecha límite de pago: es el vencimiento real, mejor que deducirlo.
+   *
+   * Queda vacía cuando el extracto dice "INMEDIATO" en vez de una fecha, que es
+   * lo que imprime cuando la tarjeta está en mora: ya no hay plazo que esperar.
+   */
   dueDate?: ISODate
+  /**
+   * Lo que se paga este mes por los consumos del período, sin arrastres.
+   * Es contra este número que tiene que cerrar la suma del detalle.
+   */
+  cuotaDelMesCents?: number
   minimumCents?: number
   totalCents?: number
+  /** Lo que quedó sin pagar de períodos anteriores, más lo que devengó. */
+  moraCents?: number
+  interesesMoraCents?: number
+  /** Si el extracto declara mora. El pago mínimo la incluye. */
+  enMora?: boolean
+  /** Cargos del recuadro que no siempre bajan a la tabla de movimientos. */
+  manejoCents?: number
+  polizaCents?: number
+  otrosCents?: number
 }
 
 export function isTuyaStatement(text: string): boolean {
@@ -57,7 +76,16 @@ export function isTuyaStatement(text: string): boolean {
   return tieneMarca && (tieneTabla || FILA.test(text.split('\n').find((l) => FILA.test(l)) ?? ''))
 }
 
-/** Lee el recuadro del pago mínimo, que no forma parte de la tabla. */
+/**
+ * Lee el recuadro del pago mínimo, que no forma parte de la tabla.
+ *
+ * El recuadro cambia de forma cuando la tarjeta entra en mora: al VALOR CUOTA
+ * del período se le suman el saldo que quedó sin pagar antes y sus intereses, y
+ * la fecha límite deja de ser una fecha para pasar a decir "INMEDIATO". Por eso
+ * el pago mínimo no sirve para verificar que el detalle se leyó completo: la
+ * diferencia no es un error de lectura, es deuda vieja que no figura en la
+ * tabla de este mes.
+ */
 function leerEncabezado(text: string): TuyaMeta & { interestCents: number } {
   const buscar = (re: RegExp): number => {
     const m = text.match(re)
@@ -67,6 +95,16 @@ function leerEncabezado(text: string): TuyaMeta & { interestCents: number } {
   // primera alcanza, son el mismo número.
   const corrientes = buscar(/Intereses corrientes\s+([\d.]+,\d{2})/i)
   const mora = buscar(/Intereses de mora\s+([\d.]+,\d{2})/i)
+  const saldoMora = buscar(/Saldo en mora\s+([\d.]+,\d{2})/i)
+  /*
+   * Cuota de manejo, póliza y "otros" a veces bajan a la tabla como filas con
+   * cuotas 0/0 y a veces sólo figuran acá arriba: cambia entre extractos del
+   * mismo banco. Se leen siempre del recuadro y, si ya vinieron en la tabla, se
+   * descartan al armar las filas para no cobrarlos dos veces.
+   */
+  const manejo = buscar(/Cuota de manejo\s+([\d.]+,\d{2})/i)
+  const poliza = buscar(/P[oó]liza deudores\s+([\d.]+,\d{2})/i)
+  const otros = buscar(/\(\+\)\s*\*?Otros\s+([\d.]+,\d{2})/i)
 
   const corte = text.match(/Fecha de Corte:\s*(\d{1,2}-[a-zA-Z]{3}-\d{4})/i)
   const limite = text.match(/Fecha l[ií]mite de pago:\s*(\d{1,2}-[a-zA-Z]{3}-\d{4})/i)
@@ -74,8 +112,15 @@ function leerEncabezado(text: string): TuyaMeta & { interestCents: number } {
   return {
     closingDate: corte ? (fechaLarga(corte[1]) ?? undefined) : undefined,
     dueDate: limite ? (fechaLarga(limite[1]) ?? undefined) : undefined,
+    cuotaDelMesCents: buscar(/\(=\)\s*VALOR CUOTA\s+([\d.]+,\d{2})/i) || undefined,
     minimumCents: buscar(/=?PAGO M[IÍ]NIMO\s*\$?\s*([\d.]+,\d{2})/i) || undefined,
     totalCents: buscar(/=?PAGO TOTAL\s*\$?\s*([\d.]+,\d{2})/i) || undefined,
+    moraCents: saldoMora || undefined,
+    interesesMoraCents: mora || undefined,
+    enMora: saldoMora > 0 || /tienes tu tarjeta en mora/i.test(text),
+    manejoCents: manejo || undefined,
+    polizaCents: poliza || undefined,
+    otrosCents: otros || undefined,
     interestCents: corrientes + mora,
   }
 }
@@ -141,12 +186,93 @@ export function parseTuya(text: string, opts: { userRules?: UserRule[] } = {}): 
     })
   }
 
-  // El propio extracto dice cuánto suma: si no coincide, algo se leyó mal.
+  /*
+   * Lo que arrastra de meses anteriores entra como una fila propia.
+   *
+   * No está en la tabla de movimientos —la tabla es del período— pero es plata
+   * que hay que pagar y que vence ya. Sin esta fila, la app mostraría como
+   * deuda del mes sólo la cuota corriente y el número quedaría corto justo
+   * cuando más importa que no lo esté.
+   */
+  /*
+   * Cargos del recuadro que este extracto no bajó a la tabla. Se agregan sólo
+   * si no aparecieron ya como fila: en los extractos donde vienen con cuotas
+   * 0/0 sumarlos de nuevo los cobraría dos veces.
+   */
+  const yaEstaEnLaTabla = (patron: RegExp, cents: number) =>
+    rows.some((r) => patron.test(r.description) && Math.abs(r.amountCents) === cents)
+
+  const delRecuadro: Array<[RegExp, number | undefined, string, string]> = [
+    [/manejo/i, meta.manejoCents, 'Cuota de manejo', 'Tuya'],
+    // "SEG DEUD IVA INCL" es como Tuya abrevia la póliza en la tabla.
+    [/p[oó]liza|seg(ur)?o?\b|deud/i, meta.polizaCents, 'Póliza de deudores', 'Tuya'],
+    [/otros/i, meta.otrosCents, 'Otros cargos del extracto', 'Tuya'],
+  ]
+
+  for (const [patron, cents, descripcion, comercio] of delRecuadro) {
+    if (!cents || yaEstaEnLaTabla(patron, cents)) continue
+    rows.push({
+      date: meta.closingDate ?? rows[rows.length - 1]?.date ?? '',
+      description: descripcion,
+      merchant: comercio,
+      amountCents: -cents,
+      category: 'servicios',
+      installment: '',
+      currency: MONEDA_BASE,
+      rappi: false,
+      raw: 'recuadro del pago mínimo',
+    })
+  }
+
+  if (meta.moraCents) {
+    rows.push({
+      date: meta.closingDate ?? rows[rows.length - 1]?.date ?? '',
+      description: 'Saldo en mora de períodos anteriores',
+      merchant: 'Mora',
+      amountCents: -meta.moraCents,
+      category: 'prestamos',
+      installment: '',
+      currency: MONEDA_BASE,
+      rappi: false,
+      raw: 'recuadro del pago mínimo',
+    })
+  }
+
+  /*
+   * Contra qué se verifica que el detalle se leyó completo.
+   *
+   * Contra el VALOR CUOTA, que es lo que el período genera, y no contra el pago
+   * mínimo: cuando hay mora el mínimo incluye deuda vieja que no figura en esta
+   * tabla, y comparar contra él daría una diferencia que no es un error de
+   * lectura. Sin mora los dos números coinciden y da lo mismo cuál se use.
+   */
   const cargos = rows.filter((r) => r.amountCents < 0).reduce((a, r) => a + -r.amountCents, 0)
-  if (meta.minimumCents && Math.abs(cargos - meta.minimumCents) > 100) {
+  // El pago mínimo es lo que hay que pagar, con mora o sin ella: es contra ese
+  // número que se contrasta, porque es el que está impreso en el papel.
+  const esperado = meta.minimumCents ?? meta.cuotaDelMesCents ?? 0
+  const pesos = (c: number) => c.toLocaleString('es-CO', { minimumFractionDigits: 2 })
+
+  const diferencia = esperado - cargos
+  if (esperado && Math.abs(diferencia) > 100) {
     warnings.push(
-      `La suma de los movimientos (${(cargos / 100).toLocaleString('es-CO')}) no coincide con el pago mínimo ` +
-        `del extracto (${(meta.minimumCents / 100).toLocaleString('es-CO')}): revisá el detalle antes de confiar en el total.`,
+      `El detalle suma ${pesos(cargos / 100)} y el extracto exige ${pesos(esperado / 100)}: ` +
+        `${diferencia > 0 ? 'faltan' : 'sobran'} ${pesos(Math.abs(diferencia) / 100)}. ` +
+        'Se usa el importe del extracto, que es el que hay que pagar; la diferencia queda sólo en el detalle.',
+    )
+  }
+
+  if (meta.enMora) {
+    warnings.push(
+      `Esta tarjeta está en mora: ${pesos((meta.moraCents ?? 0) / 100)} de períodos anteriores y ` +
+        `${pesos((meta.interesesMoraCents ?? 0) / 100)} de intereses, que el extracto suma al pago mínimo. ` +
+        'Por eso el mínimo es mayor que la cuota del mes.',
+    )
+  }
+
+  if (!meta.dueDate && /Fecha l[ií]mite de pago:\s*INMEDIATO/i.test(text)) {
+    warnings.push(
+      'El extracto no trae fecha de vencimiento: dice "INMEDIATO", que es lo que imprime cuando hay mora. ' +
+        'El resumen se ubica en el mes en curso.',
     )
   }
 

@@ -14,6 +14,7 @@ import { categorize, extractMerchant, isRappi, mapCategoryName, type UserRule } 
 import { compare, type ISODate } from '../dates'
 import { isBancolombiaCsv, parseBancolombia } from './bancolombia'
 import { isTuyaStatement, parseTuya } from './tuya'
+import { isFalabellaStatement, parseFalabella } from './falabella'
 
 export interface ParsedRow {
   date: ISODate
@@ -189,6 +190,9 @@ export function parseStatement(text: string, opts: ParseOptions): ParseResult {
   // Bancolombia va primero: su CSV no trae encabezados, así que el detector
   // genérico no lo reconoce y el archivo entero se perdería.
   if (isBancolombiaCsv(text)) return parseBancolombia(text, { userRules: opts.userRules })
+  // Falabella antes que el genérico: su PDF trae el texto duplicado y los
+  // números con espacios adentro, así que sin normalizar no hay tabla que leer.
+  if (isFalabellaStatement(text)) return parseFalabella(text, { userRules: opts.userRules })
   // Tuya también necesita el suyo: el último número de cada línea es el plan de
   // cuotas, no el importe, y el parser genérico cargaría cualquier cosa.
   if (isTuyaStatement(text)) return parseTuya(text, { userRules: opts.userRules })

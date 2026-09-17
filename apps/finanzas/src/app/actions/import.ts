@@ -219,8 +219,9 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
 
   const run = db.transaction((rows: ParsedRow[]) => {
     db.prepare(
-      `INSERT INTO statements (id, kind, card_id, account_id, file_name, period, due_date, total_cents, rows_count, imported_by, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
+      `INSERT INTO statements (id, kind, card_id, account_id, file_name, period, due_date, minimum_cents,
+         total_cents, rows_count, imported_by, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
     ).run(
       statementId,
       kind,
@@ -229,6 +230,7 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       fileName,
       billingPeriod || (rows[0]?.date.slice(0, 7) ?? ''),
       statementDue,
+      parsed.statementMinimumCents ?? 0,
       user.id,
       now(),
     )

@@ -330,7 +330,8 @@ export function allCardDues(today: ISODate = todayISO(), since: ISODate = today)
   const txs = getDb()
     .prepare(
       `SELECT t.date, t.amount_cents, t.category, t.method, t.card_id,
-              NULLIF(s.due_date, '') AS statement_due
+              NULLIF(s.due_date, '') AS statement_due,
+              NULLIF(s.minimum_cents, 0) AS statement_minimum
        FROM transactions t
        LEFT JOIN statements s ON s.id = t.statement_id
        WHERE t.card_id IS NOT NULL`,
@@ -342,6 +343,7 @@ export function allCardDues(today: ISODate = todayISO(), since: ISODate = today)
     method: string
     card_id: string
     statement_due: ISODate | null
+    statement_minimum: number | null
   }>
   return listCards().flatMap((card) => computeCardDues(card, txs, today, since))
 }

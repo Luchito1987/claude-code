@@ -87,9 +87,12 @@ describe('qué importe se toma de cada fila', () => {
     expect(res.warnings).toHaveLength(0)
   })
 
-  it('avisa si la suma no cierra con lo que declara el extracto', () => {
+  it('avisa si la suma no cierra con lo que declara el extracto, y cuánto falta', () => {
     const roto = EXTRACTO.replace('=PAGO MÍNIMO $550.000,00', '=PAGO MÍNIMO $999.999,00')
-    expect(parseTuya(roto).warnings.join(' ')).toMatch(/no coincide con el pago mínimo/)
+    const aviso = parseTuya(roto).warnings.join(' ')
+    expect(aviso).toMatch(/el extracto exige/)
+    // El número concreto, para no tener que restar a mano mirando la pantalla.
+    expect(aviso).toContain('449.999,00')
   })
 })
 
@@ -159,5 +162,84 @@ describe('las cuotas que faltan salen del propio extracto', () => {
     const total = cuotas.reduce((a, c) => a + c.amountCents, 0)
     // Coincide con la suma de saldos pendientes del extracto.
     expect(total).toBe(120000000 + 20000000 + 20000000)
+  })
+})
+
+
+/**
+ * El extracto de un mes con mora.
+ *
+ * Cambia de forma: al VALOR CUOTA del período se le suman el saldo que quedó
+ * sin pagar y sus intereses, y la fecha límite deja de ser una fecha. Es el
+ * recorte del extracto real de septiembre de 2026, con los números del caso.
+ */
+const EN_MORA = `Extracto Tarjeta de Crédito
+INMEDIATO $6.621.707,76 $12.040.711,32
+Resumen Pago Mínimo Resumen Pago Total
+Fecha de Corte: 09-sep-2026 (+) Abono a capital 2.776.374,58 (+) Saldo pendiente 11.048.656,70
+(+) Intereses corrientes 453.359,29 (+) Intereses corrientes 453.359,29
+(+) Cuota de manejo 77.600,00 (+) Cuota de manejo 77.600,00
+(+) Póliza deudores 70.216,98 (+) Póliza deudores 70.216,98
+(+) *Otros 377.481,14 (+) *Otros 377.481,14
+(=)VALOR CUOTA 3.755.031,99 (+) Intereses de mora 13.397,21
+(+) Intereses de mora 13.397,21
+(+) Saldo en mora 2.853.278,56
+=PAGO MÍNIMO $6.621.707,76 =PAGO TOTAL $12.040.711,32
+Detalles
+Valor Saldo Cuota a pagar Tasa de Interés Tasa de Interés Cuotas
+Fecha Descripción
+Transacción Pendiente del mes de la transacción Efectiva Anual cobradas/totales
+2025/08/25 +COMPRA EXITO.COM | ALMACENES EXITO 4.008.204,00 1.530.412,49 139.128,45 1,88% 25,14% 13/24
+2026/06/08 +COMPRAS RECURR | RAPPI COLOMBIA*DL 168.400,00 0,00 56.133,34 2,12% 28,76% 3/3
+Hemos notado que tienes tu tarjeta en mora, te invitamos a realizar tu pago lo antes posible.
+Fecha límite de pago: INMEDIATO`
+
+describe('un extracto con mora', () => {
+  const res = parseTuya(EN_MORA)
+
+  it('lee el saldo en mora y sus intereses', () => {
+    expect(res.meta.enMora).toBe(true)
+    expect(res.meta.moraCents).toBe(285327856)
+    expect(res.meta.interesesMoraCents).toBe(1339721)
+  })
+
+  it('separa la cuota del período del pago mínimo', () => {
+    // El mínimo es mayor porque arrastra lo de antes; no son el mismo número.
+    expect(res.meta.cuotaDelMesCents).toBe(375503199)
+    expect(res.meta.minimumCents).toBe(662170776)
+  })
+
+  it('la mora entra como una fila propia, porque es plata que hay que pagar', () => {
+    const fila = res.rows.find((r) => r.description.includes('mora'))
+    expect(fila).toBeDefined()
+    expect(fila!.amountCents).toBe(-285327856)
+  })
+
+  it('avisa de la mora en vez de dejarla escondida en un total', () => {
+    expect(res.warnings.join(' ')).toMatch(/está en mora/)
+  })
+
+  it('no inventa un vencimiento cuando el extracto dice INMEDIATO', () => {
+    expect(res.meta.dueDate).toBeUndefined()
+    expect(res.warnings.join(' ')).toMatch(/INMEDIATO/)
+  })
+
+  it('trae los cargos del recuadro que este extracto no bajó a la tabla', () => {
+    // Acá manejo, póliza y "otros" sólo figuran arriba: sin esto se perderían.
+    for (const [texto, cents] of [
+      ['Cuota de manejo', -7760000],
+      ['Póliza', -7021698],
+      ['Otros cargos', -37748114],
+    ] as const) {
+      const fila = res.rows.find((r) => r.description.includes(texto))
+      expect(fila, texto).toBeDefined()
+      expect(fila!.amountCents).toBe(cents)
+    }
+  })
+
+  it('no los duplica cuando sí vienen en la tabla', () => {
+    // En el extracto de agosto la cuota de manejo baja como fila 0/0.
+    const manejo = parseTuya(EXTRACTO).rows.filter((r) => /manejo/i.test(r.description))
+    expect(manejo).toHaveLength(1)
   })
 })
