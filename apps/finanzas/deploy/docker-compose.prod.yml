@@ -17,6 +17,11 @@ services:
       TZ: ${TZ:-America/Bogota}
       # Ahora sí hay certificado: la cookie de sesión no debe viajar en claro.
       COOKIE_SECURE: 'true'
+    # Marca cuál contenedor hay que actualizar. Va por etiqueta y no por nombre
+    # porque el nombre lo arma compose con el de la carpeta, y basta mover el
+    # repositorio de lugar para que deje de coincidir.
+    labels:
+      com.centurylinklabs.watchtower.enable: 'true'
     restart: unless-stopped
 
   proxy:
@@ -37,11 +42,17 @@ services:
   # Mira cada cinco minutos si hay una imagen nueva publicada y, si la hay,
   # recrea el contenedor con ella. Es lo que hace que un push al repositorio
   # termine en la app actualizada sin que nadie entre al servidor.
+  #
+  # Vigila por etiqueta, no por nombre. Antes recibía "finanzas-finanzas-1",
+  # que es como se llama el contenedor cuando compose corre desde una carpeta
+  # llamada finanzas; en el servidor corre desde deploy/ y se llama
+  # "deploy-finanzas-1". Con un nombre que no existe Watchtower no falla ni
+  # avisa: mira una lista vacía y no actualiza nunca.
   actualizador:
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup --include-restarting finanzas-finanzas-1
+    command: --interval 300 --cleanup --include-restarting --label-enable
     restart: unless-stopped
 
 volumes:
