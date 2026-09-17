@@ -49,10 +49,17 @@ cd "$DESTINO/apps/finanzas/deploy"
 IP="$(curl -s -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)"
 DOMINIO="${DOMINIO_FIJO:-${IP}.sslip.io}"
 
+# Watchtower le habla al demonio con la API 1.25 salvo que se le diga otra
+# cosa, y un Docker moderno ya rechaza esa versión: "client version 1.25 is too
+# old". Antes que clavar un número que envejece, se le pasa la que el propio
+# demonio dice hablar, que por definición es una que acepta.
+API_DOCKER="$(docker version --format '{{.Server.APIVersion}}' 2>/dev/null || echo 1.44)"
+
 cat > .env <<ENV
 DOMINIO=$DOMINIO
 IMAGEN=ghcr.io/luchito1987/finanzas:latest
 TZ=America/Bogota
+API_DOCKER=$API_DOCKER
 ENV
 
 echo "== levantando en https://$DOMINIO =="
