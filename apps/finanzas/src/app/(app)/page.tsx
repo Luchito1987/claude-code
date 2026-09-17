@@ -70,6 +70,25 @@ export default function Tablero() {
         </div>
       </section>
 
+      {cuentas.some((c) => c.balance_cents < 0) ? (
+        <section className="card border-warn/50">
+          <p className="text-xs uppercase tracking-wide text-muted">Revisá el disponible</p>
+          <p className="mt-1 text-sm text-slate-300">
+            {cuentas
+              .filter((c) => c.balance_cents < 0)
+              .map((c) => c.name)
+              .join(', ')}{' '}
+            {cuentas.filter((c) => c.balance_cents < 0).length > 1 ? 'quedaron' : 'quedó'} con saldo negativo. Una
+            caja de ahorro no está en rojo: ese número no es un saldo sino la suma de los movimientos importados,
+            que arranca de cero cuando el extracto no trae el saldo del banco.{' '}
+            <Link href="/config" className="text-brand underline">
+              Corregilo en Config
+            </Link>{' '}
+            escribiendo el saldo real; la diferencia queda anotada como un ajuste.
+          </p>
+        </section>
+      ) : null}
+
       {mes.remesa ? <BloqueRemesa remesa={mes.remesa} /> : null}
 
       <Panel

@@ -43,6 +43,8 @@ export async function saveAccountAction(form: FormData): Promise<void> {
   if (!name) return
 
   if (existing) {
+    // Corregir el saldo a mano deja rastro: ver `registrarAjuste`.
+    registrarAjuste(existing, toCents(str(form, 'balance')))
     db.prepare('UPDATE accounts SET name = ?, kind = ?, balance_cents = ?, updated_at = ? WHERE id = ?').run(
       name,
       str(form, 'kind') || 'caja_ahorro',
@@ -482,4 +484,46 @@ export async function setFxAction(form: FormData): Promise<void> {
   setFxArsCop(valor)
   revalidatePath('/config')
   revalidatePath('/')
+}
+
+/**
+ * Deja constancia de haber corregido el saldo de una cuenta contra el banco.
+ *
+ * Hace falta porque el saldo que la app arrastra es una cuenta: parte del que
+ * se cargó al crearla y le suma cada movimiento importado. Si el extracto no
+ * trae columna de saldo —los de Bancolombia no siempre la traen— o si falta
+ * algún período, ese número se despega del real y no hay forma de volver a
+ * anclarlo. Un saldo negativo en una caja de ahorro es la señal.
+ *
+ * La diferencia se registra como un movimiento propio en vez de corregirse en
+ * silencio: si el saldo cambia y nada lo explica, el historial pasa a mentir, y
+ * es justo el historial lo que después se mira para entender en qué se va la
+ * plata. La categoría `ajuste` lo mantiene fuera del gasto del mes: no es plata
+ * que entró ni que salió, es información que faltaba.
+ */
+function registrarAjuste(cuentaId: string, saldoReal: number): void {
+  const db = getDb()
+  const cuenta = db.prepare('SELECT balance_cents, currency FROM accounts WHERE id = ?').get(cuentaId) as
+    | { balance_cents: number; currency: string }
+    | undefined
+  if (!cuenta) return
+
+  const diferencia = saldoReal - cuenta.balance_cents
+  if (!diferencia) return
+
+  db.prepare(
+    `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category,
+       method, account_id, source, created_at)
+     VALUES (?, ?, ?, 'Ajuste', ?, ?, 'ajuste', 'transferencia', ?, 'manual', ?)`,
+  ).run(
+    id(),
+    todayISO(),
+    diferencia > 0
+      ? 'Ajuste de saldo: el banco tenía más de lo que la app había contado'
+      : 'Ajuste de saldo: el banco tenía menos de lo que la app había contado',
+    diferencia,
+    cuenta.currency,
+    cuentaId,
+    now(),
+  )
 }

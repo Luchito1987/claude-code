@@ -21,6 +21,13 @@ export const CATEGORIES = [
   'transferencias',
   'pago_tarjeta',
   'ingresos',
+  /**
+   * La diferencia entre lo que la app calculaba y lo que el banco dice de
+   * verdad. No es un gasto ni un ingreso: es el reconocimiento de que faltaba
+   * información. Va aparte para que no ensucie el gasto del mes ni se lea como
+   * plata que entró o salió.
+   */
+  'ajuste',
   'otros',
 ] as const
 
@@ -47,6 +54,7 @@ export const FIXED_CATEGORIES: Category[] = ['servicios', 'educacion', 'salud', 
  * contarlos dos veces.
  */
 export const NON_VARIABLE_CATEGORIES: Category[] = [
+  'ajuste',
   'pago_tarjeta',
   'transferencias',
   'servicios',
