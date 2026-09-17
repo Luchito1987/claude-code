@@ -30,6 +30,8 @@ const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }
   { table: 'statements', column: 'minimum_cents', definition: 'INTEGER NOT NULL DEFAULT 0' },
   { table: 'accounts', column: 'anchor_cents', definition: 'INTEGER NOT NULL DEFAULT 0' },
   { table: 'accounts', column: 'anchor_date', definition: "TEXT NOT NULL DEFAULT ''" },
+  { table: 'services', column: 'frequency', definition: "TEXT NOT NULL DEFAULT 'mensual'" },
+  { table: 'services', column: 'anchor_month', definition: 'INTEGER NOT NULL DEFAULT 1' },
 ]
 
 /**

@@ -6,9 +6,18 @@ import {
   deleteServiceAction,
   generateBillsAction,
   saveServiceAction,
+  setServiceFrequencyAction,
   toggleBillPaidAction,
   updateBillAction,
 } from '@/app/actions/data'
+import {
+  FRECUENCIAS,
+  FRECUENCIA_LABELS,
+  MESES,
+  normalizarFrecuencia,
+  normalizarMesAncla,
+  type Frecuencia,
+} from '@/lib/frecuencia'
 import { ServiceForm } from './ServiceForm'
 
 export const dynamic = 'force-dynamic'
@@ -121,7 +130,7 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
 
       <Panel
         title="Servicios"
-        subtitle="Cada servicio genera una factura por mes con vencimiento en el día indicado. Si no ponés un importe fijo, se estima con el promedio de las últimas tres."
+        subtitle="Cada servicio genera su factura en los meses que le tocan, con vencimiento en el día indicado. Si no ponés un importe fijo, se estima con el promedio de las últimas tres."
       >
         <ServiceForm />
         {services.length ? (
@@ -132,6 +141,7 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
                   <th className="th">Servicio</th>
                   <th className="th">Proveedor</th>
                   <th className="th">Vence</th>
+                  <th className="th">Cada cuánto</th>
                   <th className="th text-right">Esperado</th>
                   <th className="th" />
                 </tr>
@@ -154,6 +164,38 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
                   </td>
                   <td className="td text-muted">{s.provider || '—'}</td>
                   <td className="td text-muted">día {s.due_day}</td>
+                  <td className="td">
+                    <form action={setServiceFrequencyAction} className="flex flex-wrap items-center gap-1">
+                      <input type="hidden" name="id" value={s.id} />
+                      <select
+                        name="frequency"
+                        className="input py-1 text-xs"
+                        defaultValue={normalizarFrecuencia(s.frequency)}
+                        aria-label={`Cada cuánto vence ${s.name}`}
+                      >
+                        {(Object.keys(FRECUENCIAS) as Frecuencia[]).map((f) => (
+                          <option key={f} value={f}>
+                            {FRECUENCIA_LABELS[f]}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        name="anchor_month"
+                        className="input py-1 text-xs"
+                        defaultValue={normalizarMesAncla(s.anchor_month)}
+                        aria-label={`Mes en que cae ${s.name}`}
+                      >
+                        {MESES.map((m, i) => (
+                          <option key={m} value={i + 1}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit" className="btn-ghost px-2 py-1 text-xs">
+                        Guardar
+                      </button>
+                    </form>
+                  </td>
                   <td className="td text-right tabular-nums">
                     {s.expected_amount_cents ? formatMoney(s.expected_amount_cents) : 'promedio'}
                   </td>

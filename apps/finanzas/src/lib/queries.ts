@@ -23,6 +23,7 @@ import {
   type DebtSummary,
   type FutureInstallment,
   type MonthOutlook,
+  type ServiceEstimate,
 } from './monthly'
 import {
   cardDues as computeCardDues,
@@ -33,6 +34,7 @@ import {
 } from './cashflow'
 import { NON_VARIABLE_CATEGORIES, type UserRule } from './categories'
 import { convertir, MONEDA_BASE, type Moneda } from './money'
+import { venceEnPeriodo } from './frecuencia'
 
 export interface Account {
   id: string
@@ -70,6 +72,10 @@ export interface Service {
   notes: string
   /** Cómo nombra el banco a este servicio en el extracto. */
   match_pattern: string
+  /** Cada cuánto vence: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'. */
+  frequency: string
+  /** Mes (1-12) en el que cae, para las frecuencias que no son mensuales. */
+  anchor_month: number
   created_at: string
 }
 
@@ -471,7 +477,7 @@ export function ensureBillsForPeriod(period: string): { created: number } {
       created += res.changes
     }
   })
-  tx(listServices(true))
+  tx(listServices(true).filter((s) => venceEnPeriodo(s, period)))
   return { created }
 }
 
@@ -1171,10 +1177,11 @@ export function remesaDesdeArgentina(today: ISODate = todayISO()): Remesa | unde
 }
 
 /** Estimación por servicio para los meses que todavía no tienen factura. */
-function serviceEstimates(currency?: Moneda): Array<{ name: string; cents: number }> {
+function serviceEstimates(currency?: Moneda): ServiceEstimate[] {
   const db = getDb()
   return listServices(true, currency).map((s) => {
-    if (s.expected_amount_cents > 0) return { name: s.name, cents: s.expected_amount_cents }
+    const cuando = { frequency: s.frequency, anchor_month: s.anchor_month }
+    if (s.expected_amount_cents > 0) return { name: s.name, cents: s.expected_amount_cents, ...cuando }
     const rows = db
       .prepare(
         `SELECT amount_cents FROM bills
@@ -1183,7 +1190,7 @@ function serviceEstimates(currency?: Moneda): Array<{ name: string; cents: numbe
       )
       .all(s.id) as Array<{ amount_cents: number }>
     const promedio = rows.length ? Math.round(rows.reduce((a, r) => a + r.amount_cents, 0) / rows.length) : 0
-    return { name: s.name, cents: promedio }
+    return { name: s.name, cents: promedio, ...cuando }
   })
 }
 

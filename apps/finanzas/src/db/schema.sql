@@ -83,6 +83,13 @@ CREATE TABLE IF NOT EXISTS services (
   -- coinciden, así que sin esto no hay forma de cruzarlos.
   match_pattern         TEXT NOT NULL DEFAULT '',
   currency              TEXT NOT NULL DEFAULT 'COP',
+  -- Cada cuánto se paga: mensual, bimestral, trimestral, semestral o anual.
+  -- La renta se paga una vez al año; generarla los doce meses infla el gasto
+  -- fijo con plata que nadie va a poner.
+  frequency             TEXT NOT NULL DEFAULT 'mensual',
+  -- En qué mes (1-12) cae, para las que no son mensuales. Los demás
+  -- vencimientos salen de contar desde acá.
+  anchor_month          INTEGER NOT NULL DEFAULT 1,
   created_at            TEXT NOT NULL
 );
 

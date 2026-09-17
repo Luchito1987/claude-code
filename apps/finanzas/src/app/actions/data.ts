@@ -19,6 +19,7 @@ import {
 } from '@/lib/queries'
 import { monedaActual, setPaisPorDefecto, setVista } from '@/lib/vista'
 import { financialMonth } from '@/lib/dates'
+import { normalizarFrecuencia, normalizarMesAncla } from '@/lib/frecuencia'
 
 function requireUser() {
   const user = currentUser()
@@ -155,21 +156,48 @@ export async function saveServiceAction(form: FormData): Promise<void> {
     form.get('autodebit') ? 1 : 0,
     str(form, 'notes'),
     str(form, 'match_pattern'),
+    normalizarFrecuencia(str(form, 'frequency')),
+    normalizarMesAncla(int(form, 'anchor_month', 1)),
   ] as const
 
   if (existing) {
     db.prepare(
       `UPDATE services SET name = ?, provider = ?, category = ?, expected_amount_cents = ?,
-       due_day = ?, active = ?, autodebit = ?, notes = ?, match_pattern = ? WHERE id = ?`,
+       due_day = ?, active = ?, autodebit = ?, notes = ?, match_pattern = ?,
+       frequency = ?, anchor_month = ? WHERE id = ?`,
     ).run(...args, existing)
   } else {
     db.prepare(
-      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, match_pattern, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, match_pattern, frequency, anchor_month, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id(), ...args, now())
   }
   revalidatePath('/facturas')
   revalidatePath('/')
+}
+
+/**
+ * Cambia sólo cada cuánto vence un servicio, desde la misma tabla.
+ *
+ * Los servicios ya cargados no tenían dónde editarse: la única salida era
+ * borrarlos y volver a crearlos, y eso se lleva puesto el historial de
+ * facturas. Para el caso que motivó todo esto —dos conceptos de impuestos
+ * cargados como mensuales— borrar no era una opción.
+ */
+export async function setServiceFrequencyAction(form: FormData): Promise<void> {
+  requireUser()
+  const serviceId = str(form, 'id')
+  if (!serviceId) return
+  getDb()
+    .prepare('UPDATE services SET frequency = ?, anchor_month = ? WHERE id = ?')
+    .run(
+      normalizarFrecuencia(str(form, 'frequency')),
+      normalizarMesAncla(int(form, 'anchor_month', 1)),
+      serviceId,
+    )
+  revalidatePath('/facturas')
+  revalidatePath('/')
+  revalidatePath('/proyeccion')
 }
 
 export async function deleteServiceAction(form: FormData): Promise<void> {

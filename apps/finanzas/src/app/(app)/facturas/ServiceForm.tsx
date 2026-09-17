@@ -1,5 +1,6 @@
 import { saveServiceAction } from '@/app/actions/data'
 import { BILLABLE_CATEGORIES, CATEGORY_LABELS } from '@/lib/categories'
+import { FRECUENCIAS, FRECUENCIA_LABELS, MESES, type Frecuencia } from '@/lib/frecuencia'
 
 export function ServiceForm() {
   return (
@@ -42,6 +43,34 @@ export function ServiceForm() {
         <p className="mt-1 text-xs text-muted">
           “Servicios” son los medidos, que cambian todos los meses (luz, agua, gas). El resto entra en Gastos
           fijos, donde el importe que cargues rige de ese mes en adelante.
+        </p>
+      </div>
+      <div>
+        <label className="label" htmlFor="svc-freq">
+          Cada cuánto
+        </label>
+        <select id="svc-freq" name="frequency" className="input" defaultValue="mensual">
+          {(Object.keys(FRECUENCIAS) as Frecuencia[]).map((f) => (
+            <option key={f} value={f}>
+              {FRECUENCIA_LABELS[f]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="label" htmlFor="svc-anchor">
+          Mes en que cae
+        </label>
+        <select id="svc-anchor" name="anchor_month" className="input" defaultValue={1}>
+          {MESES.map((m, i) => (
+            <option key={m} value={i + 1}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-muted">
+          Sólo cuenta si no es mensual. De acá sale el resto: una bimestral que cae en enero vuelve en
+          marzo, mayo y así.
         </p>
       </div>
       <div className="sm:col-span-2">
