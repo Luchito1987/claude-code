@@ -40,6 +40,9 @@ export interface Account {
   kind: string
   currency: string
   balance_cents: number
+  /** Último saldo confirmado contra el banco, y el día al que corresponde. */
+  anchor_cents: number
+  anchor_date: string
   updated_at: string
 }
 
@@ -261,11 +264,52 @@ export const horizonWeeks = (): number => Number(getSetting('horizon_weeks', '8'
 
 // ---------------------------------------------------------------- derivadas
 
-export function totalCashCents(currency: Moneda = MONEDA_BASE): number {
-  const row = getDb()
-    .prepare('SELECT COALESCE(SUM(balance_cents), 0) AS total FROM accounts WHERE currency = ?')
-    .get(currency) as { total: number }
-  return row.total
+/**
+ * El saldo de una cuenta hoy: el último confirmado más lo que pasó después.
+ *
+ * No se acumula movimiento a movimiento sobre el saldo anterior. Esa forma
+ * obliga a que todo se cargue una sola vez y en orden, y basta con reimportar
+ * un mes para que el número quede mal sin que nada lo indique. Partir del
+ * último punto firme y sumar sólo lo posterior hace que reimportar sea
+ * inofensivo y que el orden deje de importar.
+ *
+ * Sin ancla —una cuenta recién creada, o un banco que nunca dio el saldo— cae
+ * en `balance_cents`, que es el comportamiento viejo.
+ */
+export function accountBalanceCents(accountId: string, today: ISODate = todayISO()): number {
+  const db = getDb()
+  const cuenta = db.prepare('SELECT balance_cents, anchor_cents, anchor_date FROM accounts WHERE id = ?').get(
+    accountId,
+  ) as { balance_cents: number; anchor_cents: number; anchor_date: string } | undefined
+  if (!cuenta) return 0
+  if (!cuenta.anchor_date) return cuenta.balance_cents
+
+  const posteriores = db
+    .prepare(
+      `SELECT COALESCE(SUM(amount_cents), 0) AS total FROM transactions
+       WHERE account_id = ? AND card_id IS NULL AND date > ? AND date <= ?`,
+    )
+    .get(accountId, cuenta.anchor_date, today) as { total: number }
+  return cuenta.anchor_cents + posteriores.total
+}
+
+export function totalCashCents(currency: Moneda = MONEDA_BASE, today: ISODate = todayISO()): number {
+  return listAccounts(currency).reduce((total, a) => total + accountBalanceCents(a.id, today), 0)
+}
+
+/** Cuándo se confirmó por última vez el saldo de cada cuenta contra el banco. */
+export function accountAnchors(currency: Moneda = MONEDA_BASE): Array<{
+  id: string
+  name: string
+  anchorDate: string
+  balanceCents: number
+}> {
+  return listAccounts(currency).map((a) => ({
+    id: a.id,
+    name: a.name,
+    anchorDate: a.anchor_date ?? '',
+    balanceCents: accountBalanceCents(a.id),
+  }))
 }
 
 /**

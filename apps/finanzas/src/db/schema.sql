@@ -35,6 +35,19 @@ CREATE TABLE IF NOT EXISTS accounts (
   kind          TEXT NOT NULL DEFAULT 'caja_ahorro',
   currency      TEXT NOT NULL DEFAULT 'COP',
   balance_cents INTEGER NOT NULL DEFAULT 0,
+  -- Último saldo confirmado y el día al que corresponde.
+  --
+  -- El saldo de hoy no se guarda: se calcula como este número más los
+  -- movimientos posteriores a esta fecha. La diferencia importa. Ir sumando
+  -- cada importación al saldo anterior obliga a que el orden sea el correcto y
+  -- a que nada se cargue dos veces; partir siempre del último punto firme hace
+  -- que reimportar un mes, o cargarlo fuera de orden, dé igual.
+  --
+  -- El ancla se mueve sola cuando un extracto trae columna de saldo. Cuando el
+  -- banco deja de darla —Bancolombia sólo la entrega tres meses hacia atrás—
+  -- se fija a mano contra el saldo real, y desde ahí vuelve a sumar.
+  anchor_cents  INTEGER NOT NULL DEFAULT 0,
+  anchor_date   TEXT NOT NULL DEFAULT '',
   updated_at    TEXT NOT NULL
 );
 

@@ -28,6 +28,8 @@ const ADDED_COLUMNS: Array<{ table: string; column: string; definition: string }
   { table: 'users', column: 'totp_secret', definition: "TEXT NOT NULL DEFAULT ''" },
   { table: 'users', column: 'totp_enabled', definition: 'INTEGER NOT NULL DEFAULT 0' },
   { table: 'statements', column: 'minimum_cents', definition: 'INTEGER NOT NULL DEFAULT 0' },
+  { table: 'accounts', column: 'anchor_cents', definition: 'INTEGER NOT NULL DEFAULT 0' },
+  { table: 'accounts', column: 'anchor_date', definition: "TEXT NOT NULL DEFAULT ''" },
 ]
 
 /**
