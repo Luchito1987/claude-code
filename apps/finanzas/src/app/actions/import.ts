@@ -317,9 +317,9 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
   let saldoViejo = false
 
   if (kind === 'account') {
-    const cuenta = db.prepare('SELECT balance_cents FROM accounts WHERE id = ?').get(targetId) as
-      | { balance_cents: number }
-      | undefined
+    const cuenta = db
+      .prepare('SELECT balance_cents, anchor_date FROM accounts WHERE id = ?')
+      .get(targetId) as { balance_cents: number; anchor_date: string } | undefined
 
     if (cuenta) {
       let nuevo: number | null = null
@@ -344,11 +344,24 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
           : 0
         nuevo = parsed.finalBalanceCents + posteriores
         saldoViejo = posteriores !== 0
-      } else if (total !== 0) {
-        // Sin saldo informado —el informe del mes en curso no lo trae— se
-        // arrastra el que había con lo que recién entró. Solo cuenta lo
-        // insertado: los duplicados ya estaban y lo conciliado ya movió el
-        // saldo cuando se cargó por foto o a mano.
+
+        /*
+         * Un extracto que informa saldo es un punto firme: se guarda como ancla
+         * con su fecha, y desde ahí el saldo de hoy se calcula solo sumando lo
+         * posterior. Así reimportar este mismo archivo no mueve el número, y
+         * cargar después un mes que falta tampoco lo desvía.
+         */
+        if (parsed.finalBalanceDate) {
+          db.prepare('UPDATE accounts SET anchor_cents = ?, anchor_date = ? WHERE id = ?').run(
+            parsed.finalBalanceCents,
+            parsed.finalBalanceDate,
+            targetId,
+          )
+        }
+      } else if (total !== 0 && !cuenta.anchor_date) {
+        // Sin saldo informado y sin ancla previa no queda otra que arrastrar el
+        // que había. Con ancla no hace falta: el saldo se recalcula a partir de
+        // ella, y sumar acá además lo contaría dos veces.
         nuevo = cuenta.balance_cents + total
       }
 

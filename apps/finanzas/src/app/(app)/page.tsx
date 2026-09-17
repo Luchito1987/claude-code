@@ -4,6 +4,7 @@ import { CATEGORY_LABELS, MANUAL_EXPENSE_CATEGORIES } from '@/lib/categories'
 import { compare, formatDate, formatPeriod, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 import {
+  accountBalanceCents,
   listAccounts,
   listCards,
   monthSummary,
@@ -28,7 +29,7 @@ export default function Tablero() {
   const today = todayISO()
   const moneda = monedaActual()
   const mes = monthSummary(today, moneda)
-  const cuentas = listAccounts()
+  const cuentas = listAccounts(moneda).map((c) => ({ ...c, saldo: accountBalanceCents(c.id, today) }))
   const pendientes = mes.items.filter((i) => !i.paid)
   const pagados = mes.items.filter((i) => i.paid)
 
@@ -70,15 +71,15 @@ export default function Tablero() {
         </div>
       </section>
 
-      {cuentas.some((c) => c.balance_cents < 0) ? (
+      {cuentas.some((c) => c.saldo < 0) ? (
         <section className="card border-warn/50">
           <p className="text-xs uppercase tracking-wide text-muted">Revisá el disponible</p>
           <p className="mt-1 text-sm text-slate-300">
             {cuentas
-              .filter((c) => c.balance_cents < 0)
+              .filter((c) => c.saldo < 0)
               .map((c) => c.name)
               .join(', ')}{' '}
-            {cuentas.filter((c) => c.balance_cents < 0).length > 1 ? 'quedaron' : 'quedó'} con saldo negativo. Una
+            {cuentas.filter((c) => c.saldo < 0).length > 1 ? 'quedaron' : 'quedó'} con saldo negativo. Una
             caja de ahorro no está en rojo: ese número no es un saldo sino la suma de los movimientos importados,
             que arranca de cero cuando el extracto no trae el saldo del banco.{' '}
             <Link href="/config" className="text-brand underline">

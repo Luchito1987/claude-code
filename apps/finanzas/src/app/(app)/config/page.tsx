@@ -2,7 +2,8 @@ import { Empty, Panel, Table } from '@/components/ui'
 import { getDb } from '@/db/client'
 import { currentUser } from '@/lib/auth'
 import { formatMoney } from '@/lib/money'
-import { horizonWeeks, listAccounts, listCards, listIncomes, listUserRules, minBufferCents } from '@/lib/queries'
+import {
+  accountBalanceCents, horizonWeeks, listAccounts, listCards, listIncomes, listUserRules, minBufferCents } from '@/lib/queries'
 import {
   deleteAccountAction,
   deleteCardAction,
@@ -30,6 +31,8 @@ export const dynamic = 'force-dynamic'
 export default async function ConfigPage() {
   const me = currentUser()
   const accounts = listAccounts()
+  // El saldo que se muestra es el calculado desde el ancla, no el guardado.
+  const saldoDe = (id: string) => accountBalanceCents(id)
   const cards = listCards()
   const incomes = listIncomes()
   const moneda = monedaActual()
@@ -146,7 +149,7 @@ export default async function ConfigPage() {
                   <input
                     id={`acc-b-${a.id}`}
                     name="balance"
-                    defaultValue={(a.balance_cents / 100).toFixed(2)}
+                    defaultValue={(saldoDe(a.id) / 100).toFixed(2)}
                     className="input text-right"
                     inputMode="decimal"
                   />
@@ -162,7 +165,7 @@ export default async function ConfigPage() {
             <p className="pt-2 text-sm">
               Total disponible:{' '}
               <strong className="tabular-nums">
-                {formatMoney(accounts.reduce((s, a) => s + a.balance_cents, 0), moneda)}
+                {formatMoney(accounts.reduce((total, a) => total + saldoDe(a.id), 0), moneda)}
               </strong>
             </p>
             <p className="text-xs text-muted">

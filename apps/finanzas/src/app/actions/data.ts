@@ -45,10 +45,22 @@ export async function saveAccountAction(form: FormData): Promise<void> {
   if (existing) {
     // Corregir el saldo a mano deja rastro: ver `registrarAjuste`.
     registrarAjuste(existing, toCents(str(form, 'balance')))
-    db.prepare('UPDATE accounts SET name = ?, kind = ?, balance_cents = ?, updated_at = ? WHERE id = ?').run(
+    /*
+     * El saldo que la persona escribe es un punto firme igual que el de un
+     * extracto: queda como ancla de hoy, y desde acá el saldo se vuelve a
+     * calcular solo. Sin esto, el próximo archivo sin saldo volvería a
+     * arrastrar el número y la corrección duraría hasta la siguiente
+     * importación.
+     */
+    db.prepare(
+      `UPDATE accounts SET name = ?, kind = ?, balance_cents = ?, anchor_cents = ?, anchor_date = ?,
+         updated_at = ? WHERE id = ?`,
+    ).run(
       name,
       str(form, 'kind') || 'caja_ahorro',
       toCents(str(form, 'balance')),
+      toCents(str(form, 'balance')),
+      todayISO(),
       now(),
       existing,
     )
