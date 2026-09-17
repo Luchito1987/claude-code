@@ -137,6 +137,14 @@ CREATE TABLE IF NOT EXISTS statements (
   -- el resumen en su mes, en vez de deducirlo del día de cierre de la tarjeta.
   due_date    TEXT NOT NULL DEFAULT '',
   total_cents INTEGER NOT NULL DEFAULT 0,
+  -- Lo que el banco exige pagar en este período, tal como lo imprime.
+  --
+  -- Manda sobre la suma de los movimientos. Un resumen no es una lista que se
+  -- suma: trae cargos que no bajan a la tabla, y cuando hay mora incluye deuda
+  -- de períodos anteriores que tampoco figura. Perseguir que las filas
+  -- reproduzcan el total es frágil y cambia entre extractos del mismo banco;
+  -- el número que el banco declara, no.
+  minimum_cents INTEGER NOT NULL DEFAULT 0,
   rows_count  INTEGER NOT NULL DEFAULT 0,
   imported_by TEXT REFERENCES users(id) ON DELETE SET NULL,
   imported_at TEXT NOT NULL

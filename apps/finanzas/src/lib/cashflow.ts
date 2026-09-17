@@ -297,6 +297,8 @@ export interface TxLike {
   statement_due?: ISODate | null
   /** Compromiso que paga este movimiento; ver `transactions.commitment`. */
   commitment?: string | null
+  /** Pago mínimo que declara el resumen del que vino el movimiento. */
+  statement_minimum?: number | null
 }
 
 /**
@@ -372,13 +374,28 @@ export function cardDues(
   since: ISODate = today,
 ): CardDue[] {
   const byDue = new Map<ISODate, number>()
+  /*
+   * Lo que el extracto exige pagar, cuando lo declara, manda sobre la suma de
+   * sus movimientos.
+   *
+   * Un resumen no es una lista que se suma. Trae cargos que no bajan a la tabla
+   * —cuota de manejo, pólizas, "otros"— y cuando la tarjeta está en mora el
+   * mínimo incluye deuda de períodos anteriores que tampoco figura ahí.
+   * Perseguir que las filas reproduzcan el total es frágil y cambia entre
+   * extractos del mismo banco; el número impreso, no. Y es el que la persona
+   * tiene delante cuando compara la app con el papel.
+   */
+  const declarado = new Map<ISODate, number>()
 
   for (const t of txs) {
     if (t.card_id !== card.id) continue
+    if (t.statement_due && t.statement_minimum) declarado.set(t.statement_due, t.statement_minimum)
     if (t.amount_cents >= 0) continue
     const due = t.statement_due || dueDateFor(card, t.date)
     byDue.set(due, (byDue.get(due) ?? 0) + -t.amount_cents)
   }
+
+  for (const [due, minimo] of declarado) byDue.set(due, minimo)
 
   return [...byDue.entries()]
     .filter(([due]) => compare(due, since) >= 0)
