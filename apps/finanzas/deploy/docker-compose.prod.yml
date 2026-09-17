@@ -52,6 +52,10 @@ services:
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Sin esto habla la API 1.25, que los Docker nuevos ya no aceptan. El
+      # valor lo pone el script de arranque leyéndolo del demonio.
+      DOCKER_API_VERSION: ${API_DOCKER:-1.44}
     command: --interval 300 --cleanup --include-restarting --label-enable
     restart: unless-stopped
 
