@@ -8,6 +8,7 @@
 import { parseRows, parseStatement, type ParseOptions, type ParseResult } from './statement'
 import { describeSheet, isSpreadsheet, readWorkbook, type Sheet } from './xlsx'
 import { extractPdfText, isPdf } from './pdf'
+import { parseBancolombiaExtracto } from './bancolombia-extracto'
 
 export interface FileParseResult extends ParseResult {
   /** Hoja elegida, cuando el origen fue una planilla. */
@@ -42,7 +43,9 @@ export async function parseUploadedFile(
   let best: FileParseResult | null = null
 
   for (const sheet of sheets) {
-    const parsed = parseRows(sheet.rows, opts)
+    // El extracto de Bancolombia tiene su propio formato; el genérico no
+    // encuentra la tabla debajo del bloque de cliente y resumen.
+    const parsed = parseBancolombiaExtracto(sheet.rows, opts) ?? parseRows(sheet.rows, opts)
     if (parsed && (!best || parsed.rows.length > best.rows.length)) {
       best = { ...parsed, sheetName: sheet.name }
     }

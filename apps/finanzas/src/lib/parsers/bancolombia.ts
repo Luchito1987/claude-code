@@ -43,10 +43,23 @@ interface Layout {
   date: number
   description: number
   amount: number
+  /** Columna con "C" (crédito) o "D" (débito), cuando el formato la trae. */
+  cd?: number
 }
 
+/*
+ * El consolidado viene en dos versiones. La nueva agrega una descripción larga
+ * junto a la corta (que el banco corta a veinte caracteres: "IMPTO GOBIERNO
+ * 4X100") y eso corre dos lugares el importe y la marca C/D. Lo traicionero es
+ * que la versión nueva también "encaja" en la vieja: en la columna donde la
+ * vieja espera el importe, la nueva tiene el número de documento, "000000", que
+ * pasa por un importe de cero. El resultado era ningún movimiento y un saldo de
+ * $0 que, para colmo, movía el ancla de la cuenta. Por eso cada versión se
+ * reconoce también por dónde cae la C/D, que no puede ser otra cosa.
+ */
 const LAYOUTS: Layout[] = [
-  { name: 'consolidado', cols: 11, date: 0, description: 6, amount: 8 },
+  { name: 'consolidado', cols: 13, date: 0, description: 7, amount: 9, cd: 11 },
+  { name: 'consolidado', cols: 11, date: 0, description: 6, amount: 8, cd: 10 },
   { name: 'mensual', cols: 9, date: 3, description: 7, amount: 5 },
 ]
 
@@ -88,7 +101,8 @@ function fitsLayout(cells: string[], l: Layout): boolean {
   return (
     cells.length >= l.cols &&
     parseCompactDate(cells[l.date]) !== null &&
-    AMOUNT.test(cells[l.amount] ?? '')
+    AMOUNT.test(cells[l.amount] ?? '') &&
+    (l.cd === undefined || /^[CD]$/.test(cells[l.cd] ?? ''))
   )
 }
 

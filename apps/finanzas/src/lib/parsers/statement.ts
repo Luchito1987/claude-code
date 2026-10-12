@@ -351,7 +351,7 @@ function normalizeCurrency(raw: string | undefined, porDefecto: Moneda): string 
   return porDefecto
 }
 
-function buildRow(args: {
+export function buildRow(args: {
   date: ISODate
   description: string
   cents: number

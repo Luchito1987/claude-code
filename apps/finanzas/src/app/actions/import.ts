@@ -24,6 +24,7 @@ import {
   type ExistingStatement,
   listUserRules,
   markBillPaid,
+  markInternalTransfers,
   markMonthItemPaid,
   updateBillAmount,
 } from '@/lib/queries'
@@ -376,6 +377,9 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
     }
   }
 
+  // La otra pata de una transferencia puede estar en una cuenta ya cargada.
+  const internas = kind === 'account' ? markInternalTransfers() : 0
+
   revalidatePath('/importar')
   revalidatePath('/config')
   revalidatePath('/gastos')
@@ -386,6 +390,9 @@ export async function importStatementAction(_prev: ImportState, form: FormData):
       ? `Planilla leída, hoja "${parsed.sheetName}".`
       : `Formato detectado: ${parsed.strategy === 'csv' ? 'CSV con encabezados' : 'texto por líneas'}.`,
     `${parsed.skipped} línea(s) sin fecha o importe se ignoraron.`,
+    ...(internas
+      ? [`${internas} transferencia(s) entre tus cuentas reconocidas: no cuentan como ingreso ni como gasto.`]
+      : []),
     ...parsed.warnings,
   ]
   /*

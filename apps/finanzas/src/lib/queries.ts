@@ -981,7 +981,11 @@ export function historyMonths(): string[] {
   return nextMonths(cuantos, primero).reverse()
 }
 
-/** Lo que de verdad entró y salió de las cuentas en el mes. */
+/**
+ * Lo que de verdad entró y salió de las cuentas en el mes. Sin las
+ * transferencias entre cuentas propias: esa plata ya estaba en el hogar, y
+ * contarla haría que la empresa pagándole a Inés aparezca como ingreso.
+ */
 export function monthCashFlow(period: string): { inCents: number; outCents: number } {
   const { start, end } = monthRange(period)
   const r = getDb()
@@ -990,10 +994,71 @@ export function monthCashFlow(period: string): { inCents: number; outCents: numb
          COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS entro,
          COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS salio
        FROM transactions
-       WHERE date BETWEEN ? AND ? AND card_id IS NULL`,
+       WHERE date BETWEEN ? AND ? AND card_id IS NULL AND commitment NOT LIKE 'interna:%'`,
     )
     .get(start, end) as { entro: number; salio: number }
   return { inCents: r.entro, outCents: r.salio }
+}
+
+/** Cómo se ve, en el detalle del banco, plata que va de una cuenta a otra. */
+const PARECE_TRANSFERENCIA = /TRANSF|PAGO\s+(A|DE)\s+PROV|SUC\s+VIRTUAL/i
+
+/**
+ * Empareja las transferencias entre cuentas propias y las marca como tales.
+ *
+ * Cada transferencia entre dos cuentas del hogar aparece dos veces: como
+ * salida en una y como entrada en la otra. La salida ya se categorizaba como
+ * transferencia, pero la entrada caía en "ingresos" como cualquier plata
+ * positiva, así que la empresa pagándole a Inés, o Luciano pasándole a Inés,
+ * figuraban como plata nueva. Con tres cuentas cargadas eso eran $27 millones
+ * de ingresos inventados en un mes y medio.
+ *
+ * Un par es una entrada y una salida del mismo importe, en cuentas distintas,
+ * con un día de diferencia como mucho (el banco a veces acredita al día
+ * siguiente), y las dos con texto de transferencia: sin esa condición, un
+ * pago a un tercero podría emparejarse con un cobro de otro que coincidió en
+ * monto. Cada movimiento queda apuntando al otro en `commitment`.
+ *
+ * Mira todo lo cargado y no sólo lo recién importado, porque las dos patas
+ * llegan en archivos distintos: el par aparece recién cuando se carga la
+ * segunda cuenta, sea cual sea el orden. Lo ya emparejado no se toca.
+ */
+export function markInternalTransfers(): number {
+  const db = getDb()
+  const movs = db
+    .prepare(
+      `SELECT id, account_id, date, amount_cents, description FROM transactions
+       WHERE account_id IS NOT NULL AND card_id IS NULL AND commitment = ''
+       ORDER BY date, id`,
+    )
+    .all() as Array<{ id: string; account_id: string; date: ISODate; amount_cents: number; description: string }>
+
+  const salidas = movs.filter((m) => m.amount_cents < 0 && PARECE_TRANSFERENCIA.test(m.description))
+  const usadas = new Set<string>()
+  const marcar = db.prepare(`UPDATE transactions SET category = 'transferencias', commitment = ? WHERE id = ?`)
+  const dias = (a: ISODate, b: ISODate) => Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000
+
+  let pares = 0
+  db.transaction(() => {
+    for (const e of movs) {
+      if (e.amount_cents <= 0 || !PARECE_TRANSFERENCIA.test(e.description)) continue
+      const candidatas = salidas.filter(
+        (s) =>
+          !usadas.has(s.id) &&
+          s.account_id !== e.account_id &&
+          s.amount_cents === -e.amount_cents &&
+          dias(s.date, e.date) <= 1,
+      )
+      if (!candidatas.length) continue
+      // Si hay más de una, la del mismo día antes que la del día de al lado.
+      const s = candidatas.sort((a, b) => dias(a.date, e.date) - dias(b.date, e.date))[0]
+      usadas.add(s.id)
+      marcar.run(`interna:${s.id}`, e.id)
+      marcar.run(`interna:${e.id}`, s.id)
+      pares++
+    }
+  })()
+  return pares
 }
 
 export interface AccountReconciliation {

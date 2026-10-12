@@ -160,3 +160,46 @@ describe('los dos formatos no se pisan', () => {
     expect(parseBancolombia(MENSUAL).finalBalanceCents).toBeUndefined()
   })
 })
+
+/**
+ * La versión nueva del consolidado agrega una descripción larga junto a la
+ * corta, y eso corre dos lugares el importe y la marca C/D. En la columna donde
+ * la versión vieja tiene el importe, la nueva tiene el documento, "000000", que
+ * pasaba por un importe de cero: el informe entero se leía como ningún
+ * movimiento y un saldo de $0, que encima movía el ancla de la cuenta.
+ */
+const CONSOLIDADO_NUEVO = [
+  '01092026,99900000000,1,7,442,0,SALDO INICIAL,SALDO INICIAL,000000,1000000.00,0,C,1000000.00',
+  '01092026,99900000000,4,7,442,0,SALDO DIA,SALDO DIA,000000,921629.72,442,C,921629.72',
+  '01092026,99900000000,2,7,442,3277,CUOTA PLAN CANAL NEG,CUOTA PLAN CANAL NEGOCIOS,000000,-78000.00,442,D,78000.00',
+  '01092026,99900000000,3,7,442,3339,IMPTO GOBIERNO 4X100,IMPTO GOBIERNO 4X1000,000000,-370.28,442,D,370.28',
+  '08092026,99900000000,6,7,442,0,SALDO DIA,SALDO DIA,000000,4921629.72,442,C,4921629.72',
+  '08092026,99900000000,5,7,442,2142,PAGO INTERBANC CLINI,PAGO INTERBANC CLINICA EJEMPLO,000000,4000000.00,442,C,4000000.00',
+].join('\r\n')
+
+describe('el consolidado nuevo, con descripción larga', () => {
+  it('se reconoce como consolidado', () => {
+    expect(detectLayout(CONSOLIDADO_NUEVO)?.name).toBe('consolidado')
+  })
+
+  it('lee los importes de su columna, no el número de documento', () => {
+    const r = parseBancolombia(CONSOLIDADO_NUEVO)
+    expect(r.rows.map((x) => x.amountCents)).toEqual([-7_800_000, -37_028, 400_000_000])
+  })
+
+  it('usa la descripción completa, no la cortada a veinte caracteres', () => {
+    const r = parseBancolombia(CONSOLIDADO_NUEVO)
+    expect(r.rows.map((x) => x.description)).toContain('IMPTO GOBIERNO 4X1000')
+    expect(r.rows.map((x) => x.description)).toContain('PAGO INTERBANC CLINICA EJEMPLO')
+  })
+
+  it('el saldo es el del último día, no cero', () => {
+    const r = parseBancolombia(CONSOLIDADO_NUEVO)
+    expect(r.finalBalanceCents).toBe(492_162_972)
+    expect(r.finalBalanceDate).toBe('2026-09-08')
+  })
+
+  it('el consolidado viejo se sigue leyendo como antes', () => {
+    expect(parseBancolombia(EXTRACTO).rows.map((x) => x.amountCents)).toEqual([100_000_000, -5_000_000, -20_000_000])
+  })
+})
