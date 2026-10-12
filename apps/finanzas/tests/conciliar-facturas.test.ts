@@ -46,6 +46,16 @@ describe('elegir el pago de cada factura', () => {
       settleBillsFromStatement([{ id: 'p', serviceName: 'PILA', pattern: 'SOI ACH', amountCents: 79_880_000, period: '2026-09' }], SOI),
     ).toEqual([])
   })
+
+  it('acepta varias formas de pago separadas por "|"', () => {
+    const agua = { id: 'agua', serviceName: 'Agua', pattern: 'TRIPLE A DOMICILIACIO | FIDUCIARIA BANCOLOMBI', amountCents: 50_000_000 }
+    const filas = [
+      { date: '2026-09-16', description: 'PAGO SV TRIPLE A DOMICILIACIO', amountCents: -45_000_000 },
+      { date: '2026-10-12', description: 'PAGO PSE FIDUCIARIA BANCOLOMBI', amountCents: -51_000_000 },
+    ]
+    expect(settleBillsFromStatement([{ ...agua, period: '2026-09' }], filas)[0].paidCents).toBe(45_000_000)
+    expect(settleBillsFromStatement([{ ...agua, period: '2026-10' }], filas)[0].paidCents).toBe(51_000_000)
+  })
 })
 
 describe('reconciliar facturas ya cargadas', () => {
