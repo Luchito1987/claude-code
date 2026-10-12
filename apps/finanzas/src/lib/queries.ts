@@ -669,7 +669,22 @@ export function recentStatements(limit = 20) {
 }
 
 export function deleteStatement(statementId: string): void {
-  getDb().prepare('DELETE FROM statements WHERE id = ?').run(statementId)
+  const db = getDb()
+  db.transaction(() => {
+    db.prepare('DELETE FROM statements WHERE id = ?').run(statementId)
+    /*
+     * Si alguno de los movimientos borrados era una pata de una transferencia
+     * interna, la otra quedó apuntando a nada. Se libera para que vuelva a
+     * emparejarse cuando se cargue el archivo que reemplaza al borrado: si no,
+     * seguiría contada como interna sin par, y la nueva entrada quedaría como
+     * ingreso. La entrada vuelve a "ingresos", que es lo que era antes del par.
+     */
+    db.prepare(
+      `UPDATE transactions
+       SET commitment = '', category = CASE WHEN amount_cents > 0 THEN 'ingresos' ELSE category END
+       WHERE commitment LIKE 'interna:%' AND substr(commitment, 9) NOT IN (SELECT id FROM transactions)`,
+    ).run()
+  })()
 }
 
 export interface ExistingStatement {

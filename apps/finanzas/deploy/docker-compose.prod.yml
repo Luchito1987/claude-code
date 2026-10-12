@@ -17,6 +17,8 @@ services:
       TZ: ${TZ:-America/Bogota}
       # Ahora sí hay certificado: la cookie de sesión no debe viajar en claro.
       COOKIE_SECURE: 'true'
+      # Abre la API para cargar extractos. Vacía, la API queda cerrada.
+      FINANZAS_API_TOKEN: ${FINANZAS_API_TOKEN:-}
     # Marca cuál contenedor hay que actualizar. Va por etiqueta y no por nombre
     # porque el nombre lo arma compose con el de la carpeta, y basta mover el
     # repositorio de lugar para que deje de coincidir.
