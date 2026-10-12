@@ -31,6 +31,7 @@ import {
   markBillPaid,
   markInternalTransfers,
   markMonthItemPaid,
+  reconcileBills,
   reconcileCardPayments,
   syncCardMonthPayment,
   updateBillAmount,
@@ -389,7 +390,10 @@ export async function importarExtracto(form: FormData, user: { id: string }): Pr
   const internas = kind === 'account' ? markInternalTransfers() : 0
   // Pagos de tarjeta que habían entrado sueltos (por ejemplo, de antes de
   // configurar cómo se llama el pago) y que ahora sí se reconocen.
-  if (kind === 'account') reconcileCardPayments()
+  if (kind === 'account') {
+    reconcileCardPayments()
+    reconcileBills()
+  }
 
   revalidatePath('/importar')
   revalidatePath('/config')

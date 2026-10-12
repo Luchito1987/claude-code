@@ -35,7 +35,7 @@ import {
 import { NON_VARIABLE_CATEGORIES, type UserRule } from './categories'
 import { convertir, MONEDA_BASE, type Moneda } from './money'
 import { venceEnPeriodo } from './frecuencia'
-import { settleCardsFromStatement } from './reconcile'
+import { settleBillsFromStatement, settleCardsFromStatement } from './reconcile'
 
 export interface Account {
   id: string
@@ -1396,6 +1396,61 @@ export function reconcileCardPayments(): CardReconciliation[] {
     for (const [k, r] of tocados) r.cents = syncCardMonthPayment(k.split('|')[0], r.period)
   })()
   return [...tocados.values()].sort((a, b) => a.card.localeCompare(b.card) || a.period.localeCompare(b.period))
+}
+
+export interface BillReconciliation {
+  servicio: string
+  periodo: string
+  pagadoCents: number
+  /** Lo que la factura decía antes, cuando el banco trajo otro importe. */
+  antesCents: number | null
+  fecha: ISODate
+}
+
+/**
+ * Vuelve a cruzar las facturas pendientes contra los pagos ya cargados.
+ *
+ * Igual que con las tarjetas: si el servicio no tenía configurado cómo
+ * aparece su pago al importar el extracto, el pago entra suelto, la factura
+ * sigue figurando pendiente y la plata se cuenta como gasto. Esto lo repara
+ * después, con la misma regla que la importación (el pago del mes más
+ * cercano al importe esperado) y corrigiendo el importe con el del banco.
+ */
+export function reconcileBills(): BillReconciliation[] {
+  const db = getDb()
+  const pendientes = db
+    .prepare(
+      `SELECT b.id, b.period, s.name AS serviceName, s.match_pattern AS pattern, b.amount_cents AS amountCents
+       FROM bills b JOIN services s ON s.id = b.service_id
+       WHERE b.status <> 'pagado' AND s.match_pattern <> ''`,
+    )
+    .all() as Array<{ id: string; period: string; serviceName: string; pattern: string; amountCents: number }>
+  if (!pendientes.length) return []
+
+  const filas = db
+    .prepare(
+      `SELECT id, date, description, amount_cents AS amountCents FROM transactions
+       WHERE account_id IS NOT NULL AND card_id IS NULL AND commitment = '' AND amount_cents < 0
+       ORDER BY date, id`,
+    )
+    .all() as Array<{ id: string; date: ISODate; description: string; amountCents: number }>
+
+  const pagos = settleBillsFromStatement(pendientes, filas)
+  const enlazar = db.prepare('UPDATE transactions SET commitment = ? WHERE id = ?')
+  db.transaction(() => {
+    for (const p of pagos) {
+      enlazar.run(`factura:${p.bill.id}`, filas[p.rowIndex].id)
+      if (p.amountChanged) updateBillAmount(p.bill.id, p.paidCents)
+      markBillPaid(p.bill.id, true)
+    }
+  })()
+  return pagos.map((p) => ({
+    servicio: p.bill.serviceName,
+    periodo: p.bill.period ?? p.period,
+    pagadoCents: p.paidCents,
+    antesCents: p.amountChanged ? p.bill.amountCents : null,
+    fecha: p.date,
+  }))
 }
 
 export function markMonthItemPaid(kind: 'tarjeta' | 'prestamo', refId: string, period: string, cents: number, paid: boolean): void {
