@@ -61,6 +61,17 @@ Leé cada respuesta. Si viene `error` o `conflict`, pará y resolvelo antes de s
 
 Después pedile al usuario que compare esos saldos con la app del banco. Una diferencia de centavos o pocos pesos suele ser el interés diario de ahorro acreditado después de la fecha en que bajó los archivos: explicalo con el número, no lo des por hecho.
 
+**Pagos de tarjeta.** Los pagos a una tarjeta salen de las cuentas, y la app los reconoce por un texto que aparece en la descripción del débito. Ese texto se carga con `patron --destino "<tarjeta>" --texto "<texto>"`:
+
+| Tarjeta | Texto |
+|---|---|
+| Visa | `PAGO SUC VIRT TC VISA` |
+| Tuya | `COMPANIA DE FINANCI` |
+| Falabella | `BANCO FALABELLA` |
+| Rappi | `RAPPIPAY` |
+
+Si una importación avisa que hay pagos de tarjeta sin reconocer, cargá el patrón y corré `conciliar`. Eso cruza lo ya cargado, y cada mes queda pagado con la **suma** de todo lo que se le pagó a esa tarjeta. Es normal que haya varios pagos en un mes. Revisá que el patrón no agarre de más: mirá en los extractos qué débitos lo contienen antes de cargarlo.
+
 **6. Contar el resultado.** Una tabla por archivo con lo que se hizo, los saldos verificados, y lo que quedó pendiente: formatos no soportados, decisiones abiertas, y **vencimientos próximos o ya pasados** que se vean en los resúmenes, como un mínimo de tarjeta que venció ayer. Eso último es lo que más le sirve al usuario.
 
 ## Formatos conocidos

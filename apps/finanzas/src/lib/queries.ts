@@ -35,6 +35,7 @@ import {
 import { NON_VARIABLE_CATEGORIES, type UserRule } from './categories'
 import { convertir, MONEDA_BASE, type Moneda } from './money'
 import { venceEnPeriodo } from './frecuencia'
+import { settleCardsFromStatement } from './reconcile'
 
 export interface Account {
   id: string
@@ -1323,6 +1324,78 @@ export function debts(today: ISODate = todayISO(), currency: Moneda = MONEDA_BAS
       lender: prestamos.find((p) => p.id === l.loanId)?.lender ?? '',
     })),
   }
+}
+
+/**
+ * Marca pagado el mes de una tarjeta con la suma de todo lo que se le pagó en
+ * ese mes financiero, según los movimientos de cuenta enlazados a ella. Se
+ * recalcula desde los movimientos, y no se suma de a uno, para que reimportar
+ * o volver a conciliar no lo infle.
+ */
+export function syncCardMonthPayment(cardId: string, period: string): number {
+  const db = getDb()
+  const filas = db
+    .prepare('SELECT date, amount_cents FROM transactions WHERE commitment = ?')
+    .all(`tarjeta:${cardId}`) as Array<{ date: ISODate; amount_cents: number }>
+  const total = filas.filter((f) => financialMonth(f.date) === period).reduce((a, f) => a - f.amount_cents, 0)
+  if (total > 0) {
+    db.prepare(
+      `INSERT INTO month_payments (id, kind, ref_id, period, amount_cents, paid_at)
+       VALUES (?, 'tarjeta', ?, ?, ?, ?)
+       ON CONFLICT(kind, ref_id, period) DO UPDATE SET amount_cents = excluded.amount_cents`,
+    ).run(id(), cardId, period, total, now())
+  }
+  return total
+}
+
+export interface CardReconciliation {
+  card: string
+  period: string
+  /** Total pagado a la tarjeta en el mes, contando lo que ya estaba enlazado. */
+  cents: number
+  /** Pagos enlazados en esta pasada. */
+  nuevos: number
+}
+
+/**
+ * Vuelve a cruzar los pagos de tarjeta contra lo que ya está cargado.
+ *
+ * La conciliación corre al importar un extracto de cuenta. Si en ese momento
+ * la tarjeta todavía no tenía configurado cómo aparece su pago, el pago entra
+ * suelto y queda contado como gasto. Esto lo repara después: toma las
+ * salidas de cuenta que no están enlazadas a nada, las cruza con los patrones
+ * de las tarjetas, las marca como pago de tarjeta y recalcula cada mes tocado.
+ * Lo ya enlazado no se toca, así que correrlo dos veces no cambia nada.
+ */
+export function reconcileCardPayments(): CardReconciliation[] {
+  const db = getDb()
+  const tarjetas = db
+    .prepare(`SELECT id, name AS label, match_pattern AS pattern, 0 AS amountCents FROM cards WHERE match_pattern <> ''`)
+    .all() as Array<{ id: string; label: string; pattern: string; amountCents: number }>
+  if (!tarjetas.length) return []
+
+  const filas = db
+    .prepare(
+      `SELECT id, date, description, amount_cents AS amountCents FROM transactions
+       WHERE account_id IS NOT NULL AND card_id IS NULL AND commitment = '' AND amount_cents < 0
+       ORDER BY date, id`,
+    )
+    .all() as Array<{ id: string; date: ISODate; description: string; amountCents: number }>
+
+  const pagos = settleCardsFromStatement(tarjetas, filas)
+  const enlazar = db.prepare(`UPDATE transactions SET commitment = ?, category = 'pago_tarjeta' WHERE id = ?`)
+  const tocados = new Map<string, CardReconciliation>()
+  db.transaction(() => {
+    for (const p of pagos) {
+      enlazar.run(`tarjeta:${p.target.id}`, filas[p.rowIndex].id)
+      const k = `${p.target.id}|${p.period}`
+      const r = tocados.get(k) ?? { card: p.target.label, period: p.period, cents: 0, nuevos: 0 }
+      r.nuevos++
+      tocados.set(k, r)
+    }
+    for (const [k, r] of tocados) r.cents = syncCardMonthPayment(k.split('|')[0], r.period)
+  })()
+  return [...tocados.values()].sort((a, b) => a.card.localeCompare(b.card) || a.period.localeCompare(b.period))
 }
 
 export function markMonthItemPaid(kind: 'tarjeta' | 'prestamo', refId: string, period: string, cents: number, paid: boolean): void {

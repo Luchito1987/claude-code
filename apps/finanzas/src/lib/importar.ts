@@ -31,6 +31,8 @@ import {
   markBillPaid,
   markInternalTransfers,
   markMonthItemPaid,
+  reconcileCardPayments,
+  syncCardMonthPayment,
   updateBillAmount,
 } from '@/lib/queries'
 import { formatMoney } from '@/lib/money'
@@ -307,7 +309,11 @@ export async function importarExtracto(form: FormData, user: { id: string }): Pr
    * es lo segundo, así que el mes se marca con ese número. Si quedó mal, se
    * corrige a mano desde el tablero.
    */
-  for (const c of tarjetasPagas) markMonthItemPaid('tarjeta', c.target.id, c.period, c.paidCents, true)
+  // Una tarjeta puede recibir varios pagos en el mes: se marca con la suma.
+  for (const k of new Set(tarjetasPagas.map((c) => `${c.target.id}|${c.period}`))) {
+    const [cardId, period] = k.split('|')
+    syncCardMonthPayment(cardId, period)
+  }
   for (const c of prestamosPagos) markMonthItemPaid('prestamo', c.target.id, c.period, c.paidCents, true)
 
   /*
@@ -381,6 +387,9 @@ export async function importarExtracto(form: FormData, user: { id: string }): Pr
 
   // La otra pata de una transferencia puede estar en una cuenta ya cargada.
   const internas = kind === 'account' ? markInternalTransfers() : 0
+  // Pagos de tarjeta que habían entrado sueltos (por ejemplo, de antes de
+  // configurar cómo se llama el pago) y que ahora sí se reconocen.
+  if (kind === 'account') reconcileCardPayments()
 
   revalidatePath('/importar')
   revalidatePath('/config')

@@ -223,7 +223,25 @@ export function settleCardsFromStatement(
   cards: Settleable[],
   rows: StatementRow[],
 ): Settlement[] {
-  return settleFromStatement(cards, rows)
+  /*
+   * A diferencia de una factura o una cuota, a una tarjeta se le paga más de
+   * una vez en el mismo mes: un pago grande y otro chico, o el mínimo a
+   * principio de mes y el resto a fin. Con la regla de una vez por mes, el
+   * primero marcaba el mes y los demás quedaban contados como gasto del día a
+   * día —en julio, $3,7 millones a la Tuya figuraban como gasto—. Así que acá
+   * cada salida que coincide con el patrón es un pago de esa tarjeta, y el mes
+   * se marca con la suma (ver `syncCardMonthPayment`).
+   */
+  const out: Settlement[] = []
+  rows.forEach((row, rowIndex) => {
+    if (row.amountCents >= 0) return
+    const texto = normalize(row.description)
+    const card = cards.find((c) => c.pattern.trim() !== '' && texto.includes(normalize(c.pattern)))
+    if (!card) return
+    const paidCents = Math.abs(row.amountCents)
+    out.push({ target: card, paidCents, date: row.date, period: financialMonth(row.date), amountChanged: false, rowIndex })
+  })
+  return out
 }
 
 /**

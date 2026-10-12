@@ -11,6 +11,8 @@
  *   npm run extractos -- subir     <archivo> --destino "<nombre>" [--reemplazar]
  *   npm run extractos -- deshacer  <id de importación>
  *   npm run extractos -- verificar <archivos...>   saldos y duplicados después de subir
+ *   npm run extractos -- patron    --destino "<tarjeta>" --texto "<cómo aparece su pago>"
+ *   npm run extractos -- conciliar                  cruza pagos de tarjeta con lo ya cargado
  *
  * Agregá --json para la salida completa. Lee FINANZAS_API_TOKEN (la clave) y
  * FINANZAS_URL (por defecto, la app publicada). `revisar` no necesita ninguna.
@@ -361,7 +363,7 @@ async function main() {
   const [orden, ...resto] = process.argv.slice(2)
   const json = resto.includes('--json')
   const valor = (n: string) => { const i = resto.indexOf(`--${n}`); return i !== -1 ? resto[i + 1] : undefined }
-  const archivos = resto.filter((a, i) => !a.startsWith('--') && !/^--destinos?$/.test(resto[i - 1] ?? ''))
+  const archivos = resto.filter((a, i) => !a.startsWith('--') && !/^--(destinos?|texto)$/.test(resto[i - 1] ?? ''))
   const imprimir = (x: unknown) => console.log(JSON.stringify(x, null, 2))
   // "archivo.xlsx=Luciano Blanco;otro.csv=Ines Petro": de quién es cada archivo
   // que no trae el número de cuenta adentro.
@@ -410,6 +412,18 @@ async function main() {
     case 'deshacer': {
       if (!archivos[0]) throw new Error('Uso: deshacer <id de importación>')
       return imprimir(await api('/api/deshacer', { method: 'POST', body: JSON.stringify({ id: archivos[0] }), headers: { 'content-type': 'application/json' } }))
+    }
+    case 'patron': {
+      const destino = valor('destino'), texto = valor('texto')
+      if (!destino || !texto) throw new Error('Uso: patron --destino "<tarjeta>" --texto "<cómo aparece su pago en el extracto>"')
+      return imprimir(await api('/api/tarjetas', { method: 'POST', body: JSON.stringify({ tarjeta: destino, patronPago: texto }), headers: { 'content-type': 'application/json' } }))
+    }
+    case 'conciliar': {
+      const { conciliados } = await api<{ conciliados: Array<{ card: string; period: string; cents: number; nuevos: number }> }>('/api/conciliar', { method: 'POST' })
+      if (json) return imprimir(conciliados)
+      if (!conciliados.length) return console.log('Nada nuevo para conciliar.')
+      for (const c of conciliados) console.log(`  ${c.card.padEnd(18)} ${c.period}  pagado ${pesos(c.cents).padStart(18)}  (${c.nuevos} pago(s) enlazado(s) ahora)`)
+      return
     }
     case 'verificar':
       for (const l of await verificar(archivos, forzados)) console.log(l)
