@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/db/client'
 import { claveValida, noAutorizado } from '@/lib/api-token'
 import { accountBalanceCents, listAccounts, listCards } from '@/lib/queries'
-import { todayISO } from '@/lib/dates'
+import { addMonths, todayISO } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -46,5 +46,22 @@ export async function GET(req: Request) {
     )
     .all()
 
-  return NextResponse.json({ hoy, cuentas, tarjetas, importaciones, porMes })
+  const servicios = db
+    .prepare(
+      `SELECT id, name AS nombre, match_pattern AS patronPago, expected_amount_cents AS esperadoCents,
+              due_day AS dia, frequency AS frecuencia, active AS activo
+       FROM services ORDER BY name`,
+    )
+    .all()
+  // Las facturas de los últimos meses: lo que está pendiente es lo que importa.
+  const facturas = db
+    .prepare(
+      `SELECT b.id, s.name AS servicio, b.period AS periodo, b.amount_cents AS importeCents,
+              b.due_date AS vence, b.status AS estado, b.estimated AS estimada
+       FROM bills b JOIN services s ON s.id = b.service_id
+       WHERE b.period >= ? ORDER BY b.period, b.due_date`,
+    )
+    .all(addMonths(hoy, -2).slice(0, 7))
+
+  return NextResponse.json({ hoy, cuentas, tarjetas, importaciones, porMes, servicios, facturas })
 }

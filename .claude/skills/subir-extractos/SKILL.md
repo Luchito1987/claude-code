@@ -72,7 +72,10 @@ Después pedile al usuario que compare esos saldos con la app del banco. Una dif
 
 Si una importación avisa que hay pagos de tarjeta sin reconocer, cargá el patrón y corré `conciliar`. Eso cruza lo ya cargado, y cada mes queda pagado con la **suma** de todo lo que se le pagó a esa tarjeta. Es normal que haya varios pagos en un mes. Revisá que el patrón no agarre de más: mirá en los extractos qué débitos lo contienen antes de cargarlo.
 
+**Pagos de servicios.** Con las facturas pasa lo mismo: `patron --servicio "<servicio>" --texto "<texto>"` y después `conciliar`. Si dos servicios se pagan con el mismo texto, a cada factura le toca el pago del mes **más cercano a su importe esperado**, así que alcanza con que cada uno tenga bien su importe.
+
 Lo que ya confirmó el usuario, para no volver a preguntarlo:
+- **PILA**: hay dos, y las dos salen de la cuenta de la empresa como `PAGO PSE SOI ACH`: la de la empresa/Inés (~$798.800) y la de Luciano ($431.000).
 - **Rappi**: a veces paga por adelantado montos chicos ($69.000–$100.000) para que entren las suscripciones cuando el cupo está lleno. Son pagos de la tarjeta.
 - **Tuya**: el banco nombra igual a cualquier tarjeta Tuya ("Compañía de Financiamiento"). Los pagos chicos de julio y agosto de 2026 ($177.700 y $104.456) fueron para cancelar una Tuya Alkosto que ya está en cero. Si aparece otra tarjeta Tuya activa, el patrón no las distingue: avisale al usuario.
 

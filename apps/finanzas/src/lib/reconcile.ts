@@ -206,9 +206,46 @@ export interface SettledBill extends Settlement<BillTarget> {
   bill: BillTarget
 }
 
+/**
+ * Para cada factura, el pago del mes que mejor la explica.
+ *
+ * El texto solo no alcanza: la PILA se paga por el operador SOI, y en octubre
+ * la cuenta de la empresa tenía dos débitos "PAGO PSE SOI ACH", de $431.000 y
+ * $798.800. Tomando el primero, la PILA quedaba pagada con $431.000 y encima
+ * se corregía el importe al equivocado. Entre los que coinciden en texto y en
+ * mes, gana el más cercano a lo que se esperaba pagar; a igual distancia, el
+ * primero. Cada movimiento paga una sola factura.
+ */
 export function settleBillsFromStatement(bills: PendingBill[], rows: StatementRow[]): SettledBill[] {
-  const targets: BillTarget[] = bills.map((b) => ({ ...b, label: b.serviceName }))
-  return settleFromStatement(targets, rows).map((s) => ({ ...s, bill: s.target }))
+  const usadas = new Set<number>()
+  const out: SettledBill[] = []
+  for (const b of bills) {
+    if (!b.pattern.trim()) continue
+    const patron = normalize(b.pattern)
+    const distancia = (i: number) => Math.abs(Math.abs(rows[i].amountCents) - b.amountCents)
+    let mejor = -1
+    rows.forEach((row, i) => {
+      if (row.amountCents >= 0 || usadas.has(i)) return
+      if (b.period !== undefined && financialMonth(row.date) !== b.period) return
+      if (!normalize(row.description).includes(patron)) return
+      if (mejor === -1 || distancia(i) < distancia(mejor)) mejor = i
+    })
+    if (mejor === -1) continue
+    usadas.add(mejor)
+    const row = rows[mejor]
+    const paidCents = Math.abs(row.amountCents)
+    const bill: BillTarget = { ...b, label: b.serviceName }
+    out.push({
+      target: bill,
+      bill,
+      paidCents,
+      date: row.date,
+      period: financialMonth(row.date),
+      amountChanged: paidCents !== b.amountCents,
+      rowIndex: mejor,
+    })
+  }
+  return out
 }
 
 /**
