@@ -24,7 +24,7 @@
 import { readFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { parseUploadedFile } from '../src/lib/parsers/input'
-import { detectLayout } from '../src/lib/parsers/bancolombia'
+import { detectLayout, splitLine } from '../src/lib/parsers/bancolombia'
 import { decodeText } from '../src/lib/parsers/input'
 import { extractPdfText, isPdf } from '../src/lib/parsers/pdf'
 import { isSpreadsheet, readWorkbook } from '../src/lib/parsers/xlsx'
@@ -99,8 +99,8 @@ async function identificar(ruta: string, buf: Buffer): Promise<Identidad> {
   const texto = decodeText(buf)
   const layout = detectLayout(texto)
   if (layout) {
-    const primera = texto.split(/\r?\n/).find((l) => l.trim())!.split(',').map((c) => c.trim())
-    const numero = layout.name === 'consolidado' ? primera[1] : primera[0]
+    const primera = splitLine(texto.split(/\r?\n/).find((l) => l.trim())!)
+    const numero = primera[layout.account] ?? ''
     return { tipo: 'cuenta', formato: layout.name === 'consolidado' ? 'consolidado' : 'movimientos', digitos: ultimos4(numero) }
   }
   return { tipo: null, formato: 'desconocido', digitos: null }
