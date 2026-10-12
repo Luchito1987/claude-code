@@ -12,7 +12,8 @@
     "seed": "tsx src/db/seed.ts",
     "import": "tsx scripts/import-cli.ts",
     "url": "tsx scripts/url.ts",
-    "recategorize": "tsx scripts/recategorize.ts"
+    "recategorize": "tsx scripts/recategorize.ts",
+    "extractos": "tsx scripts/extractos.ts"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

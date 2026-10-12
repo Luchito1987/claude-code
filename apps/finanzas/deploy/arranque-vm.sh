@@ -55,12 +55,27 @@ DOMINIO="${DOMINIO_FIJO:-${IP}.sslip.io}"
 # demonio dice hablar, que por definición es una que acepta.
 API_DOCKER="$(docker version --format '{{.Server.APIVersion}}' 2>/dev/null || echo 1.44)"
 
+# La clave de la API, para que un asistente pueda cargar extractos sin la
+# sesión del navegador. Se genera una sola vez y vive fuera del repositorio,
+# legible sólo por root, para que ni un `git reset` ni un reinicio la cambien.
+# No se imprime: este script deja un registro en /var/log y una clave escrita
+# en un log ya no es secreta. Para verla: sudo cat /etc/finanzas/api-token
+CLAVE_API=/etc/finanzas/api-token
+if [[ ! -s "$CLAVE_API" ]]; then
+  install -d -m 700 /etc/finanzas
+  head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$CLAVE_API"
+  chmod 600 "$CLAVE_API"
+  echo "== clave de la API generada en $CLAVE_API =="
+fi
+
 cat > .env <<ENV
 DOMINIO=$DOMINIO
 IMAGEN=ghcr.io/luchito1987/finanzas:latest
 TZ=America/Bogota
 API_DOCKER=$API_DOCKER
+FINANZAS_API_TOKEN=$(cat "$CLAVE_API")
 ENV
+chmod 600 .env
 
 echo "== levantando en https://$DOMINIO =="
 

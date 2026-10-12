@@ -115,3 +115,23 @@ describe('emparejar transferencias entre cuentas propias', () => {
     expect(q.monthCashFlow('2026-09')).toEqual({ inCents: 400_000_000, outCents: 50_000_000 })
   })
 })
+
+describe('deshacer una importación', () => {
+  it('libera la otra pata del par para que se vuelva a emparejar al reimportar', async () => {
+    const { db, q, mov, leer } = await preparar()
+    db.prepare(`INSERT INTO statements (id, kind, account_id, file_name, imported_at) VALUES ('st-luc', 'account', 'luc', 'viejo.xlsx', 'x')`).run()
+    const sale = mov('emp', '2026-09-04', 'PAGO A PROVE Luciano Blanco', -375_000_000)
+    const entra = mov('luc', '2026-09-04', 'PAGO DE PROV DRA. INES PETRO', 375_000_000)
+    db.prepare(`UPDATE transactions SET statement_id = 'st-luc' WHERE id = ?`).run(entra)
+    expect(q.markInternalTransfers()).toBe(1)
+
+    // Se deshace la carga de Luciano: la salida de la empresa queda sin par.
+    q.deleteStatement('st-luc')
+    expect(leer(sale).commitment).toBe('')
+
+    // Se carga el extracto que la reemplaza y el par se vuelve a formar.
+    const otra = mov('luc', '2026-09-04', 'PAGO DE PROV DRA. INES PETRO', 375_000_000)
+    expect(q.markInternalTransfers()).toBe(1)
+    expect(leer(otra)).toEqual({ category: 'transferencias', commitment: `interna:${sale}` })
+  })
+})

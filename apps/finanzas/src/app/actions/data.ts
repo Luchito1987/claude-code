@@ -9,6 +9,7 @@ import { todayISO } from '@/lib/dates'
 import { categorize, extractMerchant } from '@/lib/categories'
 import {
   addFixedExpense,
+  deleteStatement,
   ensureBillsForPeriod,
   listUserRules,
   markBillPaid,
@@ -470,7 +471,7 @@ export async function saveSettingsAction(form: FormData): Promise<void> {
 
 export async function deleteStatementAction(form: FormData): Promise<void> {
   requireUser()
-  getDb().prepare('DELETE FROM statements WHERE id = ?').run(str(form, 'id'))
+  deleteStatement(str(form, 'id'))
   revalidatePath('/importar')
   revalidatePath('/')
 }
