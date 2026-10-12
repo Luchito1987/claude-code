@@ -5,8 +5,15 @@
 # que poder repetirse sin romper nada.
 
 set -euo pipefail
-exec > >(tee -a /var/log/arranque-finanzas.log) 2>&1
+# Al relanzarse (ver abajo) la salida ya va al registro: no se duplica.
+if [[ -z "${ARRANQUE_RELANZADO:-}" ]]; then
+  exec > >(tee -a /var/log/arranque-finanzas.log) 2>&1
+fi
 echo "== arranque $(date) =="
+
+# Huella de este script tal como arrancó, antes de que el repositorio lo
+# pueda reemplazar por una versión nueva.
+HUELLA_INICIAL="$(sha256sum "$0" | cut -d' ' -f1)"
 
 DESTINO=/opt/finanzas
 REPO="${REPO:-https://github.com/Luchito1987/claude-code.git}"
@@ -39,6 +46,16 @@ if [[ ! -d "$DESTINO/.git" ]]; then
   git clone --depth 1 "$REPO" "$DESTINO"
 else
   git -C "$DESTINO" fetch --depth 1 origin main -q && git -C "$DESTINO" reset --hard origin/main -q
+fi
+
+# El repositorio pudo traer una versión nueva de este mismo script. Bash ya
+# está leyendo la vieja y la seguiría hasta el final: la mejora recién se
+# aplicaría en la corrida siguiente. Así se perdió la generación de la clave
+# de la API la primera vez. Si cambió, se relanza la nueva, una sola vez.
+NUEVO="$DESTINO/apps/finanzas/deploy/arranque-vm.sh"
+if [[ -z "${ARRANQUE_RELANZADO:-}" && -f "$NUEVO" ]] && [[ "$(sha256sum "$NUEVO" | cut -d' ' -f1)" != "$HUELLA_INICIAL" ]]; then
+  echo "== el script cambió en el repositorio: relanzo la versión nueva =="
+  ARRANQUE_RELANZADO=1 exec bash "$NUEVO"
 fi
 
 cd "$DESTINO/apps/finanzas/deploy"
