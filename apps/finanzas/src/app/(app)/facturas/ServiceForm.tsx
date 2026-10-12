@@ -73,6 +73,13 @@ export function ServiceForm() {
           marzo, mayo y así.
         </p>
       </div>
+      <div>
+        <label className="label" htmlFor="svc-contract">
+          Nº de contrato
+        </label>
+        <input id="svc-contract" name="contract_number" className="input" placeholder="7979089" />
+        <p className="mt-1 text-xs text-muted">El que pide la página de la empresa para consultar o pagar.</p>
+      </div>
       <div className="sm:col-span-2">
         <label className="label" htmlFor="svc-match">
           Cómo aparece en el extracto

@@ -90,6 +90,9 @@ CREATE TABLE IF NOT EXISTS services (
   -- En qué mes (1-12) cae, para las que no son mensuales. Los demás
   -- vencimientos salen de contar desde acá.
   anchor_month          INTEGER NOT NULL DEFAULT 1,
+  -- El número con el que la empresa identifica la cuenta (contrato, NIC,
+  -- referencia de pago). Es lo que pide su página para consultar o pagar.
+  contract_number       TEXT NOT NULL DEFAULT '',
   created_at            TEXT NOT NULL
 );
 

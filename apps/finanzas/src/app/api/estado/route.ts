@@ -48,7 +48,7 @@ export async function GET(req: Request) {
 
   const servicios = db
     .prepare(
-      `SELECT id, name AS nombre, match_pattern AS patronPago, expected_amount_cents AS esperadoCents,
+      `SELECT id, name AS nombre, provider AS empresa, contract_number AS contrato, match_pattern AS patronPago, expected_amount_cents AS esperadoCents,
               due_day AS dia, frequency AS frecuencia, active AS activo
        FROM services ORDER BY name`,
     )

@@ -77,6 +77,8 @@ export interface Service {
   frequency: string
   /** Mes (1-12) en el que cae, para las frecuencias que no son mensuales. */
   anchor_month: number
+  /** Número de contrato o de cliente en la empresa que lo cobra. */
+  contract_number: string
   created_at: string
 }
 
@@ -93,6 +95,8 @@ export interface Bill {
   paid_at: string | null
   estimated: number
   source: string
+  /** El del servicio que la emite. */
+  contract_number: string
 }
 
 export interface Loan {
@@ -200,7 +204,7 @@ export function listBills(period?: string, currency?: Moneda): Bill[] {
   // luz de Barranquilla no cambia de moneda porque se lo mire desde otra vista.
   const filtros = [period ? 'b.period = ?' : '', currency ? 's.currency = ?' : ''].filter(Boolean)
   const sql = `
-    SELECT b.*, s.name AS name, s.category AS category
+    SELECT b.*, s.name AS name, s.category AS category, s.contract_number AS contract_number
     FROM bills b JOIN services s ON s.id = b.service_id
     ${filtros.length ? `WHERE ${filtros.join(' AND ')}` : ''}
     ORDER BY b.due_date, s.name`
@@ -211,7 +215,7 @@ export function listBills(period?: string, currency?: Moneda): Bill[] {
 export function listBillsBetween(from: ISODate, to: ISODate): Bill[] {
   return getDb()
     .prepare(
-      `SELECT b.*, s.name AS name, s.category AS category
+      `SELECT b.*, s.name AS name, s.category AS category, s.contract_number AS contract_number
        FROM bills b JOIN services s ON s.id = b.service_id
        WHERE b.due_date BETWEEN ? AND ?
        ORDER BY b.due_date`,
@@ -222,7 +226,7 @@ export function listBillsBetween(from: ISODate, to: ISODate): Bill[] {
 export function listPendingBills(): Bill[] {
   return getDb()
     .prepare(
-      `SELECT b.*, s.name AS name, s.category AS category
+      `SELECT b.*, s.name AS name, s.category AS category, s.contract_number AS contract_number
        FROM bills b JOIN services s ON s.id = b.service_id
        WHERE b.status <> 'pagado'
        ORDER BY b.due_date`,
@@ -776,6 +780,8 @@ export interface MonthItem {
   estimated: boolean
   /** Solo las facturas se pueden reimportar a mano desde el tablero. */
   editable: boolean
+  /** Número de contrato del servicio, para consultarlo en la página de la empresa. */
+  contract?: string
 }
 
 /** Cuotas de tarjeta pendientes, leídas de los resúmenes ya importados. */
@@ -829,6 +835,7 @@ export function monthItems(
     paid: b.status === 'pagado',
     estimated: b.estimated === 1,
     editable: true,
+    contract: b.contract_number || undefined,
   }))
 
   const tarjetasDeLaVista = new Set(listCards(currency).map((c) => c.id))
@@ -1396,6 +1403,35 @@ export function reconcileCardPayments(): CardReconciliation[] {
     for (const [k, r] of tocados) r.cents = syncCardMonthPayment(k.split('|')[0], r.period)
   })()
   return [...tocados.values()].sort((a, b) => a.card.localeCompare(b.card) || a.period.localeCompare(b.period))
+}
+
+/**
+ * Borra las facturas que ya se habían generado para meses en los que el
+ * servicio, con su frecuencia actual, no vence.
+ *
+ * Las facturas del mes se generan solas en cuanto se mira el tablero. Si
+ * después se corrige la frecuencia de un servicio —la renta, que es anual—, la
+ * factura de este mes ya estaba creada y seguía figurando pendiente: cambiar
+ * la frecuencia no arreglaba el mes en curso. Sólo se tocan las generadas
+ * automáticamente y sin pagar, del mes indicado en adelante; una pagada o con
+ * importe confirmado es un dato, y no se borra.
+ */
+export function dropBillsOutsideFrequency(serviceId: string, desde: string): string[] {
+  const db = getDb()
+  const s = db.prepare('SELECT frequency, anchor_month FROM services WHERE id = ?').get(serviceId) as
+    | { frequency: string; anchor_month: number }
+    | undefined
+  if (!s) return []
+  const candidatas = db
+    .prepare(
+      `SELECT id, period FROM bills
+       WHERE service_id = ? AND period >= ? AND status <> 'pagado' AND source = 'auto'`,
+    )
+    .all(serviceId, desde) as Array<{ id: string; period: string }>
+  const sobran = candidatas.filter((b) => !venceEnPeriodo(s, b.period))
+  const borrar = db.prepare('DELETE FROM bills WHERE id = ?')
+  db.transaction(() => sobran.forEach((b) => borrar.run(b.id)))()
+  return sobran.map((b) => b.period)
 }
 
 export interface BillReconciliation {

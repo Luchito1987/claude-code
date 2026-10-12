@@ -21,6 +21,7 @@ import {
   updateBillAction,
 } from '@/app/actions/data'
 import { FilaColapsable, PanelColapsable } from './Colapsable'
+import { CopiarTexto } from '@/components/CopiarTexto'
 import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
@@ -166,6 +167,11 @@ function BloqueDelMes({
             <td className="td">
               <span className="font-medium">{item.label}</span>
               <span className="ml-2 text-xs text-muted">{item.detail}</span>
+              {item.contract && (
+                <span className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                  Contrato <CopiarTexto texto={item.contract} />
+                </span>
+              )}
             </td>
             <td className="td whitespace-nowrap text-muted">{formatDate(item.dueDate)}</td>
             <td className="td text-right">
