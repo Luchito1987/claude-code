@@ -9,11 +9,54 @@
  */
 
 import ExcelJS from 'exceljs'
-import JSZip from 'jszip'
+import { crc32, deflateRawSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 import { parseBancolombiaExtracto, usToCents } from '@/lib/parsers/bancolombia-extracto'
 import { parseUploadedFile } from '@/lib/parsers/input'
 import { readWorkbook } from '@/lib/parsers/xlsx'
+import { readZip } from '@/lib/parsers/zip'
+
+/** Un zip mínimo, con cada archivo comprimido con deflate como los de verdad. */
+function zipear(archivos: Record<string, string>): Buffer {
+  const locales: Buffer[] = []
+  const centrales: Buffer[] = []
+  let offset = 0
+  for (const [nombre, texto] of Object.entries(archivos)) {
+    const datos = Buffer.from(texto, 'utf8')
+    const comprimido = deflateRawSync(datos)
+    const n = Buffer.from(nombre, 'utf8')
+    const crc = crc32(datos)
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(0x04034b50, 0)
+    local.writeUInt16LE(20, 4)
+    local.writeUInt16LE(8, 8)
+    local.writeUInt32LE(crc, 14)
+    local.writeUInt32LE(comprimido.length, 18)
+    local.writeUInt32LE(datos.length, 22)
+    local.writeUInt16LE(n.length, 26)
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(0x02014b50, 0)
+    central.writeUInt16LE(20, 4)
+    central.writeUInt16LE(20, 6)
+    central.writeUInt16LE(8, 10)
+    central.writeUInt32LE(crc, 16)
+    central.writeUInt32LE(comprimido.length, 20)
+    central.writeUInt32LE(datos.length, 24)
+    central.writeUInt16LE(n.length, 28)
+    central.writeUInt32LE(offset, 42)
+    locales.push(local, n, comprimido)
+    centrales.push(central, n)
+    offset += local.length + n.length + comprimido.length
+  }
+  const directorio = Buffer.concat(centrales)
+  const fin = Buffer.alloc(22)
+  fin.writeUInt32LE(0x06054b50, 0)
+  fin.writeUInt16LE(Object.keys(archivos).length, 8)
+  fin.writeUInt16LE(Object.keys(archivos).length, 10)
+  fin.writeUInt32LE(directorio.length, 12)
+  fin.writeUInt32LE(offset, 16)
+  return Buffer.concat([...locales, directorio, fin])
+}
 
 const OPTS = { kind: 'account' as const, currency: 'COP' as const }
 
@@ -24,39 +67,34 @@ const OPTS = { kind: 'account' as const, currency: 'COP' as const }
  * vacía auto-cerrada. Excel lo abre; exceljs, no.
  */
 async function xlsxBancolombia(filas: string[][]): Promise<Buffer> {
-  const zip = new JSZip()
+  const zip: Record<string, string> = {}
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  zip.file(
-    '[Content_Types].xml',
+  zip['[Content_Types].xml'] = (
     '<?xml version="1.0" encoding="utf-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" />' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />' +
-      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" /></Types>',
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" /></Types>'
   )
-  zip.file(
-    '_rels/.rels',
+  zip['_rels/.rels'] = (
     '﻿<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      '<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="/xl/workbook.xml" Id="R1" /></Relationships>',
+      '<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="/xl/workbook.xml" Id="R1" /></Relationships>'
   )
-  zip.file(
-    'xl/workbook.xml',
+  zip['xl/workbook.xml'] = (
     '<?xml version="1.0" encoding="utf-8"?><x:workbook xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><x:sheets>' +
-      '<x:sheet name="Table1" sheetId="1" r:id="Rhoja" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" /></x:sheets></x:workbook>',
+      '<x:sheet name="Table1" sheetId="1" r:id="Rhoja" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" /></x:sheets></x:workbook>'
   )
-  zip.file(
-    'xl/_rels/workbook.xml.rels',
+  zip['xl/_rels/workbook.xml.rels'] = (
     '﻿<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      '<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="/xl/worksheets/sheet1.xml" Id="Rhoja" /></Relationships>',
+      '<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="/xl/worksheets/sheet1.xml" Id="Rhoja" /></Relationships>'
   )
   const cuerpo = filas
     .map((f) => `<x:row>${f.map((c) => `<x:c t="str"><x:v>${esc(c)}</x:v></x:c>`).join('')}</x:row>`)
     .join('')
-  zip.file(
-    'xl/worksheets/sheet1.xml',
+  zip['xl/worksheets/sheet1.xml'] = (
     '<?xml version="1.0" encoding="utf-8"?><x:worksheet xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><x:sheetData>' +
-      `<x:row />${cuerpo}</x:sheetData></x:worksheet>`,
+      `<x:row />${cuerpo}</x:sheetData></x:worksheet>`
   )
-  return zip.generateAsync({ type: 'nodebuffer' })
+  return zipear(zip)
 }
 
 /** Un extracto trimestral completo, con su bloque de encabezado. */
@@ -84,11 +122,23 @@ const TRIMESTRE = extracto('2026/06/30', '2026/09/30', '1,000,000.00', '2,486,00
   ['30/09', 'TRANSFERENCIA CTA SUC VIRTUAL', '', '', '-2,000,000.00', '2,486,000.10'],
 ])
 
+describe('el lector de zip', () => {
+  it('devuelve cada archivo descomprimido', () => {
+    const z = readZip(zipear({ 'a.txt': 'hola', 'carpeta/b.xml': '<x>ñandú</x>' }))
+    expect(z.get('a.txt')?.toString()).toBe('hola')
+    expect(z.get('carpeta/b.xml')?.toString()).toBe('<x>ñandú</x>')
+  })
+
+  it('rechaza lo que no es un zip', () => {
+    expect(() => readZip(Buffer.from('no soy un zip, soy un CSV cualquiera'))).toThrow(/zip/)
+  })
+})
+
 describe('el archivo de Excel', () => {
   it('exceljs solo no lo abre: por eso existe el lector de respaldo', async () => {
     // Si algún día exceljs lo abre, este archivo de prueba dejó de representar
     // al de Bancolombia y los tests de abajo no estarían probando nada nuevo.
-    await expect(new ExcelJS.Workbook().xlsx.load((await xlsxBancolombia([['A']])) as never)).rejects.toThrow()
+    await expect(new ExcelJS.Workbook().xlsx.load((await xlsxBancolombia([['A']])) as never)).rejects.toThrow(/sheets/)
   })
 
   it('se abre aunque exceljs no pueda', async () => {

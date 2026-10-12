@@ -9,7 +9,7 @@
  */
 
 import ExcelJS from 'exceljs'
-import JSZip from 'jszip'
+import { readZip } from './zip'
 
 export interface Sheet {
   name: string
@@ -102,8 +102,8 @@ async function readWithExcelJS(buffer: ArrayBuffer | Buffer): Promise<Sheet[]> {
  * como vienen, que es lo que `cellToString` haría con ellos de todas formas.
  */
 async function readRaw(buffer: ArrayBuffer | Buffer): Promise<Sheet[]> {
-  const zip = await JSZip.loadAsync(buffer)
-  const leer = async (ruta: string) => (await zip.file(ruta.replace(/^\/+/, ''))?.async('string')) ?? ''
+  const archivos = readZip(buffer)
+  const leer = async (ruta: string) => archivos.get(ruta.replace(/^\/+/, ''))?.toString('utf8') ?? ''
 
   const libro = relacion(await leer('_rels/.rels'), /officeDocument/) ?? 'xl/workbook.xml'
   const rutaLibro = libro.replace(/^\/+/, '')
