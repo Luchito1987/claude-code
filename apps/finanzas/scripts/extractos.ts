@@ -13,6 +13,8 @@
  *   npm run extractos -- verificar <archivos...>   saldos y duplicados después de subir
  *   npm run extractos -- patron    --destino "<tarjeta>" --texto "<cómo aparece su pago>"
  *   npm run extractos -- patron    --servicio "<servicio>" --texto "<cómo aparece su pago>"
+ *   npm run extractos -- contrato  --servicio "<servicio>" --numero "<nº de contrato>"
+ *   npm run extractos -- frecuencia --servicio "<servicio>" --cada mensual|bimestral|trimestral|semestral|anual --mes <1-12>
  *   npm run extractos -- conciliar                  cruza pagos de tarjeta con lo ya cargado
  *
  * Agregá --json para la salida completa. Lee FINANZAS_API_TOKEN (la clave) y
@@ -364,7 +366,7 @@ async function main() {
   const [orden, ...resto] = process.argv.slice(2)
   const json = resto.includes('--json')
   const valor = (n: string) => { const i = resto.indexOf(`--${n}`); return i !== -1 ? resto[i + 1] : undefined }
-  const archivos = resto.filter((a, i) => !a.startsWith('--') && !/^--(destinos?|texto|servicio)$/.test(resto[i - 1] ?? ''))
+  const archivos = resto.filter((a, i) => !a.startsWith('--') && !/^--(destinos?|texto|servicio|numero|cada|mes)$/.test(resto[i - 1] ?? ''))
   const imprimir = (x: unknown) => console.log(JSON.stringify(x, null, 2))
   // "archivo.xlsx=Luciano Blanco;otro.csv=Ines Petro": de quién es cada archivo
   // que no trae el número de cuenta adentro.
@@ -393,11 +395,12 @@ async function main() {
       for (const c of e.cuentas) console.log(`  ${c.nombre.padEnd(24)} ${pesos(c.saldoCents).padStart(20)}  ancla ${c.anclaFecha ?? '—'}`)
       console.log(`\nTarjetas: ${e.tarjetas.map((t) => t.nombre).join(', ')}`)
       const ext = e as Estado & {
-        servicios?: Array<{ nombre: string; patronPago: string; esperadoCents: number; dia: number; activo: number }>
+        servicios?: Array<{ nombre: string; contrato: string; patronPago: string; esperadoCents: number; dia: number; activo: number }>
         facturas?: Array<{ servicio: string; periodo: string; importeCents: number; vence: string; estado: string }>
       }
       console.log('\nServicios (patrón de pago):')
-      for (const s of ext.servicios ?? []) if (s.activo) console.log(`  ${s.nombre.padEnd(24)} ${pesos(s.esperadoCents).padStart(16)}  día ${String(s.dia).padStart(2)}  ${s.patronPago || '— sin patrón'}`)
+      for (const s of ext.servicios ?? [])
+        if (s.activo) console.log(`  ${s.nombre.padEnd(24)} ${pesos(s.esperadoCents).padStart(16)}  día ${String(s.dia).padStart(2)}  ${(s.patronPago || '— sin patrón').padEnd(22)} ${s.contrato ? `contrato ${s.contrato}` : ''}`)
       console.log('\nFacturas pendientes:')
       for (const f of (ext.facturas ?? []).filter((f) => f.estado !== 'pagado')) console.log(`  ${f.periodo}  ${f.servicio.padEnd(24)} ${pesos(f.importeCents).padStart(16)}  vence ${f.vence}`)
       console.log('\nImportaciones:')
@@ -429,6 +432,16 @@ async function main() {
         return imprimir(await api('/api/servicios', { method: 'POST', body: JSON.stringify({ servicio, patronPago: texto }), headers: { 'content-type': 'application/json' } }))
       if (!destino || !texto) throw new Error('Uso: patron --destino "<tarjeta>" --texto "<cómo aparece su pago en el extracto>"')
       return imprimir(await api('/api/tarjetas', { method: 'POST', body: JSON.stringify({ tarjeta: destino, patronPago: texto }), headers: { 'content-type': 'application/json' } }))
+    }
+    case 'contrato': {
+      const servicio = valor('servicio'), numero = valor('numero')
+      if (!servicio || !numero) throw new Error('Uso: contrato --servicio "<servicio>" --numero "<nº de contrato>"')
+      return imprimir(await api('/api/servicios', { method: 'POST', body: JSON.stringify({ servicio, numeroContrato: numero }), headers: { 'content-type': 'application/json' } }))
+    }
+    case 'frecuencia': {
+      const servicio = valor('servicio'), cada = valor('cada'), mes = Number(valor('mes') ?? 1)
+      if (!servicio || !cada) throw new Error('Uso: frecuencia --servicio "<servicio>" --cada <frecuencia> --mes <1-12>')
+      return imprimir(await api('/api/servicios', { method: 'POST', body: JSON.stringify({ servicio, frecuencia: cada, mesAncla: mes }), headers: { 'content-type': 'application/json' } }))
     }
     case 'conciliar': {
       const r = await api<{

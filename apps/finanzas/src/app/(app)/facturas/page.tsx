@@ -6,6 +6,7 @@ import {
   deleteServiceAction,
   generateBillsAction,
   saveServiceAction,
+  setServiceContractAction,
   setServiceFrequencyAction,
   toggleBillPaidAction,
   updateBillAction,
@@ -19,6 +20,7 @@ import {
   type Frecuencia,
 } from '@/lib/frecuencia'
 import { ServiceForm } from './ServiceForm'
+import { CopiarTexto } from '@/components/CopiarTexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -141,6 +143,7 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
                   <th className="th">Servicio</th>
                   <th className="th">Proveedor</th>
                   <th className="th">Vence</th>
+                  <th className="th">Contrato</th>
                   <th className="th">Cada cuánto</th>
                   <th className="th text-right">Esperado</th>
                   <th className="th" />
@@ -164,6 +167,22 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
                   </td>
                   <td className="td text-muted">{s.provider || '—'}</td>
                   <td className="td text-muted">día {s.due_day}</td>
+                  <td className="td">
+                    <form action={setServiceContractAction} className="flex items-center gap-1">
+                      <input type="hidden" name="id" value={s.id} />
+                      <input
+                        name="contract_number"
+                        defaultValue={s.contract_number}
+                        className="input w-32 py-1 text-xs tabular-nums"
+                        placeholder="Nº de contrato"
+                        aria-label={`Número de contrato de ${s.name}`}
+                      />
+                      <button type="submit" className="btn-ghost px-2 py-1 text-xs">
+                        Guardar
+                      </button>
+                    </form>
+                    {s.contract_number && <CopiarTexto texto={s.contract_number} />}
+                  </td>
                   <td className="td">
                     <form action={setServiceFrequencyAction} className="flex flex-wrap items-center gap-1">
                       <input type="hidden" name="id" value={s.id} />

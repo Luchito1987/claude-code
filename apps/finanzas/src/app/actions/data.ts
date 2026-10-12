@@ -10,6 +10,7 @@ import { categorize, extractMerchant } from '@/lib/categories'
 import {
   addFixedExpense,
   deleteStatement,
+  dropBillsOutsideFrequency,
   ensureBillsForPeriod,
   listUserRules,
   markBillPaid,
@@ -159,18 +160,19 @@ export async function saveServiceAction(form: FormData): Promise<void> {
     str(form, 'match_pattern'),
     normalizarFrecuencia(str(form, 'frequency')),
     normalizarMesAncla(int(form, 'anchor_month', 1)),
+    str(form, 'contract_number'),
   ] as const
 
   if (existing) {
     db.prepare(
       `UPDATE services SET name = ?, provider = ?, category = ?, expected_amount_cents = ?,
        due_day = ?, active = ?, autodebit = ?, notes = ?, match_pattern = ?,
-       frequency = ?, anchor_month = ? WHERE id = ?`,
+       frequency = ?, anchor_month = ?, contract_number = ? WHERE id = ?`,
     ).run(...args, existing)
   } else {
     db.prepare(
-      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, match_pattern, frequency, anchor_month, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (id, name, provider, category, expected_amount_cents, due_day, active, autodebit, notes, match_pattern, frequency, anchor_month, contract_number, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(id(), ...args, now())
   }
   revalidatePath('/facturas')
@@ -196,9 +198,20 @@ export async function setServiceFrequencyAction(form: FormData): Promise<void> {
       normalizarMesAncla(int(form, 'anchor_month', 1)),
       serviceId,
     )
+  dropBillsOutsideFrequency(serviceId, financialMonth())
   revalidatePath('/facturas')
   revalidatePath('/')
   revalidatePath('/proyeccion')
+}
+
+/** Guarda el número de contrato de un servicio, desde la tabla de Facturas. */
+export async function setServiceContractAction(form: FormData): Promise<void> {
+  requireUser()
+  const serviceId = str(form, 'id')
+  if (!serviceId) return
+  getDb().prepare('UPDATE services SET contract_number = ? WHERE id = ?').run(str(form, 'contract_number'), serviceId)
+  revalidatePath('/facturas')
+  revalidatePath('/')
 }
 
 export async function deleteServiceAction(form: FormData): Promise<void> {
