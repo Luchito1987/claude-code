@@ -94,6 +94,7 @@ export function ServiceForm() {
           Un pedazo del texto con el que el banco lo nombra. Sirve para que al importar el extracto la factura
           quede pagada sola y con el importe real. Air-e, por ejemplo, se paga como “PAGO SV EMPRESA DE ENERGIA
           AI”, y Triple A como “PAGO PSE FIDUCIARIA BANCOLOM”: por el nombre no hay forma de adivinarlo.
+          Si se paga por más de un canal, separá los textos con “|”.
         </p>
       </div>
       <div className="sm:col-span-2">

@@ -221,13 +221,16 @@ export function settleBillsFromStatement(bills: PendingBill[], rows: StatementRo
   const out: SettledBill[] = []
   for (const b of bills) {
     if (!b.pattern.trim()) continue
-    const patron = normalize(b.pattern)
+    // Un servicio puede pagarse por más de un canal (el agua por débito
+    // automático o por PSE): las variantes van separadas por "|".
+    const patrones = b.pattern.split('|').map(normalize).filter(Boolean)
     const distancia = (i: number) => Math.abs(Math.abs(rows[i].amountCents) - b.amountCents)
     let mejor = -1
     rows.forEach((row, i) => {
       if (row.amountCents >= 0 || usadas.has(i)) return
       if (b.period !== undefined && financialMonth(row.date) !== b.period) return
-      if (!normalize(row.description).includes(patron)) return
+      const texto = normalize(row.description)
+      if (!patrones.some((p) => texto.includes(p))) return
       if (mejor === -1 || distancia(i) < distancia(mejor)) mejor = i
     })
     if (mejor === -1) continue
