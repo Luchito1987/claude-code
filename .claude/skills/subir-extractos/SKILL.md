@@ -72,6 +72,10 @@ Después pedile al usuario que compare esos saldos con la app del banco. Una dif
 
 Si una importación avisa que hay pagos de tarjeta sin reconocer, cargá el patrón y corré `conciliar`. Eso cruza lo ya cargado, y cada mes queda pagado con la **suma** de todo lo que se le pagó a esa tarjeta. Es normal que haya varios pagos en un mes. Revisá que el patrón no agarre de más: mirá en los extractos qué débitos lo contienen antes de cargarlo.
 
+Lo que ya confirmó el usuario, para no volver a preguntarlo:
+- **Rappi**: a veces paga por adelantado montos chicos ($69.000–$100.000) para que entren las suscripciones cuando el cupo está lleno. Son pagos de la tarjeta.
+- **Tuya**: el banco nombra igual a cualquier tarjeta Tuya ("Compañía de Financiamiento"). Los pagos chicos de julio y agosto de 2026 ($177.700 y $104.456) fueron para cancelar una Tuya Alkosto que ya está en cero. Si aparece otra tarjeta Tuya activa, el patrón no las distingue: avisale al usuario.
+
 **6. Contar el resultado.** Una tabla por archivo con lo que se hizo, los saldos verificados, y lo que quedó pendiente: formatos no soportados, decisiones abiertas, y **vencimientos próximos o ya pasados** que se vean en los resúmenes, como un mínimo de tarjeta que venció ayer. Eso último es lo que más le sirve al usuario.
 
 ## Formatos conocidos
