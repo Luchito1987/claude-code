@@ -45,6 +45,8 @@ interface Layout {
   amount: number
   /** Columna con "C" (crédito) o "D" (débito), cuando el formato la trae. */
   cd?: number
+  /** Columna con el número de cuenta. */
+  account: number
 }
 
 /*
@@ -57,18 +59,36 @@ interface Layout {
  * $0 que, para colmo, movía el ancla de la cuenta. Por eso cada versión se
  * reconoce también por dónde cae la C/D, que no puede ser otra cosa.
  */
+/*
+ * Los movimientos del día de la cuenta de la empresa ("Desc_Movimientos_TR")
+ * son otro mensual más: un número de transacción adelante, la fecha DDMMAAAA
+ * repetida, la descripción entre comillas y el importe ya con signo.
+ */
 const LAYOUTS: Layout[] = [
-  { name: 'consolidado', cols: 13, date: 0, description: 7, amount: 9, cd: 11 },
-  { name: 'consolidado', cols: 11, date: 0, description: 6, amount: 8, cd: 10 },
-  { name: 'mensual', cols: 9, date: 3, description: 7, amount: 5 },
+  { name: 'consolidado', cols: 13, date: 0, description: 7, amount: 9, cd: 11, account: 1 },
+  { name: 'consolidado', cols: 11, date: 0, description: 6, amount: 8, cd: 10, account: 1 },
+  { name: 'mensual', cols: 9, date: 3, description: 7, amount: 5, account: 0 },
+  { name: 'mensual', cols: 12, date: 1, description: 4, amount: 9, account: 6 },
 ]
 
 /** `SALDO DIA`, `SALDO INICIAL`, `SALDO FINAL`: saldos, no movimientos. */
 const BALANCE_ROW = /^SALDO\b/i
 const CLOSING_ROW = /^SALDO\s+FINAL/i
 
-function splitLine(line: string): string[] {
-  return line.split(',').map((c) => c.trim())
+/** Separa por comas respetando las comillas, que algunos formatos usan. */
+export function splitLine(line: string): string[] {
+  const cells: string[] = []
+  let cur = ''
+  let quoted = false
+  for (const ch of line) {
+    if (ch === '"') quoted = !quoted
+    else if (ch === ',' && !quoted) {
+      cells.push(cur.trim())
+      cur = ''
+    } else cur += ch
+  }
+  cells.push(cur.trim())
+  return cells
 }
 
 const validYear = (y: number) => y >= 2000 && y <= 2100
