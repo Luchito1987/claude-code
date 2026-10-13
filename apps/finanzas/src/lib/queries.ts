@@ -805,6 +805,15 @@ export function cardInstallments(today: ISODate = todayISO()): FutureInstallment
   return pendingInstallments(txs, today)
 }
 
+/** El día `dia` dentro de un mes financiero (que va del 28 al 27). */
+function diaDelMes(period: string, dia: number): ISODate {
+  const { start, end } = monthRange(period)
+  for (let d = start; compare(d, end) <= 0; d = addDays(d, 1)) {
+    if (parseISO(d).d === dia) return d
+  }
+  return end
+}
+
 function paidSet(period: string): Set<string> {
   const rows = getDb()
     .prepare('SELECT kind, ref_id FROM month_payments WHERE period = ?')
@@ -855,15 +864,47 @@ export function monthItems(
     }))
 
   /*
+   * Una tarjeta sin resumen cargado (la Visa, la Rappi) igual se paga todos los
+   * meses, y ese pago ya se concilia contra el extracto de la cuenta. Si el
+   * tablero solo mirara los resúmenes, esas tarjetas no existirían: se muestran
+   * con lo que se les pagó este mes o, si todavía no, con el último pago como
+   * estimado.
+   */
+  const conResumen = new Set(tarjetas.map((t) => t.refId))
+  const pagosTarjeta = getDb()
+    .prepare("SELECT ref_id, period, amount_cents FROM month_payments WHERE kind = 'tarjeta' AND period <= ? ORDER BY period DESC")
+    .all(period) as Array<{ ref_id: string; period: string; amount_cents: number }>
+  for (const card of listCards(currency)) {
+    if (conResumen.has(card.id)) continue
+    const ultimo = pagosTarjeta.find((p) => p.ref_id === card.id)
+    if (!ultimo) continue
+    const delMes = ultimo.period === period
+    tarjetas.push({
+      kind: 'tarjeta',
+      group: 'tarjeta',
+      refId: card.id,
+      label: `Pago ${card.name}`,
+      detail: delMes ? 'pago del mes (sin resumen cargado)' : 'sin resumen: estimado con el último pago',
+      dueDate: diaDelMes(period, card.due_day),
+      cents: ultimo.amount_cents,
+      paid: delMes,
+      estimated: !delMes,
+      editable: false,
+    })
+  }
+
+  /*
    * La cuota del mes se muestra esté paga o no. Las pendientes salen del plan
    * de pagos; las que ya se saldaron hay que traerlas aparte, porque si no el
    * préstamo desaparecía de la lista justo cuando terminaba de pagarse.
    */
   const prestamosTodos = listLoans(currency)
   const pendientes = pendingLoanInstallments(prestamosTodos, today).filter((c) => c.period === period)
-  const saldadas = settledLoanInstallments(prestamosTodos, period).filter(
-    (c) => !pendientes.some((p) => p.loanId === c.loanId),
-  )
+  // Un préstamo dado de baja ya no se quiere ver, ni siquiera su última cuota.
+  const saldadas = settledLoanInstallments(
+    prestamosTodos.filter((l) => l.active),
+    period,
+  ).filter((c) => !pendientes.some((p) => p.loanId === c.loanId))
 
   const prestamos: MonthItem[] = [
     ...pendientes.map((c) => ({ cuota: c, saldada: false })),
