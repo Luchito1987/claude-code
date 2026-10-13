@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/db/client'
+import { getDb, id, now } from '@/db/client'
 import { claveValida, noAutorizado } from '@/lib/api-token'
 
 export const dynamic = 'force-dynamic'
@@ -29,4 +29,57 @@ export async function GET(req: Request) {
     )
     .all(cuenta ?? tarjeta, desde, hasta)
   return NextResponse.json({ movimientos: filas })
+}
+
+/**
+ * Carga a mano un movimiento de una cuenta que todavía no llegó en un archivo
+ * (un pago hecho hoy), para que el saldo no quede inflado mientras tanto.
+ *
+ * `compromiso` ('tarjeta:<id>', 'factura:<id>'...) dice qué paga, para que no
+ * se cuente además como gasto variable. Cuando llegue el archivo del banco con
+ * ese movimiento, hay que borrar este con DELETE antes de subirlo: los textos
+ * no coinciden y se duplicaría.
+ */
+export async function POST(req: Request) {
+  if (!claveValida(req)) return noAutorizado()
+  const b = (await req.json().catch(() => ({}))) as {
+    cuenta?: string
+    fecha?: string
+    descripcion?: string
+    importeCents?: number
+    categoria?: string
+    compromiso?: string
+  }
+  const descripcion = (b.descripcion ?? '').trim()
+  if (!b.cuenta || !/^\d{4}-\d{2}-\d{2}$/.test(b.fecha ?? '') || !descripcion || !Number.isInteger(b.importeCents) || !b.importeCents) {
+    return NextResponse.json(
+      { error: 'Hace falta cuenta, fecha (AAAA-MM-DD), descripción e importeCents entero distinto de cero.' },
+      { status: 400 },
+    )
+  }
+  if (b.compromiso && !/^(factura|tarjeta|prestamo|interna):[\w-]+$/.test(b.compromiso)) {
+    return NextResponse.json({ error: 'Compromiso inválido.' }, { status: 400 })
+  }
+  const db = getDb()
+  const cuenta = db.prepare('SELECT id, name, currency FROM accounts WHERE id = ? OR lower(name) = lower(?)').get(b.cuenta, b.cuenta) as
+    | { id: string; name: string; currency: string }
+    | undefined
+  if (!cuenta) return NextResponse.json({ error: `No existe la cuenta "${b.cuenta}".` }, { status: 404 })
+  const nuevo = id()
+  db.prepare(
+    `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
+       account_id, source, commitment, created_at)
+     VALUES (?, ?, ?, '', ?, ?, ?, 'transferencia', ?, 'manual', ?, ?)`,
+  ).run(nuevo, b.fecha, descripcion, b.importeCents, cuenta.currency, b.categoria || 'otros', cuenta.id, b.compromiso ?? '', now())
+  return NextResponse.json({ ok: `${cuenta.name}: movimiento cargado.`, id: nuevo })
+}
+
+/** Borra un movimiento cargado a mano. Los importados se deshacen con su archivo. */
+export async function DELETE(req: Request) {
+  if (!claveValida(req)) return noAutorizado()
+  const movimiento = new URL(req.url).searchParams.get('id')
+  if (!movimiento) return NextResponse.json({ error: 'Falta el id.' }, { status: 400 })
+  const r = getDb().prepare("DELETE FROM transactions WHERE id = ? AND source = 'manual'").run(movimiento)
+  if (!r.changes) return NextResponse.json({ error: 'No hay un movimiento manual con ese id.' }, { status: 404 })
+  return NextResponse.json({ ok: 'Movimiento borrado.' })
 }

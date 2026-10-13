@@ -82,6 +82,8 @@ Lo que ya confirmó el usuario, para no volver a preguntarlo:
 - **Rappi**: a veces paga por adelantado montos chicos ($69.000–$100.000) para que entren las suscripciones cuando el cupo está lleno. Son pagos de la tarjeta.
 - **Tuya**: el banco nombra igual a cualquier tarjeta Tuya ("Compañía de Financiamiento"). Los pagos chicos de julio y agosto de 2026 ($177.700 y $104.456) fueron para cancelar una Tuya Alkosto que ya está en cero. Si aparece otra tarjeta Tuya activa, el patrón no las distingue: avisale al usuario.
 
+**Movimientos cargados a mano.** Si el usuario avisa de un pago que todavía no llegó en un archivo, se carga con `POST /api/movimientos {cuenta, fecha, descripcion, importeCents, categoria, compromiso}` para que el saldo no quede inflado. Antes de subir el archivo del banco que cubre esa fecha, buscá en `GET /api/movimientos` los de `origen: manual` y borralos con `DELETE /api/movimientos?id=…`: los textos no coinciden y se duplicarían. Un pago de tarjeta adelantado se marca en el mes de su resumen con `POST /api/tarjetas {tarjeta, pagado: {periodo, importeCents}}`.
+
 **6. Contar el resultado.** Una tabla por archivo con lo que se hizo, los saldos verificados, y lo que quedó pendiente: formatos no soportados, decisiones abiertas, y **vencimientos próximos o ya pasados** que se vean en los resúmenes, como un mínimo de tarjeta que venció ayer. Eso último es lo que más le sirve al usuario.
 
 ## Formatos conocidos
