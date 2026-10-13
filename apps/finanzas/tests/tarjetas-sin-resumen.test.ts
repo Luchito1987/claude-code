@@ -65,3 +65,20 @@ describe('préstamos dados de baja', () => {
     expect(lista[0].activo).toBe(false)
   })
 })
+
+describe('pago de tarjeta marcado a mano', () => {
+  it('marca pagado el resumen del mes pedido', async () => {
+    const { q, db } = await load()
+    db.prepare(`INSERT INTO cards (id, name, due_day) VALUES ('tuya', 'Tuya', 4)`).run()
+    const { POST } = await import('@/app/api/tarjetas/route')
+    const h = { authorization: `Bearer ${'p'.repeat(48)}`, 'content-type': 'application/json' }
+    const r = await POST(
+      new Request('http://x/api/tarjetas', { method: 'POST', headers: h, body: JSON.stringify({ tarjeta: 'Tuya', pagado: { periodo: '2026-11', importeCents: 366498800 } }) }),
+    )
+    expect(r.status).toBe(200)
+    const t = q.monthItems('2026-11', HOY).find((i) => i.refId === 'tuya')!
+    expect([t.paid, t.cents]).toEqual([true, 366498800])
+    const mal = await POST(new Request('http://x/api/tarjetas', { method: 'POST', headers: h, body: JSON.stringify({ tarjeta: 'Tuya', pagado: { periodo: 'nov' } }) }))
+    expect(mal.status).toBe(400)
+  })
+})
