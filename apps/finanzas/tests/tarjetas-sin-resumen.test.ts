@@ -82,3 +82,18 @@ describe('pago de tarjeta marcado a mano', () => {
     expect(mal.status).toBe(400)
   })
 })
+
+describe('alta de préstamo por API', () => {
+  it('crea el préstamo y su primera cuota aparece en el mes', async () => {
+    const { q } = await load()
+    const { POST } = await import('@/app/api/prestamos/route')
+    const h = { authorization: `Bearer ${'p'.repeat(48)}`, 'content-type': 'application/json' }
+    const body = { crear: { nombre: 'Préstamo Rappi', capitalCents: 1050000000, cuotaCents: 98811242, cuotas: 12, primeraCuota: '2026-11-20', tasaAnual: 19.79 } }
+    const r = await POST(new Request('http://x/api/prestamos', { method: 'POST', headers: h, body: JSON.stringify(body) }))
+    expect(r.status).toBe(200)
+    const cuota = q.monthItems('2026-11', HOY).find((i) => i.kind === 'prestamo')!
+    expect([cuota.label, cuota.cents, cuota.dueDate]).toEqual(['Préstamo Rappi · cuota 1/12', 98811242, '2026-11-20'])
+    const repetido = await POST(new Request('http://x/api/prestamos', { method: 'POST', headers: h, body: JSON.stringify(body) }))
+    expect(repetido.status).toBe(409)
+  })
+})
