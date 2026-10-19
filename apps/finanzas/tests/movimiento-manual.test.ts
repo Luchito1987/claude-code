@@ -56,3 +56,33 @@ describe('/api/movimientos manual', () => {
     expect((await DELETE(new Request('http://x/api/movimientos?id=imp', { method: 'DELETE', headers: h }))).status).toBe(404)
   })
 })
+
+describe('billetera y pagos de tarjeta a mano', () => {
+  it('crea la cuenta anclada y el pago suma a lo pagado a la tarjeta en su mes', async () => {
+    const { getDb } = await import('@/db/client')
+    const q = await import('@/lib/queries')
+    const db = getDb()
+    db.prepare(`INSERT INTO cards (id, name) VALUES ('tuya', 'Tuya')`).run()
+    const cuentas = await import('@/app/api/cuentas/route')
+    const c = await cuentas.POST(
+      new Request('http://x/api/cuentas', { method: 'POST', headers: h, body: JSON.stringify({ nombre: 'RappiCuenta', saldoCents: 69790182, fecha: '2026-10-19' }) }),
+    )
+    expect(c.status).toBe(200)
+    const { POST, DELETE } = await import('@/app/api/movimientos/route')
+    const r = await POST(
+      new Request('http://x/api/movimientos', {
+        method: 'POST',
+        headers: h,
+        body: JSON.stringify({ cuenta: 'RappiCuenta', fecha: '2026-10-19', descripcion: 'Pago Tuya', importeCents: -816256300, categoria: 'pago_tarjeta', compromiso: 'tarjeta:tuya' }),
+      }),
+    )
+    const { id } = (await r.json()) as { id: string }
+    const pagado = () => db.prepare(`SELECT amount_cents AS c FROM month_payments WHERE ref_id = 'tuya' AND period = '2026-10'`).get()
+    expect(pagado()).toEqual({ c: 816256300 })
+    const acc = db.prepare(`SELECT id FROM accounts WHERE name = 'RappiCuenta'`).get() as { id: string }
+    expect(q.accountBalanceCents(acc.id, '2026-10-19')).toBe(69790182)
+
+    await DELETE(new Request(`http://x/api/movimientos?id=${id}`, { method: 'DELETE', headers: h }))
+    expect(pagado()).toBeUndefined()
+  })
+})
