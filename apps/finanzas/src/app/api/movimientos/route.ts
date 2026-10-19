@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getDb, id, now } from '@/db/client'
 import { claveValida, noAutorizado } from '@/lib/api-token'
+import { syncCardMonthPayment } from '@/lib/queries'
+import { financialMonth } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -71,6 +73,7 @@ export async function POST(req: Request) {
        account_id, source, commitment, created_at)
      VALUES (?, ?, ?, '', ?, ?, ?, 'transferencia', ?, 'manual', ?, ?)`,
   ).run(nuevo, b.fecha, descripcion, b.importeCents, cuenta.currency, b.categoria || 'otros', cuenta.id, b.compromiso ?? '', now())
+  resincronizarTarjeta(b.compromiso ?? '', b.fecha!)
   return NextResponse.json({ ok: `${cuenta.name}: movimiento cargado.`, id: nuevo })
 }
 
@@ -79,7 +82,25 @@ export async function DELETE(req: Request) {
   if (!claveValida(req)) return noAutorizado()
   const movimiento = new URL(req.url).searchParams.get('id')
   if (!movimiento) return NextResponse.json({ error: 'Falta el id.' }, { status: 400 })
-  const r = getDb().prepare("DELETE FROM transactions WHERE id = ? AND source = 'manual'").run(movimiento)
+  const db = getDb()
+  const previo = db.prepare("SELECT date, commitment FROM transactions WHERE id = ? AND source = 'manual'").get(movimiento) as
+    | { date: string; commitment: string }
+    | undefined
+  const r = db.prepare("DELETE FROM transactions WHERE id = ? AND source = 'manual'").run(movimiento)
+  if (previo) resincronizarTarjeta(previo.commitment, previo.date)
   if (!r.changes) return NextResponse.json({ error: 'No hay un movimiento manual con ese id.' }, { status: 404 })
   return NextResponse.json({ ok: 'Movimiento borrado.' })
+}
+
+/**
+ * Un pago de tarjeta cargado o borrado a mano cambia lo pagado a esa tarjeta en
+ * su mes, igual que uno conciliado desde un extracto.
+ */
+function resincronizarTarjeta(compromiso: string, fecha: string): void {
+  if (!compromiso.startsWith('tarjeta:')) return
+  const tarjeta = compromiso.slice('tarjeta:'.length)
+  const periodo = financialMonth(fecha)
+  if (syncCardMonthPayment(tarjeta, periodo) === 0) {
+    getDb().prepare("DELETE FROM month_payments WHERE kind = 'tarjeta' AND ref_id = ? AND period = ?").run(tarjeta, periodo)
+  }
 }
