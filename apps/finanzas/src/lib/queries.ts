@@ -783,7 +783,15 @@ export interface MonthItem {
   editable: boolean
   /** Número de contrato del servicio, para consultarlo en la página de la empresa. */
   contract?: string
+  /**
+   * Lo que de verdad se le pagó en el mes, cuando se sabe (tarjetas). Puede
+   * ser más que el resumen: un pago total, o un adelanto del resumen siguiente.
+   */
+  paidCents?: number
 }
+
+/** Lo pagado de un compromiso: lo registrado si se sabe; si no, su importe. */
+export const pagadoDe = (i: MonthItem): number => (i.paid ? (i.paidCents ?? i.cents) : 0)
 
 /**
  * Un pago de tarjeta o una cuota de préstamo no es gasto: la plata ya se contó
@@ -852,6 +860,13 @@ function diaDelMes(period: string, dia: number): ISODate {
   return end
 }
 
+function pagosDelMes(period: string): Map<string, number> {
+  const rows = getDb()
+    .prepare('SELECT kind, ref_id, amount_cents FROM month_payments WHERE period = ?')
+    .all(period) as Array<{ kind: string; ref_id: string; amount_cents: number }>
+  return new Map(rows.map((r) => [`${r.kind}:${r.ref_id}`, r.amount_cents]))
+}
+
 function paidSet(period: string): Set<string> {
   const rows = getDb()
     .prepare('SELECT kind, ref_id FROM month_payments WHERE period = ?')
@@ -885,6 +900,7 @@ export function monthItems(
     contract: b.contract_number || undefined,
   }))
 
+  const pagosTarjetas = pagosDelMes(period)
   const tarjetasDeLaVista = new Set(listCards(currency).map((c) => c.id))
   const tarjetas: MonthItem[] = allCardDues(today, monthRange(period).start)
     .filter((d) => financialMonth(d.due_date) === period && tarjetasDeLaVista.has(d.cardId))
@@ -897,6 +913,7 @@ export function monthItems(
       dueDate: d.due_date,
       cents: d.amount_cents,
       paid: pagados.has(`tarjeta:${d.cardId}`),
+      paidCents: pagosTarjetas.get(`tarjeta:${d.cardId}`) || undefined,
       estimated: false,
       editable: false,
     }))
@@ -926,6 +943,7 @@ export function monthItems(
       dueDate: diaDelMes(period, card.due_day),
       cents: ultimo.amount_cents,
       paid: delMes,
+      paidCents: delMes ? ultimo.amount_cents : undefined,
       estimated: !delMes,
       editable: false,
     })
@@ -1274,7 +1292,7 @@ export function monthHistory(period: string, today: ISODate = todayISO()): Month
     variable,
     variableCents: variable.reduce((a, v) => a + v.cents, 0),
     items,
-    paidCents: items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0),
+    paidCents: items.reduce((a, i) => a + pagadoDe(i), 0),
     pendingCents: items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0),
     current: period === enCurso,
     historical: period < enCurso,
@@ -1289,7 +1307,7 @@ export function monthSummary(today: ISODate = todayISO(), currency: Moneda = MON
 
   const items = monthItems(period, today, currency)
   const pendingCents = items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0)
-  const paidCents = items.filter((i) => i.paid).reduce((a, i) => a + i.cents, 0)
+  const paidCents = items.reduce((a, i) => a + pagadoDe(i), 0)
   const availableCents = totalCashCents(currency)
   const { start, end } = monthRange(period)
   const variable = variableSpend(period, currency)
