@@ -629,6 +629,7 @@ export function spendByCategory(from: ISODate, to: ISODate): Array<{ category: s
        FROM transactions
        WHERE amount_cents < 0 AND date BETWEEN ? AND ?
          AND category <> 'pago_tarjeta'
+         AND commitment NOT LIKE 'tarjeta:%' AND commitment NOT LIKE 'interna:%'
        GROUP BY category ORDER BY cents DESC`,
     )
     .all(from, to) as Array<{ category: string; cents: number; count: number }>
@@ -784,13 +785,50 @@ export interface MonthItem {
   contract?: string
 }
 
-/** Cuotas de tarjeta pendientes, leídas de los resúmenes ya importados. */
+/**
+ * Un pago de tarjeta o una cuota de préstamo no es gasto: la plata ya se contó
+ * cuando se compró con la tarjeta o cuando entró el préstamo. Cuando el
+ * movimiento queda enlazado a uno de esos compromisos, su categoría pasa a la
+ * que lo saca del gasto, aunque el texto del banco ("COMPRA EN RAPPIPAY")
+ * pareciera una compra.
+ */
+export function categoriaDeCompromiso(compromiso: string, categoria: string): string {
+  if (compromiso.startsWith('tarjeta:')) return 'pago_tarjeta'
+  if (compromiso.startsWith('prestamo:')) return 'prestamos'
+  return categoria
+}
+
+/** Corrige lo ya cargado con la regla de `categoriaDeCompromiso`. */
+export function normalizarCategoriasDeCompromisos(): number {
+  const db = getDb()
+  const a = db
+    .prepare("UPDATE transactions SET category = 'pago_tarjeta' WHERE commitment LIKE 'tarjeta:%' AND category <> 'pago_tarjeta'")
+    .run().changes
+  const b = db
+    .prepare("UPDATE transactions SET category = 'prestamos' WHERE commitment LIKE 'prestamo:%' AND category <> 'prestamos'")
+    .run().changes
+  return a + b
+}
+
+/**
+ * Cuotas de tarjeta pendientes, leídas de los resúmenes ya importados.
+ *
+ * Las compras de un resumen pagado completo ya no tienen cuotas por delante:
+ * pagar el total cancela lo que se había diferido. Se excluyen las de ese
+ * resumen y las de los anteriores de la misma tarjeta.
+ */
 export function cardInstallments(today: ISODate = todayISO()): FutureInstallment[] {
   const txs = getDb()
     .prepare(
-      `SELECT id, description, merchant, amount_cents, installment, card_id, billing_period, date
-       FROM transactions
-       WHERE card_id IS NOT NULL AND installment <> ''`,
+      `SELECT t.id, t.description, t.merchant, t.amount_cents, t.installment, t.card_id, t.billing_period, t.date
+       FROM transactions t
+       LEFT JOIN statements s ON s.id = t.statement_id
+       WHERE t.card_id IS NOT NULL AND t.installment <> ''
+         AND NOT EXISTS (
+           SELECT 1 FROM statements p
+           WHERE p.card_id = t.card_id AND p.paid_in_full = 1
+             AND COALESCE(NULLIF(s.due_date, ''), t.date) <= p.due_date
+         )`,
     )
     .all() as Array<{
     id: string
@@ -1416,6 +1454,7 @@ export interface CardReconciliation {
  * Lo ya enlazado no se toca, así que correrlo dos veces no cambia nada.
  */
 export function reconcileCardPayments(): CardReconciliation[] {
+  normalizarCategoriasDeCompromisos()
   const db = getDb()
   const tarjetas = db
     .prepare(`SELECT id, name AS label, match_pattern AS pattern, 0 AS amountCents FROM cards WHERE match_pattern <> ''`)

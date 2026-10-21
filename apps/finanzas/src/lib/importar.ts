@@ -12,6 +12,7 @@
 import { revalidatePath } from 'next/cache'
 import { getDb, id, now } from '@/db/client'
 import { fingerprint, parseStatement, type ParsedRow } from '@/lib/parsers/statement'
+import { categoriaDeCompromiso } from '@/lib/queries'
 import {
   findAlreadyLoaded,
   settleBillsFromStatement,
@@ -265,7 +266,7 @@ export async function importarExtracto(form: FormData, user: { id: string }): Pr
         row.merchant,
         row.amountCents,
         row.currency,
-        row.category,
+        categoriaDeCompromiso(compromiso, row.category),
         kind === 'card' ? 'credito' : kind === 'gastos' ? 'otro' : 'debito',
         kind === 'card' ? null : targetId,
         kind === 'card' ? targetId : null,

@@ -18,13 +18,15 @@ export const runtime = 'nodejs'
  */
 export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
-  const { tarjeta, patronPago, pagado } = (await req.json().catch(() => ({}))) as {
+  const { tarjeta, patronPago, pagado, saldada } = (await req.json().catch(() => ({}))) as {
     tarjeta?: string
     patronPago?: string
     pagado?: { periodo?: string; importeCents?: number }
+    saldada?: { hasta?: string }
   }
   const patron = (patronPago ?? '').trim()
   if (tarjeta && pagado) return marcarPagado(tarjeta, pagado)
+  if (tarjeta && saldada) return marcarSaldada(tarjeta, saldada.hasta)
   if (!tarjeta || patron.length < 4) {
     return NextResponse.json({ error: 'Hace falta la tarjeta y un texto de al menos 4 caracteres.' }, { status: 400 })
   }
@@ -53,4 +55,24 @@ function marcarPagado(tarjeta: string, pagado: { periodo?: string; importeCents?
      ON CONFLICT(kind, ref_id, period) DO UPDATE SET amount_cents = excluded.amount_cents`,
   ).run(id(), card.id, periodo, importeCents, now())
   return NextResponse.json({ ok: `${card.name} ${periodo}: pagado.` })
+}
+
+/**
+ * Con `saldada: {hasta}` marca pagados completos los resúmenes de la tarjeta
+ * que vencen hasta esa fecha: sus compras en cuotas dejan de proyectarse como
+ * deuda futura, porque el pago total las canceló.
+ */
+function marcarSaldada(tarjeta: string, hasta?: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(hasta ?? '')) {
+    return NextResponse.json({ error: 'saldada.hasta tiene que ser una fecha AAAA-MM-DD.' }, { status: 400 })
+  }
+  const db = getDb()
+  const card = db.prepare('SELECT id, name FROM cards WHERE id = ? OR name = ?').get(tarjeta, tarjeta) as
+    | { id: string; name: string }
+    | undefined
+  if (!card) return NextResponse.json({ error: `No existe la tarjeta "${tarjeta}".` }, { status: 404 })
+  const r = db
+    .prepare("UPDATE statements SET paid_in_full = 1 WHERE card_id = ? AND due_date <> '' AND due_date <= ?")
+    .run(card.id, hasta)
+  return NextResponse.json({ ok: `${card.name}: ${r.changes} resumen(es) marcados como pagados completos.` })
 }
