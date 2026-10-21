@@ -904,19 +904,25 @@ export function monthItems(
   const tarjetasDeLaVista = new Set(listCards(currency).map((c) => c.id))
   const tarjetas: MonthItem[] = allCardDues(today, monthRange(period).start)
     .filter((d) => financialMonth(d.due_date) === period && tarjetasDeLaVista.has(d.cardId))
-    .map((d) => ({
-      kind: 'tarjeta' as const,
-      group: 'tarjeta' as const,
-      refId: d.cardId,
-      label: `Resumen ${d.name}`,
-      detail: 'consumos del resumen importado',
-      dueDate: d.due_date,
-      cents: d.amount_cents,
-      paid: pagados.has(`tarjeta:${d.cardId}`),
-      paidCents: pagosTarjetas.get(`tarjeta:${d.cardId}`) || undefined,
-      estimated: false,
-      editable: false,
-    }))
+    .map((d) => {
+      const pagado = pagosTarjetas.get(`tarjeta:${d.cardId}`)
+      // Pagado con importe 0: la deuda ya se canceló con un pago total de un
+      // mes anterior. El mes no debe nada a esa tarjeta.
+      const saldada = pagado === 0
+      return {
+        kind: 'tarjeta' as const,
+        group: 'tarjeta' as const,
+        refId: d.cardId,
+        label: `Resumen ${d.name}`,
+        detail: saldada ? 'sin deuda: saldada con el pago total' : 'consumos del resumen importado',
+        dueDate: d.due_date,
+        cents: saldada ? 0 : d.amount_cents,
+        paid: pagados.has(`tarjeta:${d.cardId}`),
+        paidCents: pagado || undefined,
+        estimated: false,
+        editable: false,
+      }
+    })
 
   /*
    * Una tarjeta sin resumen cargado (la Visa, la Rappi) igual se paga todos los
@@ -934,16 +940,24 @@ export function monthItems(
     const ultimo = pagosTarjeta.find((p) => p.ref_id === card.id)
     if (!ultimo) continue
     const delMes = ultimo.period === period
+    // Saldada (último pago registrado en 0) y sin nada nuevo: no hay deuda que
+    // estimar para los meses que siguen.
+    if (ultimo.amount_cents === 0 && !delMes) continue
     tarjetas.push({
       kind: 'tarjeta',
       group: 'tarjeta',
       refId: card.id,
       label: `Pago ${card.name}`,
-      detail: delMes ? 'pago del mes (sin resumen cargado)' : 'sin resumen: estimado con el último pago',
+      detail:
+        ultimo.amount_cents === 0
+          ? 'sin deuda: saldada con el pago total'
+          : delMes
+            ? 'pago del mes (sin resumen cargado)'
+            : 'sin resumen: estimado con el último pago',
       dueDate: diaDelMes(period, card.due_day),
       cents: ultimo.amount_cents,
       paid: delMes,
-      paidCents: delMes ? ultimo.amount_cents : undefined,
+      paidCents: delMes && ultimo.amount_cents ? ultimo.amount_cents : undefined,
       estimated: !delMes,
       editable: false,
     })

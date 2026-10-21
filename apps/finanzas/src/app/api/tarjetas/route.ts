@@ -41,8 +41,8 @@ export async function POST(req: Request) {
 
 function marcarPagado(tarjeta: string, pagado: { periodo?: string; importeCents?: number }) {
   const { periodo, importeCents } = pagado
-  if (!/^\d{4}-\d{2}$/.test(periodo ?? '') || !(Number.isInteger(importeCents) && importeCents! > 0)) {
-    return NextResponse.json({ error: 'El pago necesita periodo (AAAA-MM) e importeCents entero y positivo.' }, { status: 400 })
+  if (!/^\d{4}-\d{2}$/.test(periodo ?? '') || !(Number.isInteger(importeCents) && importeCents! >= 0)) {
+    return NextResponse.json({ error: 'El pago necesita periodo (AAAA-MM) e importeCents entero (0 = sin deuda, saldada con un pago anterior).' }, { status: 400 })
   }
   const db = getDb()
   const card = db.prepare('SELECT id, name FROM cards WHERE id = ? OR name = ?').get(tarjeta, tarjeta) as

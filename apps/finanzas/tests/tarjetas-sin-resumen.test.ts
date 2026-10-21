@@ -136,3 +136,18 @@ describe('lo pagado de verdad a una tarjeta', () => {
     expect(q.pagadoDe(item)).toBe(900000)
   })
 })
+
+describe('tarjeta saldada', () => {
+  it('con pago 0 el mes figura sin deuda y los siguientes no estiman', async () => {
+    const { q, db } = await load()
+    db.prepare(`INSERT INTO statements (id, kind, card_id, due_date, minimum_cents, imported_at) VALUES ('st', 'card', 'nueva', '2026-11-04', 366498800, 'x')`).run()
+    db.prepare(`INSERT INTO transactions (id, date, description, amount_cents, card_id, statement_id, created_at) VALUES ('t', '2026-10-01', 'x', -100000, 'nueva', 'st', 'x')`).run()
+    db.prepare(`INSERT INTO month_payments (id, kind, ref_id, period, amount_cents, paid_at) VALUES ('m1', 'tarjeta', 'nueva', '2026-11', 0, 'x'), ('m2', 'tarjeta', 'rappi', '2026-11', 0, 'x')`).run()
+    const nov = q.monthItems('2026-11', HOY)
+    const tuya = nov.find((i) => i.refId === 'nueva')!
+    expect([tuya.cents, tuya.paid]).toEqual([0, true])
+    expect(nov.find((i) => i.refId === 'rappi')?.cents).toBe(0)
+    const dic = q.monthItems('2026-12', HOY)
+    expect(dic.some((i) => i.refId === 'rappi' || i.refId === 'nueva')).toBe(false)
+  })
+})
