@@ -124,3 +124,15 @@ describe('resumen pagado completo y categoría de los pagos', () => {
     expect(db.prepare(`SELECT category FROM transactions WHERE id = 'p1'`).get()).toEqual({ category: 'pago_tarjeta' })
   })
 })
+
+describe('lo pagado de verdad a una tarjeta', () => {
+  it('el ítem lleva lo pagado en el mes aunque supere al resumen', async () => {
+    const { q, db } = await load()
+    db.prepare(`INSERT INTO statements (id, kind, card_id, due_date, minimum_cents, imported_at) VALUES ('st', 'card', 'nueva', '2026-10-05', 100000, 'x')`).run()
+    db.prepare(`INSERT INTO transactions (id, date, description, amount_cents, card_id, statement_id, created_at) VALUES ('t', '2026-09-20', 'x', -100000, 'nueva', 'st', 'x')`).run()
+    db.prepare(`INSERT INTO month_payments (id, kind, ref_id, period, amount_cents, paid_at) VALUES ('mp', 'tarjeta', 'nueva', '2026-10', 900000, 'x')`).run()
+    const item = q.monthItems('2026-10', HOY).find((i) => i.refId === 'nueva')!
+    expect([item.cents, item.paid, item.paidCents]).toEqual([100000, true, 900000])
+    expect(q.pagadoDe(item)).toBe(900000)
+  })
+})

@@ -13,6 +13,7 @@ import {
   type MonthGroup,
   type MonthItem,
   type Remesa,
+  pagadoDe,
 } from '@/lib/queries'
 import {
   saveTransactionAction,
@@ -153,12 +154,22 @@ function BloqueDelMes({
   const moneda = monedaActual()
   const total = items.reduce((a, i) => a + i.cents, 0)
   const falta = items.filter((i) => !i.paid).reduce((a, i) => a + i.cents, 0)
+  const pagado = items.reduce((a, i) => a + pagadoDe(i), 0)
+  // Cuando se pagó más de lo que pedían los resúmenes (un pago total), el
+  // subtotal muestra lo pagado de verdad.
+  const extra = pagado > total - falta
 
   return (
     <FilaColapsable
       titulo={MONTH_GROUP_LABELS[group]}
       total={formatMoney(total, moneda)}
-      estado={falta > 0 ? `falta ${formatMoney(falta, moneda)}` : 'todo pagado'}
+      estado={
+        falta > 0
+          ? `falta ${formatMoney(falta, moneda)}${extra ? ` · pagado ${formatMoney(pagado, moneda)}` : ''}`
+          : extra
+            ? `todo pagado · se pagó ${formatMoney(pagado, moneda)}`
+            : 'todo pagado'
+      }
     >
       {items.map((item) => {
         const vencido = !item.paid && compare(item.dueDate, today) < 0
@@ -176,6 +187,9 @@ function BloqueDelMes({
             <td className="td whitespace-nowrap text-muted">{formatDate(item.dueDate)}</td>
             <td className="td text-right">
               {item.editable ? <ImporteEditable item={item} /> : <span className="tabular-nums">{formatMoney(item.cents, moneda)}</span>}
+              {item.paid && item.paidCents !== undefined && item.paidCents !== item.cents && (
+                <span className="block text-xs text-good tabular-nums">pagado {formatMoney(item.paidCents, moneda)}</span>
+              )}
             </td>
             <td className="td">
               {item.paid ? (
