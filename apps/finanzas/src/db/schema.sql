@@ -168,6 +168,9 @@ CREATE TABLE IF NOT EXISTS statements (
   -- reproduzcan el total es frágil y cambia entre extractos del mismo banco;
   -- el número que el banco declara, no.
   minimum_cents INTEGER NOT NULL DEFAULT 0,
+  -- 1 = se pagó el total: las cuotas de sus compras (y de los resúmenes
+  -- anteriores de la tarjeta) ya no quedan por delante.
+  paid_in_full INTEGER NOT NULL DEFAULT 0,
   rows_count  INTEGER NOT NULL DEFAULT 0,
   imported_by TEXT REFERENCES users(id) ON DELETE SET NULL,
   imported_at TEXT NOT NULL

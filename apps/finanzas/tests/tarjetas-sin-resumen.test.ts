@@ -97,3 +97,30 @@ describe('alta de préstamo por API', () => {
     expect(repetido.status).toBe(409)
   })
 })
+
+describe('resumen pagado completo y categoría de los pagos', () => {
+  it('las cuotas de un resumen saldado dejan de ser deuda y el pago no cuenta como gasto', async () => {
+    const { q, db } = await load()
+    db.prepare(`INSERT INTO cards (id, name) VALUES ('fal', 'Falabella')`).run()
+    db.prepare(`INSERT INTO statements (id, kind, card_id, due_date, imported_at) VALUES ('s1', 'card', 'fal', '2026-10-10', 'x')`).run()
+    db.prepare(
+      `INSERT INTO transactions (id, date, description, amount_cents, card_id, statement_id, installment, billing_period, created_at)
+       VALUES ('c1', '2026-09-05', 'WOMPI', -6900157, 'fal', 's1', '1/4', '2026-10', 'x')`,
+    ).run()
+    expect(q.cardInstallments(HOY).length).toBe(3)
+
+    const { POST } = await import('@/app/api/tarjetas/route')
+    const h = { authorization: `Bearer ${'p'.repeat(48)}`, 'content-type': 'application/json' }
+    const r = await POST(new Request('http://x', { method: 'POST', headers: h, body: JSON.stringify({ tarjeta: 'Falabella', saldada: { hasta: '2026-11-30' } }) }))
+    expect(r.status).toBe(200)
+    expect(q.cardInstallments(HOY).length).toBe(0)
+
+    db.prepare(
+      `INSERT INTO transactions (id, date, description, amount_cents, category, account_id, commitment, created_at)
+       VALUES ('p1', '2026-10-12', 'COMPRA EN RAPPIPAY', -5000000, 'delivery', NULL, 'tarjeta:rappi', 'x')`,
+    ).run()
+    expect(q.spendByCategory('2026-10-01', '2026-10-31').some((c) => c.category === 'delivery')).toBe(false)
+    q.normalizarCategoriasDeCompromisos()
+    expect(db.prepare(`SELECT category FROM transactions WHERE id = 'p1'`).get()).toEqual({ category: 'pago_tarjeta' })
+  })
+})
