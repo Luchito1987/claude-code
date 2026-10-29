@@ -5,6 +5,7 @@ import { todayISO } from '@/lib/dates'
 import { listAccounts } from '@/lib/queries'
 import { readReceiptAction, saveReceiptAction } from '@/app/actions/receipt'
 import { PhotoInput, ReadButton } from './PhotoForm'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,8 @@ export default function TicketPage({
 }: {
   searchParams: Record<string, string | undefined>
 }) {
-  const cuentas = listAccounts()
+  const moneda = monedaActual()
+  const cuentas = listAccounts(moneda)
   const { foto, monto, detalle, fecha, categoria, origen, error, ok } = searchParams
   const yaLeido = Boolean(foto)
 

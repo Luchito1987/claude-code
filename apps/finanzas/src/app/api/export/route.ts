@@ -3,6 +3,7 @@ import { currentUser } from '@/lib/auth'
 import { buildSnapshot, toCsv, toMarkdown } from '@/lib/report'
 import { listTransactions } from '@/lib/queries'
 import { addDays, todayISO } from '@/lib/dates'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   const stamp = today.replace(/-/g, '')
 
   if (format === 'csv') {
-    const rows = listTransactions({ from: addDays(today, -365), to: today }).map((t) => ({
+    const rows = listTransactions({ from: addDays(today, -365), to: today, currency: monedaActual() }).map((t) => ({
       fecha: t.date,
       detalle: t.description,
       comercio: t.merchant,
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     })
   }
 
-  const snapshot = buildSnapshot(today)
+  const snapshot = buildSnapshot(today, monedaActual())
 
   if (format === 'json') {
     return new NextResponse(JSON.stringify(snapshot, null, 2), {

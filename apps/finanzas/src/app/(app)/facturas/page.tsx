@@ -1,3 +1,4 @@
+import { monedaActual } from '@/lib/vista'
 import { Badge, Empty, Panel, Table } from '@/components/ui'
 import { compare, formatDate, formatPeriod, nextPeriod, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
@@ -25,11 +26,12 @@ import { CopiarTexto } from '@/components/CopiarTexto'
 export const dynamic = 'force-dynamic'
 
 export default function FacturasPage({ searchParams }: { searchParams: { period?: string } }) {
+  const moneda = monedaActual()
   const today = todayISO()
-  const view = billingWindowView(today)
+  const view = billingWindowView(today, moneda)
   const period = searchParams.period ?? view.window.period
-  const bills = listBills(period)
-  const services = listServices()
+  const bills = listBills(period, moneda)
+  const services = listServices(false, moneda)
   const total = bills.reduce((a, b) => a + b.amount_cents, 0)
   const pending = bills.filter((b) => b.status !== 'pagado').reduce((a, b) => a + b.amount_cents, 0)
 
@@ -77,7 +79,7 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
                     )}
                   </td>
                   <td className="td text-muted">{formatDate(b.due_date)}</td>
-                  <td className="td text-right tabular-nums">{formatMoney(b.amount_cents)}</td>
+                  <td className="td text-right tabular-nums">{formatMoney(b.amount_cents, moneda)}</td>
                   <td className="td">
                     {b.status === 'pagado' ? (
                       <Badge tone="good">pagado</Badge>
@@ -125,8 +127,8 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
           <Empty>Sin facturas para este período. Cargá servicios abajo y se generan solas.</Empty>
         )}
         <p className="mt-3 border-t border-edge pt-3 text-sm">
-          Total del período <strong className="tabular-nums">{formatMoney(total)}</strong> · pendiente{' '}
-          <strong className="tabular-nums">{formatMoney(pending)}</strong>
+          Total del período <strong className="tabular-nums">{formatMoney(total, moneda)}</strong> · pendiente{' '}
+          <strong className="tabular-nums">{formatMoney(pending, moneda)}</strong>
         </p>
       </Panel>
 
@@ -216,7 +218,7 @@ export default function FacturasPage({ searchParams }: { searchParams: { period?
                     </form>
                   </td>
                   <td className="td text-right tabular-nums">
-                    {s.expected_amount_cents ? formatMoney(s.expected_amount_cents) : 'promedio'}
+                    {s.expected_amount_cents ? formatMoney(s.expected_amount_cents, moneda) : 'promedio'}
                   </td>
                   <td className="td text-right">
                     <form action={deleteServiceAction}>

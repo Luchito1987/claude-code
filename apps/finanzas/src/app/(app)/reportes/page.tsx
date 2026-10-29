@@ -2,11 +2,13 @@ import { Panel } from '@/components/ui'
 import { todayISO } from '@/lib/dates'
 import { buildSnapshot, toMarkdown } from '@/lib/report'
 import { CopyButton } from './CopyButton'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
 export default function ReportesPage() {
-  const snapshot = buildSnapshot(todayISO())
+  const moneda = monedaActual()
+  const snapshot = buildSnapshot(todayISO(), moneda)
   const markdown = toMarkdown(snapshot)
 
   return (

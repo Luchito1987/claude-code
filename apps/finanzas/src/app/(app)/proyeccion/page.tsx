@@ -1,7 +1,7 @@
 import { Badge, Empty, Panel, Table } from '@/components/ui'
 import { formatDate, formatMonthShort, formatPeriod, monthRange, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
-import { buildProjection, cardInstallments, minBufferCents, monthlyProjection } from '@/lib/queries'
+import { buildProjection, cardInstallments, listCards, minBufferCents, monthlyProjection } from '@/lib/queries'
 import { WeeklyChart } from '@/components/WeeklyChart'
 import { monedaActual } from '@/lib/vista'
 
@@ -11,8 +11,9 @@ export default function ProyeccionPage() {
   const today = todayISO()
   const moneda = monedaActual()
   const meses = monthlyProjection(6, today, moneda)
-  const cuotas = cardInstallments(today)
-  const semanal = buildProjection(today)
+  const tarjetas = new Set(listCards(moneda).map((c) => c.id))
+  const cuotas = cardInstallments(today).filter((c) => tarjetas.has(c.cardId))
+  const semanal = buildProjection(today, undefined, moneda)
   const buffer = minBufferCents()
 
   const totalSalidas = meses.reduce((a, m) => a + m.totalCents, 0)
@@ -210,6 +211,7 @@ export default function ProyeccionPage() {
         subtitle={`Detalle fino de los próximos ${semanal.weeks.length * 7} días, para ver los picos dentro del mes`}
       >
         <WeeklyChart
+          moneda={moneda}
           weeks={semanal.weeks.map((w) => ({
             start: w.start,
             label: formatDate(w.start),

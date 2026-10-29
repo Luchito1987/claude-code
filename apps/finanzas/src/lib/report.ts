@@ -6,7 +6,7 @@
 
 import { CATEGORY_LABELS } from './categories'
 import { addDays, formatDate, formatPeriod, todayISO, type ISODate } from './dates'
-import { formatMoney, pct } from './money'
+import { formatMoney, MONEDA_BASE, pct, type Moneda } from './money'
 import { analyzeRappi, type RappiAnalysis } from './parsers/rappi'
 import { buildRecommendations, type Recommendation } from './recommendations'
 import {
@@ -34,6 +34,7 @@ import type { Projection } from './cashflow'
 export interface Snapshot {
   generatedAt: string
   today: ISODate
+  currency: Moneda
   cash: {
     totalCents: number
     accounts: Array<{ name: string; kind: string; balanceCents: number }>
@@ -88,14 +89,15 @@ export interface Snapshot {
   recommendations: Recommendation[]
 }
 
-export function buildSnapshot(today: ISODate = todayISO()): Snapshot {
-  const projection: Projection = buildProjection(today)
-  const win = billingWindowView(today)
+export function buildSnapshot(today: ISODate = todayISO(), currency: Moneda = MONEDA_BASE): Snapshot {
+  const projection: Projection = buildProjection(today, undefined, currency)
+  const win = billingWindowView(today, currency)
   const from30 = addDays(today, -30)
-  const byCategory = spendByCategory(from30, today)
+  const byCategory = spendByCategory(from30, today, currency)
   const totalSpend30 = byCategory.reduce((a, c) => a + c.cents, 0)
-  const orders = listRappiOrders()
-  const rappiTx = listTransactions({ from: addDays(today, -180), category: 'delivery' })
+  // Rappi es de Colombia: en la vista de Argentina no hay pedidos que mirar.
+  const orders = currency === 'COP' ? listRappiOrders() : []
+  const rappiTx = listTransactions({ from: addDays(today, -180), category: 'delivery', currency })
 
   // Si no hay pedidos con detalle cargados, se usa lo que se ve en la tarjeta.
   const rappi = orders.length
@@ -130,9 +132,9 @@ export function buildSnapshot(today: ISODate = todayISO()): Snapshot {
           })),
       )
 
-  const transactions = listTransactions({ from: addDays(today, -120) })
-  const bills = listBills()
-  const services = listServices()
+  const transactions = listTransactions({ from: addDays(today, -120), currency })
+  const bills = listBills(undefined, currency)
+  const services = listServices(false, currency)
 
   const recommendations = buildRecommendations({
     today,
@@ -140,10 +142,11 @@ export function buildSnapshot(today: ISODate = todayISO()): Snapshot {
     transactions,
     bills,
     services,
-    loans: listLoans(),
-    monthlyIncomeCents: monthlyIncomeCents(),
+    loans: listLoans(currency),
+    monthlyIncomeCents: monthlyIncomeCents(currency),
     minBufferCents: minBufferCents(),
     rappi: orders.length ? rappi : undefined,
+    currency,
     windowOpen: win.window.open,
     windowPeriod: win.window.period,
   })
@@ -161,15 +164,16 @@ export function buildSnapshot(today: ISODate = todayISO()): Snapshot {
   return {
     generatedAt: new Date().toISOString(),
     today,
+    currency,
     cash: {
-      totalCents: totalCashCents(),
-      accounts: listAccounts().map((a) => ({ name: a.name, kind: a.kind, balanceCents: a.balance_cents })),
+      totalCents: totalCashCents(currency),
+      accounts: listAccounts(currency).map((a) => ({ name: a.name, kind: a.kind, balanceCents: a.balance_cents })),
       minBufferCents: minBufferCents(),
-      dailyBurnCents: currentBurnCents(today),
+      dailyBurnCents: currentBurnCents(today, currency),
     },
     income: {
-      monthlyCents: monthlyIncomeCents(),
-      sources: listIncomes().map((i) => ({ name: i.name, amountCents: i.amount_cents, day: i.day_of_month })),
+      monthlyCents: monthlyIncomeCents(currency),
+      sources: listIncomes(currency).map((i) => ({ name: i.name, amountCents: i.amount_cents, day: i.day_of_month })),
     },
     window: {
       period: win.window.period,
@@ -186,7 +190,7 @@ export function buildSnapshot(today: ISODate = todayISO()): Snapshot {
         estimated: b.estimated === 1,
       })),
     },
-    loans: listLoans().map((l) => {
+    loans: listLoans(currency).map((l) => {
       const p = loanProgress(l)
       return {
         name: l.name,
@@ -240,12 +244,12 @@ export function buildSnapshot(today: ISODate = todayISO()): Snapshot {
 
 export function toMarkdown(s: Snapshot): string {
   const L: string[] = []
-  const m = formatMoney
+  const m = (c: number) => formatMoney(c, s.currency)
 
   L.push(`# Situación financiera — ${s.today}`)
   L.push('')
   L.push(
-    `Generado por la app de flujo de caja. Todos los importes en pesos argentinos. ` +
+    `Generado por la app de flujo de caja. Todos los importes en ${s.currency === 'ARS' ? 'pesos argentinos' : 'pesos colombianos'}. ` +
       `El "gasto variable proyectado" es una estimación diaria calculada sobre los últimos 90 días.`,
   )
   L.push('')

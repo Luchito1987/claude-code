@@ -6,7 +6,7 @@
 
 import { CATEGORY_LABELS, VARIABLE_CATEGORIES } from './categories'
 import { addDays, compare, formatDate, todayISO, weekStart, type ISODate } from './dates'
-import { formatMoney, pct } from './money'
+import { formatMoney as formatMoneyBase, MONEDA_BASE, pct, type Moneda } from './money'
 import type { Projection } from './cashflow'
 import type { RappiAnalysis } from './parsers/rappi'
 
@@ -24,6 +24,8 @@ export interface Recommendation {
 
 export interface RecoInput {
   today?: ISODate
+  /** En qué moneda se escriben los importes de los textos. */
+  currency?: Moneda
   projection: Projection
   transactions: Array<{
     date: ISODate
@@ -44,7 +46,15 @@ export interface RecoInput {
 
 const SEVERITY_ORDER: Record<Severity, number> = { critica: 0, alta: 1, media: 2, info: 3 }
 
+/*
+ * Los textos se arman con la moneda de la vista. Las reglas son síncronas y se
+ * llaman sólo desde buildRecommendations, así que alcanza con fijarla ahí.
+ */
+let monedaTextos: Moneda = MONEDA_BASE
+const formatMoney = (cents: number) => formatMoneyBase(cents, monedaTextos)
+
 export function buildRecommendations(input: RecoInput): Recommendation[] {
+  monedaTextos = input.currency ?? MONEDA_BASE
   const today = input.today ?? todayISO()
   const out: Recommendation[] = []
   const p = input.projection

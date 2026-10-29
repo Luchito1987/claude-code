@@ -1,3 +1,4 @@
+import { monedaActual } from '@/lib/vista'
 import { Badge, Empty, Panel, Table } from '@/components/ui'
 import { formatDate, todayISO } from '@/lib/dates'
 import { formatMoney, pct } from '@/lib/money'
@@ -12,8 +13,9 @@ import {
 export const dynamic = 'force-dynamic'
 
 export default function PrestamosPage() {
-  const loans = listLoans()
-  const income = monthlyIncomeCents()
+  const moneda = monedaActual()
+  const loans = listLoans(moneda)
+  const income = monthlyIncomeCents(moneda)
   const monthly = loans
     .filter((l) => l.active && l.installments_paid < l.installments_total)
     .reduce((a, l) => a + l.installment_cents, 0)
@@ -24,14 +26,14 @@ export default function PrestamosPage() {
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Cuotas por mes</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(monthly)}</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(monthly, moneda)}</p>
           {income > 0 && (
             <p className="mt-1 text-xs text-muted">{pct(monthly, income)}% del ingreso mensual</p>
           )}
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Cuotas pendientes (capital + interés)</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(outstanding)}</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(outstanding, moneda)}</p>
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-muted">Préstamos vigentes</p>
@@ -69,7 +71,7 @@ export default function PrestamosPage() {
                       </span>
                     )}
                   </td>
-                  <td className="td text-right tabular-nums">{formatMoney(l.installment_cents)}</td>
+                  <td className="td text-right tabular-nums">{formatMoney(l.installment_cents, moneda)}</td>
                   <td className="td">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-20 rounded-full bg-edge">
@@ -81,7 +83,7 @@ export default function PrestamosPage() {
                     </div>
                   </td>
                   <td className="td text-muted">{p.nextDue ? formatDate(p.nextDue) : '—'}</td>
-                  <td className="td text-right tabular-nums">{formatMoney(p.outstandingCents)}</td>
+                  <td className="td text-right tabular-nums">{formatMoney(p.outstandingCents, moneda)}</td>
                   <td className="td">
                     <form action={saveMatchPatternAction} className="flex gap-1">
                       <input type="hidden" name="kind" value="prestamo" />

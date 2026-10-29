@@ -86,3 +86,19 @@ describe('altas en pesos argentinos', () => {
     expect(nov.find((i) => i.kind === 'prestamo')?.label).toBe('ICBC · cuota 25/96')
   })
 })
+
+describe('cada vista ve lo suyo', () => {
+  it('movimientos, gasto por categoría e historial se filtran por moneda', async () => {
+    const { getDb } = await import('@/db/client')
+    const q = await import('@/lib/queries')
+    const db = getDb()
+    db.prepare(
+      `INSERT INTO transactions (id, date, description, amount_cents, currency, category, created_at)
+       VALUES ('co', '2026-10-20', 'Mercado', -5000000, 'COP', 'supermercado', 'x'),
+              ('ar', '2026-10-20', 'Kiosco', -300000, 'ARS', 'supermercado', 'x')`,
+    ).run()
+    expect(q.listTransactions({ currency: 'ARS' }).map((t) => t.id)).toEqual(['ar'])
+    expect(q.spendByCategory('2026-10-01', '2026-10-31', 'COP')).toEqual([{ category: 'supermercado', cents: 5000000, count: 1 }])
+    expect(q.monthHistory('2026-10', '2026-10-29', 'ARS').outCents).toBe(300000)
+  })
+})

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, type Moneda } from '@/lib/money'
 
 export function Panel({
   title,
@@ -56,9 +56,9 @@ export function Stat({
   )
 }
 
-export function Money({ cents, signed = false }: { cents: number; signed?: boolean }) {
+export function Money({ cents, signed = false, moneda }: { cents: number; signed?: boolean; moneda?: Moneda }) {
   const tone = cents < 0 ? 'text-bad' : cents > 0 && signed ? 'text-good' : ''
-  return <span className={`tabular-nums ${tone}`}>{formatMoney(cents)}</span>
+  return <span className={`tabular-nums ${tone}`}>{formatMoney(cents, moneda)}</span>
 }
 
 export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'good' | 'warn' | 'bad' | 'info' }) {
@@ -92,9 +92,11 @@ export function Table({ head, children }: { head: ReactNode; children: ReactNode
 export function BarList({
   items,
   max,
+  moneda,
 }: {
   items: Array<{ label: string; value: number; hint?: string }>
   max?: number
+  moneda?: Moneda
 }) {
   const top = max ?? Math.max(...items.map((i) => Math.abs(i.value)), 1)
   return (
@@ -103,7 +105,7 @@ export function BarList({
         <li key={i.label}>
           <div className="flex items-baseline justify-between gap-2 text-sm">
             <span className="truncate">{i.label}</span>
-            <span className="tabular-nums text-muted">{i.hint ?? formatMoney(i.value)}</span>
+            <span className="tabular-nums text-muted">{i.hint ?? formatMoney(i.value, moneda)}</span>
           </div>
           <div className="mt-1 h-1.5 rounded-full bg-edge">
             <div

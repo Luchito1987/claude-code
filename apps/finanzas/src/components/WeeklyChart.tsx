@@ -1,4 +1,4 @@
-import { formatMoney } from '@/lib/money'
+import { formatMoney as formatMoneyBase, type Moneda } from '@/lib/money'
 
 export interface WeekPoint {
   start: string
@@ -39,7 +39,8 @@ function niceTicks(min: number, max: number, count = 4): number[] {
  * entradas y salidas ya están en la tabla de abajo, meterlas acá solo agrega
  * ruido. La línea punteada es el colchón mínimo.
  */
-export function WeeklyChart({ weeks, buffer }: { weeks: WeekPoint[]; buffer: number }) {
+export function WeeklyChart({ weeks, buffer, moneda }: { weeks: WeekPoint[]; buffer: number; moneda?: Moneda }) {
+  const formatMoney = (c: number) => formatMoneyBase(c, moneda)
   if (weeks.length < 2) return null
 
   const values = weeks.map((w) => w.closing)
