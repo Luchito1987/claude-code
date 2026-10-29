@@ -1458,7 +1458,7 @@ export function monthlyProjection(
     installments: cardInstallments(today).filter((i) => tarjetas.has(i.cardId)),
     cardDues: unpaidCardDues(today).filter((d) => tarjetas.has(d.cardId)),
     incomeMonthlyCents: monthlyIncomeCents(currency),
-    dailyBurnCents: currentBurnCents(today),
+    dailyBurnCents: currentBurnCents(today, currency),
     today,
   })
 }
