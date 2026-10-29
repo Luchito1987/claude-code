@@ -169,3 +169,15 @@ describe('cuotas de préstamo pagadas mes a mes', () => {
     expect(oct.map((i) => [i.label, i.paid])).toEqual([['Crédito Bancolombia · cuota 50/60', true]])
   })
 })
+
+describe('proyección mensual con tarjetas sin resumen', () => {
+  it('suma la Visa y la Rappi con su último pago, y no las saldadas', async () => {
+    const { q } = await load()
+    const meses = q.monthlyProjection(2, '2026-10-29')
+    const tarjetas = meses[0].detalle.tarjetas.map((t) => [t.label, t.cents])
+    expect(tarjetas).toEqual([
+      ['Rappi (estimado con el último pago)', 80000000],
+      ['Visa (estimado con el último pago)', 120000000],
+    ])
+  })
+})

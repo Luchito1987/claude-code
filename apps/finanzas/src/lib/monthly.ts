@@ -195,6 +195,12 @@ export interface OutlookInput {
   installments: FutureInstallment[]
   /** Resúmenes de tarjeta ya importados, con su vencimiento real. */
   cardDues: Array<CardDue & { cardId: string }>
+  /**
+   * Tarjetas que se pagan todos los meses pero sin resumen cargado (la Visa,
+   * la Rappi): se proyectan con lo último que se les pagó. Sin esto no
+   * aparecían en la proyección, como si no costaran nada.
+   */
+  cardEstimates?: Array<{ cardId: string; name: string; cents: number }>
   incomeMonthlyCents: number
   dailyBurnCents: number
   today?: ISODate
@@ -260,8 +266,11 @@ export function monthlyOutlook(input: OutlookInput): MonthOutlook[] {
     const conResumen = new Set(resumenes.map((r) => r.cardId))
     const cuotasProyectadas = (cuotasPorMes.get(period) ?? []).filter((c) => !conResumen.has(c.cardId))
 
+    const conCuotas = new Set(cuotasProyectadas.map((c) => c.cardId))
+    const estimadas = (input.cardEstimates ?? []).filter((e) => !conResumen.has(e.cardId) && !conCuotas.has(e.cardId))
     const tarjetas = [
       ...resumenes.map((r) => ({ label: `Resumen ${r.name}`, cents: r.amount_cents, estimado: false })),
+      ...estimadas.map((e) => ({ label: `${e.name} (estimado con el último pago)`, cents: e.cents, estimado: true })),
       ...cuotasProyectadas.map((c) => ({
         label: `${c.label} · cuota ${c.number}/${c.total}`,
         cents: c.amountCents,
@@ -282,7 +291,7 @@ export function monthlyOutlook(input: OutlookInput): MonthOutlook[] {
       serviciosEstimados: !facturas.length || facturas.some((b) => b.estimated === 1),
       prestamosCents,
       tarjetasCents,
-      tarjetasEstimadas: cuotasProyectadas.length > 0,
+      tarjetasEstimadas: cuotasProyectadas.length > 0 || estimadas.length > 0,
       variableCents,
       totalCents,
       ingresosCents: input.incomeMonthlyCents,
