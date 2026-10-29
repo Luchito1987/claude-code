@@ -3,13 +3,15 @@ import { formatMoney } from '@/lib/money'
 import { listAccounts, listCards, recentStatements } from '@/lib/queries'
 import { deleteStatementAction } from '@/app/actions/data'
 import { ImportForm } from './ImportForm'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
 export default function ImportarPage() {
-  const accounts = listAccounts()
-  const cards = listCards()
-  const statements = recentStatements()
+  const moneda = monedaActual()
+  const accounts = listAccounts(moneda)
+  const cards = listCards(moneda)
+  const statements = recentStatements(20, moneda)
 
   return (
     <div className="space-y-6">
@@ -69,7 +71,7 @@ export default function ImportarPage() {
                   {s.card_name ?? s.account_name ?? (s.kind === 'rappi' ? 'Rappi' : '—')}
                 </td>
                 <td className="td text-right tabular-nums">{s.rows_count}</td>
-                <td className="td text-right tabular-nums">{formatMoney(s.total_cents)}</td>
+                <td className="td text-right tabular-nums">{formatMoney(s.total_cents, moneda)}</td>
                 <td className="td text-xs text-muted">
                   {new Date(s.imported_at).toLocaleString('es-AR')}
                   {s.user_name ? ` · ${s.user_name}` : ''}

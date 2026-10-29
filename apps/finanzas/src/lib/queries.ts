@@ -244,20 +244,26 @@ export function listBillsBetween(from: ISODate, to: ISODate): Bill[] {
     .all(from, to) as Bill[]
 }
 
-export function listPendingBills(): Bill[] {
+export function listPendingBills(currency?: Moneda): Bill[] {
   return getDb()
     .prepare(
       `SELECT b.*, s.name AS name, s.category AS category, s.contract_number AS contract_number
        FROM bills b JOIN services s ON s.id = b.service_id
-       WHERE b.status <> 'pagado'
+       WHERE b.status <> 'pagado' ${currency ? 'AND s.currency = ?' : ''}
        ORDER BY b.due_date`,
     )
-    .all() as Bill[]
+    .all(...(currency ? [currency] : [])) as Bill[]
 }
 
-export function listTransactions(opts: { from?: ISODate; to?: ISODate; category?: string; limit?: number } = {}): Transaction[] {
+export function listTransactions(
+  opts: { from?: ISODate; to?: ISODate; category?: string; limit?: number; currency?: Moneda } = {},
+): Transaction[] {
   const where: string[] = []
   const args: unknown[] = []
+  if (opts.currency) {
+    where.push('currency = ?')
+    args.push(opts.currency)
+  }
   if (opts.from) {
     where.push('date >= ?')
     args.push(opts.from)
@@ -436,18 +442,22 @@ function paidCardDues(): Set<string> {
  * Resúmenes que siguen debiéndose: los que no vencieron, más los del mes en
  * curso que vencieron y todavía no se tildaron como pagados.
  */
-export function unpaidCardDues(today: ISODate = todayISO()): CardDue[] {
+export function unpaidCardDues(today: ISODate = todayISO(), currency?: Moneda): CardDue[] {
   const pagados = paidCardDues()
   const desde = monthRange(financialMonth(today)).start
+  const tarjetas = currency ? new Set(listCards(currency).map((c) => c.id)) : null
   return allCardDues(today, desde).filter(
-    (d) => !pagados.has(`${d.cardId}:${financialMonth(d.due_date)}`),
+    (d) => !pagados.has(`${d.cardId}:${financialMonth(d.due_date)}`) && (!tarjetas || tarjetas.has(d.cardId)),
   )
 }
 
-export function currentBurnCents(today: ISODate = todayISO()): number {
+export function currentBurnCents(today: ISODate = todayISO(), currency?: Moneda): number {
   const txs = getDb()
-    .prepare('SELECT date, amount_cents, category, method, card_id, commitment FROM transactions WHERE date >= ?')
-    .all(addDays(today, -90)) as Array<{
+    .prepare(
+      `SELECT date, amount_cents, category, method, card_id, commitment FROM transactions
+       WHERE date >= ? ${currency ? 'AND currency = ?' : ''}`,
+    )
+    .all(addDays(today, -90), ...(currency ? [currency] : [])) as Array<{
     date: ISODate
     amount_cents: number
     category: string
@@ -458,22 +468,26 @@ export function currentBurnCents(today: ISODate = todayISO()): number {
   return dailyBurn(txs, today)
 }
 
-export function buildProjection(today: ISODate = todayISO(), weeks = horizonWeeks()): Projection {
+export function buildProjection(
+  today: ISODate = todayISO(),
+  weeks = horizonWeeks(),
+  currency: Moneda = MONEDA_BASE,
+): Projection {
   return project({
     today,
     weeks,
-    openingCents: totalCashCents(),
-    bills: listPendingBills().map((b) => ({
+    openingCents: totalCashCents(currency),
+    bills: listPendingBills(currency).map((b) => ({
       id: b.id,
       name: b.name,
       due_date: b.due_date,
       amount_cents: b.amount_cents,
       status: b.status,
     })),
-    loans: listLoans(),
-    incomes: listIncomes(),
-    cardDues: unpaidCardDues(today),
-    dailyBurnCents: currentBurnCents(today),
+    loans: listLoans(currency),
+    incomes: listIncomes(currency),
+    cardDues: unpaidCardDues(today, currency),
+    dailyBurnCents: currentBurnCents(today, currency),
     minBufferCents: minBufferCents(),
   })
 }
@@ -522,10 +536,10 @@ function estimateServiceAmount(s: Service, period: string): number {
 }
 
 /** Ventana vigente (28→15) con sus facturas, generándolas si faltan. */
-export function billingWindowView(today: ISODate = todayISO()) {
+export function billingWindowView(today: ISODate = todayISO(), currency?: Moneda) {
   const window = currentWindow(today)
   ensureBillsForPeriod(window.period)
-  const bills = listBills(window.period)
+  const bills = listBills(window.period, currency)
   return {
     window,
     bills,
@@ -643,7 +657,11 @@ export function loanProgress(loan: Loan) {
   }
 }
 
-export function spendByCategory(from: ISODate, to: ISODate): Array<{ category: string; cents: number; count: number }> {
+export function spendByCategory(
+  from: ISODate,
+  to: ISODate,
+  currency?: Moneda,
+): Array<{ category: string; cents: number; count: number }> {
   return getDb()
     .prepare(
       `SELECT category, SUM(-amount_cents) AS cents, COUNT(*) AS count
@@ -651,9 +669,10 @@ export function spendByCategory(from: ISODate, to: ISODate): Array<{ category: s
        WHERE amount_cents < 0 AND date BETWEEN ? AND ?
          AND category <> 'pago_tarjeta'
          AND commitment NOT LIKE 'tarjeta:%' AND commitment NOT LIKE 'interna:%'
+         ${currency ? 'AND currency = ?' : ''}
        GROUP BY category ORDER BY cents DESC`,
     )
-    .all(from, to) as Array<{ category: string; cents: number; count: number }>
+    .all(from, to, ...(currency ? [currency] : [])) as Array<{ category: string; cents: number; count: number }>
 }
 
 export function monthlySpend(months = 6, today: ISODate = todayISO()): Array<{ period: string; cents: number }> {
@@ -671,7 +690,7 @@ export function monthlySpend(months = 6, today: ISODate = todayISO()): Array<{ p
   return rows
 }
 
-export function recentStatements(limit = 20) {
+export function recentStatements(limit = 20, currency?: Moneda) {
   return getDb()
     .prepare(
       `SELECT s.*, c.name AS card_name, a.name AS account_name, u.name AS user_name
@@ -679,9 +698,10 @@ export function recentStatements(limit = 20) {
        LEFT JOIN cards c ON c.id = s.card_id
        LEFT JOIN accounts a ON a.id = s.account_id
        LEFT JOIN users u ON u.id = s.imported_by
+       ${currency ? 'WHERE COALESCE(c.currency, a.currency) = ?' : ''}
        ORDER BY s.imported_at DESC LIMIT ?`,
     )
-    .all(limit) as Array<{
+    .all(...(currency ? [currency] : []), limit) as Array<{
     id: string
     kind: string
     file_name: string
@@ -1141,7 +1161,7 @@ export function historyMonths(): string[] {
  * transferencias entre cuentas propias: esa plata ya estaba en el hogar, y
  * contarla haría que la empresa pagándole a Inés aparezca como ingreso.
  */
-export function monthCashFlow(period: string): { inCents: number; outCents: number } {
+export function monthCashFlow(period: string, currency?: Moneda): { inCents: number; outCents: number } {
   const { start, end } = monthRange(period)
   const r = getDb()
     .prepare(
@@ -1149,9 +1169,10 @@ export function monthCashFlow(period: string): { inCents: number; outCents: numb
          COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS entro,
          COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS salio
        FROM transactions
-       WHERE date BETWEEN ? AND ? AND card_id IS NULL AND commitment NOT LIKE 'interna:%'`,
+       WHERE date BETWEEN ? AND ? AND card_id IS NULL AND commitment NOT LIKE 'interna:%'
+         ${currency ? 'AND currency = ?' : ''}`,
     )
-    .get(start, end) as { entro: number; salio: number }
+    .get(start, end, ...(currency ? [currency] : [])) as { entro: number; salio: number }
   return { inCents: r.entro, outCents: r.salio }
 }
 
@@ -1240,12 +1261,16 @@ export interface AccountReconciliation {
  * arrancado. Si ese número no es el que decía el banco al cerrar el mes
  * anterior, faltan movimientos por cargar.
  */
-export function accountReconciliation(period: string, today: ISODate = todayISO()): AccountReconciliation[] {
+export function accountReconciliation(
+  period: string,
+  today: ISODate = todayISO(),
+  currency?: Moneda,
+): AccountReconciliation[] {
   const { start, end } = monthRange(period)
   // El mes en curso se corta en hoy: sumar movimientos futuros descuadraría.
   const hasta = compare(end, today) > 0 ? today : end
 
-  return listAccounts().map((a) => {
+  return listAccounts(currency).map((a) => {
     const r = getDb()
       .prepare(
         `SELECT
@@ -1308,11 +1333,11 @@ export interface MonthHistory {
  * existieron y mediría la caja actual contra gastos viejos. Acá solo se lee lo
  * que quedó registrado.
  */
-export function monthHistory(period: string, today: ISODate = todayISO()): MonthHistory {
+export function monthHistory(period: string, today: ISODate = todayISO(), currency: Moneda = MONEDA_BASE): MonthHistory {
   const { start, end } = monthRange(period)
-  const items = monthItems(period, today)
-  const variable = variableSpend(period)
-  const { inCents, outCents } = monthCashFlow(period)
+  const items = monthItems(period, today, currency)
+  const variable = variableSpend(period, currency)
+  const { inCents, outCents } = monthCashFlow(period, currency)
   const corte = baselinePeriod()
   const enCurso = financialMonth(today)
 

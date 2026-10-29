@@ -4,19 +4,21 @@ import { addDays, formatDate, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 import { listAccounts, listCards, listTransactions, spendByCategory } from '@/lib/queries'
 import { deleteTransactionAction, recategorizeAction, saveTransactionAction } from '@/app/actions/data'
+import { monedaActual } from '@/lib/vista'
 
 export const dynamic = 'force-dynamic'
 
 export default function GastosPage({ searchParams }: { searchParams: { cat?: string; dias?: string } }) {
+  const moneda = monedaActual()
   const today = todayISO()
   const days = Number(searchParams.dias ?? '30') || 30
   const from = addDays(today, -days)
   const category = searchParams.cat
-  const txs = listTransactions({ from, to: today, category, limit: 300 })
-  const categories = spendByCategory(from, today)
+  const txs = listTransactions({ currency: moneda, from, to: today, category, limit: 300 })
+  const categories = spendByCategory(from, today, moneda)
   const totalSpend = categories.reduce((a, c) => a + c.cents, 0)
-  const accounts = listAccounts()
-  const cards = listCards()
+  const accounts = listAccounts(moneda)
+  const cards = listCards(moneda)
 
   return (
     <div className="space-y-6">
@@ -117,7 +119,7 @@ export default function GastosPage({ searchParams }: { searchParams: { cat?: str
               items={categories.map((c) => ({
                 label: CATEGORY_LABELS[c.category] ?? c.category,
                 value: c.cents,
-                hint: `${formatMoney(c.cents)} · ${Math.round((c.cents / totalSpend) * 100)}%`,
+                hint: `${formatMoney(c.cents, moneda)} · ${Math.round((c.cents / totalSpend) * 100)}%`,
               }))}
             />
           ) : (
@@ -178,7 +180,7 @@ export default function GastosPage({ searchParams }: { searchParams: { cat?: str
                     </form>
                   </td>
                   <td className={`td text-right tabular-nums ${t.amount_cents < 0 ? '' : 'text-good'}`}>
-                    {formatMoney(t.amount_cents)}
+                    {formatMoney(t.amount_cents, moneda)}
                   </td>
                   <td className="td text-right">
                     <form action={deleteTransactionAction}>

@@ -1,3 +1,4 @@
+import { monedaActual } from '@/lib/vista'
 import Link from 'next/link'
 import { Badge, Empty, Panel, Table } from '@/components/ui'
 import { CATEGORY_LABELS } from '@/lib/categories'
@@ -17,6 +18,7 @@ import {
 export const dynamic = 'force-dynamic'
 
 export default function HistorialPage({ searchParams }: { searchParams: { mes?: string } }) {
+  const moneda = monedaActual()
   const today = todayISO()
   const meses = historyMonths()
   const corte = baselinePeriod()
@@ -36,9 +38,9 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
 
   // Sin mes elegido se abre el más reciente, que es el que se suele mirar.
   const elegido = searchParams.mes && meses.includes(searchParams.mes) ? searchParams.mes : meses[0]
-  const resumenes = meses.map((p) => monthHistory(p, today))
+  const resumenes = meses.map((p) => monthHistory(p, today, moneda))
   const detalle = resumenes.find((r) => r.period === elegido)!
-  const cuentas = accountReconciliation(elegido, today)
+  const cuentas = accountReconciliation(elegido, today, moneda)
 
   return (
     <div className="space-y-6">
@@ -83,12 +85,12 @@ export default function HistorialPage({ searchParams }: { searchParams: { mes?: 
                   </span>
                 ) : null}
               </td>
-              <td className="td text-right tabular-nums text-good">{formatMoney(m.inCents)}</td>
-              <td className="td text-right tabular-nums">{formatMoney(m.outCents)}</td>
+              <td className="td text-right tabular-nums text-good">{formatMoney(m.inCents, moneda)}</td>
+              <td className="td text-right tabular-nums">{formatMoney(m.outCents, moneda)}</td>
               <td className={`td text-right tabular-nums ${m.netCents < 0 ? 'text-bad' : 'text-good'}`}>
-                {formatMoney(m.netCents)}
+                {formatMoney(m.netCents, moneda)}
               </td>
-              <td className="td text-right tabular-nums">{formatMoney(m.variableCents)}</td>
+              <td className="td text-right tabular-nums">{formatMoney(m.variableCents, moneda)}</td>
               <td className="td text-right">
                 <Link href={`/historial?mes=${m.period}`} className="btn-ghost px-2 py-1 text-xs">
                   Ver
@@ -126,6 +128,7 @@ function Conciliacion({
   mes: MonthHistory
   today: string
 }) {
+  const moneda = monedaActual()
   if (!cuentas.length) return null
 
   const suma = (f: (c: AccountReconciliation) => number) => cuentas.reduce((a, c) => a + f(c), 0)
@@ -154,10 +157,10 @@ function Conciliacion({
           return (
             <tr key={c.accountId}>
               <td className="td font-medium">{c.name}</td>
-              <td className="td text-right tabular-nums text-muted">{formatMoney(c.openingCents)}</td>
-              <td className="td text-right tabular-nums text-good">{formatMoney(c.inCents)}</td>
-              <td className="td text-right tabular-nums">{formatMoney(c.outCents)}</td>
-              <td className="td text-right tabular-nums font-medium">{formatMoney(c.closingCents)}</td>
+              <td className="td text-right tabular-nums text-muted">{formatMoney(c.openingCents, moneda)}</td>
+              <td className="td text-right tabular-nums text-good">{formatMoney(c.inCents, moneda)}</td>
+              <td className="td text-right tabular-nums">{formatMoney(c.outCents, moneda)}</td>
+              <td className="td text-right tabular-nums font-medium">{formatMoney(c.closingCents, moneda)}</td>
               <td className="td whitespace-nowrap text-xs text-muted">
                 {c.movements === 0 ? (
                   <Badge tone="warn">sin movimientos</Badge>
@@ -177,10 +180,10 @@ function Conciliacion({
         })}
         <tr className="border-t border-edge">
           <td className="td text-xs font-semibold uppercase tracking-wide text-muted">Total</td>
-          <td className="td text-right tabular-nums text-muted">{formatMoney(suma((c) => c.openingCents))}</td>
-          <td className="td text-right tabular-nums text-good">{formatMoney(suma((c) => c.inCents))}</td>
-          <td className="td text-right tabular-nums">{formatMoney(suma((c) => c.outCents))}</td>
-          <td className="td text-right tabular-nums font-semibold">{formatMoney(suma((c) => c.closingCents))}</td>
+          <td className="td text-right tabular-nums text-muted">{formatMoney(suma((c) => c.openingCents), moneda)}</td>
+          <td className="td text-right tabular-nums text-good">{formatMoney(suma((c) => c.inCents), moneda)}</td>
+          <td className="td text-right tabular-nums">{formatMoney(suma((c) => c.outCents), moneda)}</td>
+          <td className="td text-right tabular-nums font-semibold">{formatMoney(suma((c) => c.closingCents), moneda)}</td>
           <td className="td" />
         </tr>
       </Table>
@@ -189,6 +192,7 @@ function Conciliacion({
 }
 
 function DetalleDelMes({ mes, today }: { mes: MonthHistory; today: string }) {
+  const moneda = monedaActual()
   const bloques = MONTH_GROUP_ORDER.filter((g) => g !== 'variable')
     .map((group) => ({ group, items: mes.items.filter((i) => i.group === group) }))
     .filter((b) => b.items.length > 0)
@@ -202,9 +206,9 @@ function DetalleDelMes({ mes, today }: { mes: MonthHistory; today: string }) {
         }${mes.preBaseline ? ' Anterior al mes 0: los importes pueden estar duplicados.' : ''}`}
         action={
           mes.pendingCents > 0 ? (
-            <span className="text-xs text-warn">{formatMoney(mes.pendingCents)} sin marcar</span>
+            <span className="text-xs text-warn">{formatMoney(mes.pendingCents, moneda)} sin marcar</span>
           ) : (
-            <span className="text-xs text-muted">{formatMoney(mes.paidCents)} pagado</span>
+            <span className="text-xs text-muted">{formatMoney(mes.paidCents, moneda)} pagado</span>
           )
         }
       >
@@ -240,7 +244,7 @@ function DetalleDelMes({ mes, today }: { mes: MonthHistory; today: string }) {
                 <li key={v.category}>
                   <div className="flex items-baseline justify-between gap-2 text-sm">
                     <span className="truncate">{CATEGORY_LABELS[v.category] ?? v.category}</span>
-                    <span className="tabular-nums text-muted">{formatMoney(v.cents)}</span>
+                    <span className="tabular-nums text-muted">{formatMoney(v.cents, moneda)}</span>
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-edge">
                     <div
@@ -253,7 +257,7 @@ function DetalleDelMes({ mes, today }: { mes: MonthHistory; today: string }) {
             })}
             <li className="flex items-baseline justify-between gap-2 border-t border-edge pt-2 text-sm font-medium">
               <span>Total</span>
-              <span className="tabular-nums">{formatMoney(mes.variableCents)}</span>
+              <span className="tabular-nums">{formatMoney(mes.variableCents, moneda)}</span>
             </li>
           </ul>
         ) : (
@@ -274,6 +278,7 @@ function Bloque({
   items: MonthHistory['items']
   today: string
 }) {
+  const moneda = monedaActual()
   const total = items.reduce((a, i) => a + i.cents, 0)
 
   return (
@@ -281,7 +286,7 @@ function Bloque({
       <tr className="bg-edge/30">
         <td className="td text-xs font-semibold uppercase tracking-wide text-muted">{titulo}</td>
         <td className="td" />
-        <td className="td text-right tabular-nums text-muted">{formatMoney(total)}</td>
+        <td className="td text-right tabular-nums text-muted">{formatMoney(total, moneda)}</td>
         <td className="td" />
       </tr>
       {items.map((item) => (
@@ -291,7 +296,7 @@ function Bloque({
             <span className="ml-2 text-xs text-muted">{item.detail}</span>
           </td>
           <td className="td whitespace-nowrap text-muted">{formatDate(item.dueDate)}</td>
-          <td className="td text-right tabular-nums">{formatMoney(item.cents)}</td>
+          <td className="td text-right tabular-nums">{formatMoney(item.cents, moneda)}</td>
           <td className="td">
             {item.paid ? <Badge tone="good">pagado</Badge> : <Badge tone="warn">sin marcar</Badge>}
           </td>

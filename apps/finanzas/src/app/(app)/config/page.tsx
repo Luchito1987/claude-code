@@ -30,12 +30,12 @@ export const dynamic = 'force-dynamic'
 
 export default async function ConfigPage() {
   const me = currentUser()
-  const accounts = listAccounts()
+  const moneda = monedaActual()
+  const accounts = listAccounts(moneda)
   // El saldo que se muestra es el calculado desde el ancla, no el guardado.
   const saldoDe = (id: string) => accountBalanceCents(id)
-  const cards = listCards()
-  const incomes = listIncomes()
-  const moneda = monedaActual()
+  const cards = listCards(moneda)
+  const incomes = listIncomes(moneda)
   // El secreto existe apenas se pide el alta; `totp_enabled` recién cuando se
   // confirmó con un código, así que son dos estados distintos y no uno.
   const totpListo = me ? totpActivo(me.id) : false

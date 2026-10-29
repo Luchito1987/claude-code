@@ -318,7 +318,7 @@ function MovimientoRapido({
   cuentas: Array<{ id: string; name: string }>
 }) {
   const esGasto = tipo === 'gasto'
-  const cards = listCards()
+  const cards = listCards(monedaActual())
 
   return (
     <Panel

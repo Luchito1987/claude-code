@@ -1,3 +1,4 @@
+import { monedaActual } from '@/lib/vista'
 import { BarList, Empty, Panel, Stat, Table } from '@/components/ui'
 import { addDays, formatDate, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
@@ -8,6 +9,14 @@ import { RappiImportForm } from './RappiImportForm'
 export const dynamic = 'force-dynamic'
 
 export default function RappiPage() {
+  // Rappi se usa en Colombia: en la vista de Argentina no hay nada que mostrar.
+  if (monedaActual() !== 'COP') {
+    return (
+      <Panel title="Rappi" subtitle="Vista Argentina">
+        <Empty>Rappi es de Colombia. Cambiá a CO para ver los pedidos.</Empty>
+      </Panel>
+    )
+  }
   const today = todayISO()
   const orders = listRappiOrders()
   const cardCharges = listTransactions({ from: addDays(today, -365) }).filter((t) =>
