@@ -186,10 +186,31 @@ export const listServices = (onlyActive = false, currency?: Moneda): Service[] =
     .all(...(currency ? [currency] : [])) as Service[]
 }
 
-export const listLoans = (currency?: Moneda): Loan[] =>
-  getDb()
+/**
+ * Los préstamos, con las cuotas pagadas al día.
+ *
+ * `installments_paid` es el contador que se carga a mano. Las cuotas que se
+ * pagan después se registran mes a mes en `month_payments` (al conciliar el
+ * extracto o al tildarlas en el tablero), sin tocar el contador: si no se
+ * suman acá, la cuota de octubre ya pagada reaparece en noviembre como
+ * vencida. Cuenta un pago por mes desde el de la primera cuota impaga según el
+ * contador; los anteriores ya están contados en él.
+ */
+export const listLoans = (currency?: Moneda): Loan[] => {
+  const db = getDb()
+  const prestamos = db
     .prepare(`SELECT * FROM loans ${filtroMoneda(currency)} ORDER BY active DESC, name`)
     .all(...argsMoneda(currency)) as Loan[]
+  const pagos = db.prepare("SELECT ref_id, period FROM month_payments WHERE kind = 'prestamo'").all() as Array<{
+    ref_id: string
+    period: string
+  }>
+  return prestamos.map((l) => {
+    const desde = financialMonth(addMonths(l.first_due_date, l.installments_paid))
+    const extra = pagos.filter((p) => p.ref_id === l.id && p.period >= desde).length
+    return { ...l, installments_paid: Math.min(l.installments_total, l.installments_paid + extra) }
+  })
+}
 
 export const listIncomes = (currency?: Moneda): Income[] =>
   getDb()

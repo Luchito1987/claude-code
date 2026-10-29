@@ -151,3 +151,21 @@ describe('tarjeta saldada', () => {
     expect(dic.some((i) => i.refId === 'rappi' || i.refId === 'nueva')).toBe(false)
   })
 })
+
+describe('cuotas de préstamo pagadas mes a mes', () => {
+  it('la cuota pagada en octubre no reaparece vencida en noviembre', async () => {
+    const { q, db } = await load()
+    db.prepare(
+      `INSERT INTO loans (id, name, lender, principal_cents, installment_cents, installments_total,
+       installments_paid, first_due_date, rate_annual, active, created_at)
+       VALUES ('bc', 'Crédito Bancolombia', '', 0, 174807400, 60, 49, '2022-09-04', 0, 1, 'x')`,
+    ).run()
+    // Pagos de meses que el contador ya incluye: no se cuentan dos veces.
+    db.prepare(`INSERT INTO month_payments (id, kind, ref_id, period, amount_cents, paid_at) VALUES ('s', 'prestamo', 'bc', '2026-09', 174807400, 'x')`).run()
+    db.prepare(`INSERT INTO month_payments (id, kind, ref_id, period, amount_cents, paid_at) VALUES ('o', 'prestamo', 'bc', '2026-10', 174807400, 'x')`).run()
+    const nov = q.monthItems('2026-11', '2026-10-29').filter((i) => i.kind === 'prestamo')
+    expect(nov.map((i) => [i.label, i.dueDate, i.paid])).toEqual([['Crédito Bancolombia · cuota 51/60', '2026-11-04', false]])
+    const oct = q.monthItems('2026-10', '2026-10-29').filter((i) => i.kind === 'prestamo')
+    expect(oct.map((i) => [i.label, i.paid])).toEqual([['Crédito Bancolombia · cuota 50/60', true]])
+  })
+})
