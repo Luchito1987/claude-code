@@ -12,11 +12,12 @@ export const runtime = 'nodejs'
  */
 export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
-  const { nombre, saldoCents, fecha, tipo } = (await req.json().catch(() => ({}))) as {
+  const { nombre, saldoCents, fecha, tipo, moneda } = (await req.json().catch(() => ({}))) as {
     nombre?: string
     saldoCents?: number
     fecha?: string
     tipo?: string
+    moneda?: string
   }
   const n = (nombre ?? '').trim()
   if (!n || !Number.isInteger(saldoCents) || !/^\d{4}-\d{2}-\d{2}$/.test(fecha ?? '')) {
@@ -28,8 +29,8 @@ export async function POST(req: Request) {
   }
   const nueva = id()
   db.prepare(
-    `INSERT INTO accounts (id, name, kind, balance_cents, anchor_cents, anchor_date, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(nueva, n, tipo || 'billetera', saldoCents, saldoCents, fecha, now())
+    `INSERT INTO accounts (id, name, kind, currency, balance_cents, anchor_cents, anchor_date, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(nueva, n, tipo || 'billetera', moneda === 'ARS' ? 'ARS' : 'COP', saldoCents, saldoCents, fecha, now())
   return NextResponse.json({ ok: `Cuenta "${n}" creada.`, id: nueva })
 }

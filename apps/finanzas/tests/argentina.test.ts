@@ -69,6 +69,8 @@ describe('altas en pesos argentinos', () => {
     expect((await pres.POST(req({ crear: { nombre: 'ICBC', capitalCents: 400000000, cuotaCents: 23909073, cuotas: 96, pagadas: 24, primeraCuota: '2024-11-14', moneda: 'ARS' } }))).status).toBe(200)
     expect((await tarj.POST(req({ crear: { nombre: 'Naranja X', moneda: 'ARS', cierre: 27, vencimiento: 10 } }))).status).toBe(200)
     expect((await ing.POST(req({ nombre: 'Sueldo', importeCents: 309866381, moneda: 'ARS', dia: 1 }))).status).toBe(200)
+    const cue = await import('@/app/api/cuentas/route')
+    expect((await cue.POST(req({ nombre: 'Cuenta AR', saldoCents: 100, fecha: '2026-10-29', moneda: 'ARS' }))).status).toBe(200)
     expect((await ing.POST(req({ nombre: 'Sueldo', importeCents: 310000000, moneda: 'ARS', dia: 1 }))).status).toBe(200)
 
     const { getDb } = await import('@/db/client')
@@ -76,6 +78,7 @@ describe('altas en pesos argentinos', () => {
     expect(db.prepare('SELECT currency, frequency, anchor_month FROM services').get()).toEqual({ currency: 'ARS', frequency: 'bimestral', anchor_month: 12 })
     expect(db.prepare('SELECT currency, installments_paid FROM loans').get()).toEqual({ currency: 'ARS', installments_paid: 24 })
     expect(db.prepare('SELECT currency FROM cards').get()).toEqual({ currency: 'ARS' })
+    expect(db.prepare('SELECT currency FROM accounts').get()).toEqual({ currency: 'ARS' })
     expect(db.prepare('SELECT COUNT(*) AS n, MAX(amount_cents) AS c FROM incomes').get()).toEqual({ n: 1, c: 310000000 })
 
     const q = await import('@/lib/queries')
