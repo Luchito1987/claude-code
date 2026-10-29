@@ -15,6 +15,7 @@ import { compare, type ISODate } from '../dates'
 import { isBancolombiaCsv, parseBancolombia } from './bancolombia'
 import { isTuyaStatement, parseTuya } from './tuya'
 import { isFalabellaStatement, parseFalabella } from './falabella'
+import { isNaranjaStatement, parseNaranja } from './naranja'
 
 export interface ParsedRow {
   date: ISODate
@@ -196,6 +197,8 @@ export function parseStatement(text: string, opts: ParseOptions): ParseResult {
   // Tuya también necesita el suyo: el último número de cada línea es el plan de
   // cuotas, no el importe, y el parser genérico cargaría cualquier cosa.
   if (isTuyaStatement(text)) return parseTuya(text, { userRules: opts.userRules })
+  // Naranja X (Argentina): pesos argentinos, cuotas "18/24" y otros cargos aparte.
+  if (isNaranjaStatement(text)) return parseNaranja(text, { userRules: opts.userRules })
   const csv = tryParseCsv(text, opts)
   if (csv && csv.rows.length) return csv
   return parseFreeText(text, opts)
