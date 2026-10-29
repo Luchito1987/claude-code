@@ -23,6 +23,10 @@ interface Alta {
   dia: number
   categoria?: string
   frecuencia?: string
+  /** Mes en que toca cuando no es mensual (1-12). */
+  mesAncla?: number
+  /** COP (por defecto) o ARS. */
+  moneda?: string
 }
 
 export async function POST(req: Request) {
@@ -83,8 +87,21 @@ function alta(a: Alta, patron: string, contrato: string) {
   }
   const id = randomUUID()
   db.prepare(
-    `INSERT INTO services (id, name, category, expected_amount_cents, due_day, active, match_pattern, frequency, contract_number, created_at)
-     VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
-  ).run(id, nombre, a.categoria || 'servicios', Math.round(a.esperadoCents), Math.trunc(a.dia), patron, normalizarFrecuencia(a.frecuencia), contrato, new Date().toISOString())
+    `INSERT INTO services (id, name, category, expected_amount_cents, due_day, active, match_pattern, frequency, anchor_month,
+       contract_number, currency, created_at)
+     VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    nombre,
+    a.categoria || 'servicios',
+    Math.round(a.esperadoCents),
+    Math.trunc(a.dia),
+    patron,
+    normalizarFrecuencia(a.frecuencia),
+    normalizarMesAncla(a.mesAncla),
+    contrato,
+    a.moneda === 'ARS' ? 'ARS' : 'COP',
+    new Date().toISOString(),
+  )
   return NextResponse.json({ ok: `Servicio "${nombre}" creado.`, id })
 }

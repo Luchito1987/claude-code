@@ -31,6 +31,10 @@ interface Alta {
   primeraCuota: string
   tasaAnual?: number
   patronPago?: string
+  /** COP (por defecto) o ARS. */
+  moneda?: string
+  /** Cuotas ya pagadas antes de darlo de alta. */
+  pagadas?: number
 }
 
 /**
@@ -74,8 +78,21 @@ function alta(a: Alta) {
   const nuevo = id()
   db.prepare(
     `INSERT INTO loans (id, name, lender, principal_cents, installment_cents, installments_total,
-     installments_paid, first_due_date, rate_annual, active, match_pattern, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 1, ?, ?)`,
-  ).run(nuevo, nombre, a.prestamista ?? '', a.capitalCents, a.cuotaCents, a.cuotas, a.primeraCuota, a.tasaAnual ?? 0, (a.patronPago ?? '').trim(), now())
+     installments_paid, first_due_date, rate_annual, active, match_pattern, currency, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+  ).run(
+    nuevo,
+    nombre,
+    a.prestamista ?? '',
+    a.capitalCents,
+    a.cuotaCents,
+    a.cuotas,
+    Math.max(0, Math.min(a.cuotas, Math.trunc(a.pagadas ?? 0))),
+    a.primeraCuota,
+    a.tasaAnual ?? 0,
+    (a.patronPago ?? '').trim(),
+    a.moneda === 'ARS' ? 'ARS' : 'COP',
+    now(),
+  )
   return NextResponse.json({ ok: `Préstamo "${nombre}" creado.`, id: nuevo })
 }

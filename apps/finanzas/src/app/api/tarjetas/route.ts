@@ -18,13 +18,15 @@ export const runtime = 'nodejs'
  */
 export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
-  const { tarjeta, patronPago, pagado, saldada } = (await req.json().catch(() => ({}))) as {
+  const { tarjeta, patronPago, pagado, saldada, crear } = (await req.json().catch(() => ({}))) as {
     tarjeta?: string
     patronPago?: string
     pagado?: { periodo?: string; importeCents?: number }
     saldada?: { hasta?: string }
+    crear?: { nombre?: string; emisor?: string; moneda?: string; cierre?: number; vencimiento?: number }
   }
   const patron = (patronPago ?? '').trim()
+  if (crear) return altaTarjeta(crear, patron)
   if (tarjeta && pagado) return marcarPagado(tarjeta, pagado)
   if (tarjeta && saldada) return marcarSaldada(tarjeta, saldada.hasta)
   if (!tarjeta || patron.length < 4) {
@@ -75,4 +77,25 @@ function marcarSaldada(tarjeta: string, hasta?: string) {
     .prepare("UPDATE statements SET paid_in_full = 1 WHERE card_id = ? AND due_date <> '' AND due_date <= ?")
     .run(card.id, hasta)
   return NextResponse.json({ ok: `${card.name}: ${r.changes} resumen(es) marcados como pagados completos.` })
+}
+
+/** Da de alta una tarjeta (p. ej. la Naranja X, en pesos argentinos). */
+function altaTarjeta(
+  c: { nombre?: string; emisor?: string; moneda?: string; cierre?: number; vencimiento?: number },
+  patron: string,
+) {
+  const nombre = (c.nombre ?? '').trim()
+  const dia = (n: unknown) => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 31
+  if (!nombre || !dia(c.cierre) || !dia(c.vencimiento)) {
+    return NextResponse.json({ error: 'Hace falta nombre, cierre y vencimiento (días 1-31).' }, { status: 400 })
+  }
+  const db = getDb()
+  if (db.prepare('SELECT 1 FROM cards WHERE lower(name) = lower(?)').get(nombre)) {
+    return NextResponse.json({ error: `Ya existe una tarjeta "${nombre}".` }, { status: 409 })
+  }
+  const nueva = id()
+  db.prepare(
+    `INSERT INTO cards (id, name, issuer, closing_day, due_day, currency, match_pattern) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(nueva, nombre, c.emisor ?? '', c.cierre, c.vencimiento, c.moneda === 'ARS' ? 'ARS' : 'COP', patron)
+  return NextResponse.json({ ok: `Tarjeta "${nombre}" creada.`, id: nueva })
 }
