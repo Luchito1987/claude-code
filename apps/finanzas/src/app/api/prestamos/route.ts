@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb, id, now } from '@/db/client'
 import { claveValida, noAutorizado } from '@/lib/api-token'
-import { listLoans } from '@/lib/queries'
+import { listLoans, markMonthItemPaid } from '@/lib/queries'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -43,12 +43,14 @@ interface Alta {
  */
 export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
-  const { prestamo, activo, crear } = (await req.json().catch(() => ({}))) as {
+  const { prestamo, activo, crear, pagado } = (await req.json().catch(() => ({}))) as {
     prestamo?: string
     activo?: boolean
     crear?: Alta
+    pagado?: { periodo?: string; importeCents?: number; pagada?: boolean }
   }
   if (crear) return alta(crear)
+  if (prestamo && pagado) return marcarCuota(prestamo, pagado)
   if (!prestamo || typeof activo !== 'boolean') {
     return NextResponse.json({ error: 'Hace falta el préstamo y si queda activo (true/false).' }, { status: 400 })
   }
@@ -95,4 +97,22 @@ function alta(a: Alta) {
     now(),
   )
   return NextResponse.json({ ok: `Préstamo "${nombre}" creado.`, id: nuevo })
+}
+
+/**
+ * Con `pagado: {periodo, importeCents?, pagada?}` marca pagada (o reabre) la
+ * cuota del mes de un préstamo, como el botón del tablero.
+ */
+function marcarCuota(prestamo: string, p: { periodo?: string; importeCents?: number; pagada?: boolean }) {
+  if (!/^\d{4}-\d{2}$/.test(p.periodo ?? '')) {
+    return NextResponse.json({ error: 'Hace falta pagado.periodo (AAAA-MM).' }, { status: 400 })
+  }
+  const db = getDb()
+  const l = db.prepare('SELECT id, name, installment_cents FROM loans WHERE id = ? OR lower(name) = lower(?)').get(prestamo, prestamo) as
+    | { id: string; name: string; installment_cents: number }
+    | undefined
+  if (!l) return NextResponse.json({ error: `No existe el préstamo "${prestamo}".` }, { status: 404 })
+  const pagada = p.pagada !== false
+  markMonthItemPaid('prestamo', l.id, p.periodo!, p.importeCents ?? l.installment_cents, pagada)
+  return NextResponse.json({ ok: `${l.name} ${p.periodo}: ${pagada ? 'pagada' : 'pendiente'}.` })
 }
