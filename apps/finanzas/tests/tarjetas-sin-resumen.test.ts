@@ -63,6 +63,9 @@ describe('préstamos dados de baja', () => {
     expect(q.monthItems('2026-10', HOY).some((i) => i.refId === 'car')).toBe(false)
     const lista = (await (await GET(new Request('http://x/api/prestamos', { headers: h }))).json()) as Array<{ activo: boolean }>
     expect(lista[0].activo).toBe(false)
+    const m = await POST(new Request('http://x/api/prestamos', { method: 'POST', headers: h, body: JSON.stringify({ prestamo: 'carro', pagado: { periodo: '2026-11' } }) }))
+    expect(m.status).toBe(200)
+    expect(db.prepare(`SELECT amount_cents FROM month_payments WHERE kind = 'prestamo' AND period = '2026-11'`).get()).toEqual({ amount_cents: 90000000 })
   })
 })
 
