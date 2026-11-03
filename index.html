@@ -209,6 +209,37 @@
   footer { max-width: 720px; margin: 0 auto; padding: 0 16px 32px; font-size: .78rem; color: var(--muted); }
   footer a { color: var(--destacado); word-break: break-all; }
   footer p { margin: 6px 0; }
+  /* Navegación principal */
+  .vistas { display: flex; gap: 6px; max-width: 720px; margin: 0 auto; padding: 10px 16px 0; }
+  .vistas button { flex: 1; font-weight: 600; }
+  .vistas button[aria-selected="true"] { background: var(--destacado); color: #fff; border-color: var(--destacado); }
+
+  /* Comunidad */
+  .sesion { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .form label { display: block; font-size: .88rem; margin: 8px 0 2px; color: var(--muted); }
+  .form input, .form select, .form textarea {
+    font: inherit; width: 100%; padding: 8px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  .form textarea { min-height: 70px; resize: vertical; }
+  .form .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .form .check { display: flex; gap: 8px; align-items: center; margin-top: 10px; color: var(--ink); }
+  .form .check input { width: auto; }
+  .msg { font-size: .88rem; margin: 8px 0 0; }
+  .msg.err { color: var(--rojo); }
+  .msg.ok { color: var(--verde); }
+  .picando { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--verde-bg); color: var(--verde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; font-weight: 600; }
+  .post { border-top: 1px solid var(--line); padding: 12px 0; }
+  .post:first-child { border-top: 0; }
+  .post .cab { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .88rem; }
+  .post img.fotop { display: block; width: 100%; max-height: 420px; object-fit: cover; border-radius: 10px; margin: 6px 0; background: var(--gris-bg); }
+  .post .datos { font-size: .9rem; margin: 4px 0; }
+  .post .acc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .coms { margin-top: 6px; padding-left: 10px; border-left: 3px solid var(--line); }
+  .com { font-size: .9rem; margin: 6px 0; }
+  .vista-previa { display: block; max-width: 100%; max-height: 260px; border-radius: 10px; margin-top: 6px; }
+  .etq.pica { background: #fde8d7; color: #b4530b; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -218,7 +249,104 @@
   <p id="subtitulo">Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá</p>
 </header>
 
-<main>
+<nav class="vistas" role="tablist">
+  <button type="button" role="tab" id="vSemaforo" aria-selected="true">🚦 Semáforo</button>
+  <button type="button" role="tab" id="vComunidad" aria-selected="false">🐟 Pesca del día</button>
+</nav>
+
+<main id="vistaComunidad" hidden>
+  <section class="card">
+    <div class="sesion" id="sesion"></div>
+  </section>
+
+  <section class="card" id="cuenta" hidden>
+    <div class="tabs" role="tablist">
+      <button type="button" data-modo="ingresar" aria-selected="true">Ingresar</button>
+      <button type="button" data-modo="crear" aria-selected="false">Crear cuenta</button>
+    </div>
+    <form class="form" id="formCuenta" autocomplete="on">
+      <div id="campoNombre" hidden>
+        <label for="cNombre">Nombre o apodo (es lo que verán los demás)</label>
+        <input id="cNombre" maxlength="40" autocomplete="nickname">
+      </div>
+      <label for="cEmail">Correo</label>
+      <input id="cEmail" type="email" required autocomplete="email">
+      <label for="cClave">Contraseña (mínimo 8 caracteres)</label>
+      <input id="cClave" type="password" required minlength="8" autocomplete="current-password">
+      <div class="barra" style="margin:10px 0 0">
+        <button type="submit" class="primario" id="btnCuenta">Ingresar</button>
+        <button type="button" id="btnGoogle" hidden>Ingresar con Google</button>
+      </div>
+      <p class="msg" id="msgCuenta"></p>
+      <p class="leyenda">Tu correo no se muestra a nadie. Al crear la cuenta aceptás las normas de la comunidad (abajo).</p>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>🔥 Qué está picando</h2>
+    <p class="leyenda" style="margin-top:0">Capturas publicadas por la comunidad en los últimos 3 días.</p>
+    <div id="picando"><p class="leyenda">Cargando…</p></div>
+  </section>
+
+  <section class="card" id="nueva" hidden>
+    <h2>📸 Subir una captura</h2>
+    <form class="form" id="formCaptura">
+      <label for="fFoto">Foto</label>
+      <input id="fFoto" type="file" accept="image/*" required>
+      <img id="fPrevia" class="vista-previa" alt="" hidden>
+      <div class="fila">
+        <div><label for="fEspecie">Especie</label><select id="fEspecie" required></select></div>
+        <div><label for="fZona">Zona</label><select id="fZona" required></select></div>
+      </div>
+      <div id="campoOtra" hidden><label for="fOtra">¿Qué especie?</label><input id="fOtra" maxlength="60"></div>
+      <label for="fFecha">Fecha y hora</label>
+      <input id="fFecha" type="datetime-local" required>
+      <div class="fila">
+        <div><label for="fTam">Tamaño (cm)</label><input id="fTam" type="number" inputmode="decimal" min="1" max="300" step="0.5"></div>
+        <div><label for="fPeso">Peso (kg)</label><input id="fPeso" type="number" inputmode="decimal" min="0" max="300" step="0.1"></div>
+      </div>
+      <div class="fila">
+        <div><label for="fCarnada">Carnada o señuelo</label><input id="fCarnada" maxlength="80"></div>
+        <div><label for="fAnzuelo">Anzuelo</label><input id="fAnzuelo" maxlength="30" placeholder="ej. 2/0"></div>
+      </div>
+      <label class="check"><input id="fLiberado" type="checkbox"> Lo liberé</label>
+      <label for="fComentario">Comentario</label>
+      <textarea id="fComentario" maxlength="500" placeholder="¿Cómo estuvo el día? ¿A qué hora picó?"></textarea>
+      <p class="leyenda">Se guardan también las condiciones del pronóstico de ese momento (ola, viento, luna) para que todos aprendamos qué funciona. No se publica tu ubicación exacta: solo la zona. La foto se achica y se le quitan los datos ocultos (incluida la ubicación GPS) antes de subirla.</p>
+      <div class="barra" style="margin:8px 0 0">
+        <button type="submit" class="primario" id="btnPublicar">Publicar</button>
+        <button type="button" id="btnCancelar">Cancelar</button>
+      </div>
+      <p class="msg" id="msgCaptura"></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="sesion">
+      <h2 style="margin:0">🐟 Pesca del día</h2>
+      <button type="button" class="primario chico" id="btnNueva">＋ Subir captura</button>
+    </div>
+    <div class="form" style="margin-top:4px"><div class="fila">
+      <div><label for="filEspecie">Especie</label><select id="filEspecie"></select></div>
+      <div><label for="filZona">Zona</label><select id="filZona"></select></div>
+    </div></div>
+    <div id="muro"><p class="leyenda">Cargando…</p></div>
+    <button type="button" id="btnMas" hidden style="width:100%;margin-top:8px">Ver más</button>
+  </section>
+
+  <section class="card">
+    <h2>📜 Normas de la comunidad</h2>
+    <ul class="leyenda" style="padding-left:18px;margin:0">
+      <li>Respeto ante todo: nada de insultos, burlas ni discriminación.</li>
+      <li>Solo fotos de pesca reales y propias. Nada de ventas, publicidad ni spam.</li>
+      <li>Especies protegidas (como el mero guasa) se liberan siempre. Respetá vedas y tallas mínimas.</li>
+      <li>No publiques datos personales tuyos ni de otros.</li>
+      <li>Usá “Reportar” si ves algo que no corresponde: lo revisa el administrador, que puede ocultar publicaciones y bloquear cuentas.</li>
+    </ul>
+  </section>
+</main>
+
+<main id="vistaSemaforo">
   <p class="aviso">⚠️ Valores provisorios, ajustalos con tu bitácora.</p>
 
   <div class="barra">
@@ -1241,7 +1369,10 @@
     });
   }
 
+  var ultimoAnalisis = null;
+  function renderPecesActual() { renderPeces(ultimoAnalisis); }
   function renderPeces(analisis) {
+    ultimoAnalisis = analisis;
     var hoy = analisis ? (analisis.mejor === 'rojo' ? null : analisis.movida ? 'movida' : 'calma') : null;
     var etqCond = { movida: 'agua movida', calma: 'agua calma', ambas: 'calma o movida', prot: 'protegida' };
     var html = '<h2>🐟 Peces de la zona: cómo reconocerlos</h2>' +
@@ -1258,7 +1389,9 @@
       p.d.alt = p.n;
       html += '<div class="pez"><div class="nom"><strong>' + esc(p.n) + '</strong><span class="cient">' + esc(p.c) + '</span></div>' +
         dibujarPez(p.d, i) +
-        '<p><span class="etq ' + marca + '">' + (marca === 'hoy' ? '✓ ' : '') + etqCond[p.cond] + '</span><span class="leyenda">Tamaño: ' + esc(p.tam) + '</span></p>' +
+        '<p><span class="etq ' + marca + '">' + (marca === 'hoy' ? '✓ ' : '') + etqCond[p.cond] + '</span>' +
+        (picando[ESPECIES_K[i]] ? '<span class="etq pica">🔥 picando: ' + picando[ESPECIES_K[i]] + ' en 3 días</span>' : '') +
+        '<span class="leyenda">Tamaño: ' + esc(p.tam) + '</span></p>' +
         '<ul>' + p.claves.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>' +
         '<p>' + esc(p.t) + '</p>' +
         '<p class="leyenda">🎣 ' + esc(p.cb) + '</p>' +
@@ -1420,11 +1553,412 @@
     }, { enableHighAccuracy: true, timeout: 15000 });
   });
 
+
+  // ---------- comunidad (Pesca del día) ----------
+  var API = 'https://pesca.tail043e0b.ts.net';
+  var REDIRECCION = location.origin + location.pathname; // debe estar autorizada en Google
+  var CLAVE_AUTH = 'pesca-auth-v1';
+  var CLAVE_VISTA = 'pesca-vista-v1';
+  var ESPECIES_K = ['jurel', 'sabalo', 'robalo', 'pampano', 'mojarra', 'lisa', 'pargo', 'ronco', 'sierra', 'barracuda', 'bagre', 'mero_guasa'];
+  var ESPECIE_N = { otra: 'Otra' };
+  ESPECIES_K.forEach(function (k, i) { ESPECIE_N[k] = PECES[i].n; });
+  var ZONA_N = {
+    tajamar_bocas: 'Tajamar de Bocas de Ceniza', puerto_colombia: 'Puerto Colombia',
+    salgar_sabanilla: 'Salgar / Sabanilla', puerto_velero: 'Puerto Velero', otra: 'Otra zona'
+  };
+  var MOTIVOS = { spam: 'Spam o publicidad', ofensivo: 'Ofensivo', falso: 'Falso o engañoso', especie_protegida: 'Especie protegida no liberada', otro: 'Otro' };
+  var auth = leer(CLAVE_AUTH); // {token, record}
+  var picando = {}; // especie -> cantidad (últimos 3 días)
+  var muro = { pagina: 1, total: 0 };
+  var modoCuenta = 'ingresar';
+  var fotoLista = null; // Blob ya achicado
+
+  function $(id) { return document.getElementById(id); }
+  function api(ruta, opciones) {
+    opciones = opciones || {};
+    var h = opciones.headers || {};
+    if (auth && auth.token) h.Authorization = auth.token;
+    if (opciones.json !== undefined) { h['Content-Type'] = 'application/json'; opciones.body = JSON.stringify(opciones.json); }
+    return fetch(API + ruta, { method: opciones.method || 'GET', headers: h, body: opciones.body }).then(function (r) {
+      if (r.status === 204) return null;
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) {
+          var e = new Error(mensajeError(r.status, j));
+          e.status = r.status;
+          throw e;
+        }
+        return j;
+      });
+    });
+  }
+  function mensajeError(status, j) {
+    if (status === 429) return 'Demasiados intentos seguidos. Esperá un minuto y probá de nuevo.';
+    if (status === 401) return 'Tu sesión venció. Volvé a ingresar.';
+    var det = j && j.data ? Object.keys(j.data).map(function (k) { return k + ': ' + (j.data[k].message || ''); }).join(' · ') : '';
+    var m = (j && j.message) || ('Error ' + status);
+    if (/Failed to authenticate/i.test(m)) return 'Correo o contraseña incorrectos.';
+    if (/validation_not_unique/.test(JSON.stringify(j))) return 'Ese correo ya tiene una cuenta. Probá con “Ingresar”.';
+    return m + (det ? ' (' + det + ')' : '');
+  }
+  function guardarAuth(a) { auth = a; escribir(CLAVE_AUTH, a); renderSesion(); }
+  function fechaPB(d) { return d.toISOString().replace('T', ' '); }
+  function fechaTexto(pb) {
+    var d = new Date(String(pb).replace(' ', 'T'));
+    return d.toLocaleString('es-CO', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+  function nombreUsuario(u) { return (u && u.name) || 'Pescador'; }
+
+  // --- vistas ---
+  function mostrarVista(v) {
+    var com = v === 'comunidad';
+    $('vistaComunidad').hidden = !com;
+    $('vistaSemaforo').hidden = com;
+    $('vComunidad').setAttribute('aria-selected', String(com));
+    $('vSemaforo').setAttribute('aria-selected', String(!com));
+    escribir(CLAVE_VISTA, v);
+    if (com) { cargarMuro(true); cargarPicando(); }
+    else dibujarMapa();
+  }
+  $('vSemaforo').addEventListener('click', function () { mostrarVista('semaforo'); });
+  $('vComunidad').addEventListener('click', function () { mostrarVista('comunidad'); });
+
+  // --- sesión ---
+  function renderSesion() {
+    var s = $('sesion');
+    if (auth && auth.record) {
+      s.innerHTML = '<span>👤 <b></b></span><span><button type="button" class="chico" id="btnNombre">Cambiar nombre</button> ' +
+        '<button type="button" class="chico" id="btnSalir">Salir</button></span>';
+      s.querySelector('b').textContent = nombreUsuario(auth.record);
+      $('cuenta').hidden = true;
+    } else {
+      s.innerHTML = '<span>Entrá para publicar y comentar. Mirar no requiere cuenta.</span>' +
+        '<button type="button" class="primario chico" id="btnEntrar">Ingresar / Crear cuenta</button>';
+    }
+  }
+  $('sesion').addEventListener('click', function (ev) {
+    var id = ev.target.id;
+    if (id === 'btnEntrar') { $('cuenta').hidden = false; $('cEmail').focus(); }
+    else if (id === 'btnSalir') { guardarAuth(null); $('nueva').hidden = true; cargarMuro(true); }
+    else if (id === 'btnNombre') pedirNombre();
+  });
+  function pedirNombre(obligatorio) {
+    var n = prompt(obligatorio ? '¿Cómo querés que te vean en la comunidad? (nombre o apodo)' : 'Nuevo nombre o apodo', (auth.record && auth.record.name) || '');
+    if (n == null) return;
+    n = n.trim().slice(0, 40);
+    if (n.length < 2) { alert('Tiene que tener al menos 2 letras.'); return; }
+    api('/api/collections/users/records/' + auth.record.id, { method: 'PATCH', json: { name: n } }).then(function (r) {
+      guardarAuth({ token: auth.token, record: r });
+      cargarMuro(true);
+    }).catch(function (e) { alert(e.message); });
+  }
+  function despuesDeEntrar(r) {
+    guardarAuth({ token: r.token, record: r.record });
+    $('formCuenta').reset();
+    $('msgCuenta').textContent = '';
+    if (!r.record.name) pedirNombre(true);
+    cargarMuro(true);
+  }
+  $('cuenta').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-modo]');
+    if (!b) return;
+    modoCuenta = b.dataset.modo;
+    $('cuenta').querySelectorAll('button[data-modo]').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
+    $('campoNombre').hidden = modoCuenta !== 'crear';
+    $('cNombre').required = modoCuenta === 'crear';
+    $('btnCuenta').textContent = modoCuenta === 'crear' ? 'Crear cuenta' : 'Ingresar';
+    $('cClave').autocomplete = modoCuenta === 'crear' ? 'new-password' : 'current-password';
+  });
+  $('formCuenta').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var email = $('cEmail').value.trim(), clave = $('cClave').value, msg = $('msgCuenta');
+    msg.className = 'msg'; msg.textContent = 'Un momento…';
+    var paso = Promise.resolve();
+    if (modoCuenta === 'crear') {
+      var nombre = $('cNombre').value.trim();
+      if (nombre.length < 2) { msg.className = 'msg err'; msg.textContent = 'Poné un nombre o apodo de al menos 2 letras.'; return; }
+      paso = api('/api/collections/users/records', { method: 'POST', json: { name: nombre, email: email, password: clave, passwordConfirm: clave, emailVisibility: false } });
+    }
+    paso.then(function () {
+      return api('/api/collections/users/auth-with-password', { method: 'POST', json: { identity: email, password: clave } });
+    }).then(despuesDeEntrar).catch(function (e) { msg.className = 'msg err'; msg.textContent = e.message; });
+  });
+
+  // Google (OAuth2 con redirección a esta misma página)
+  var google = null;
+  function prepararGoogle() {
+    api('/api/collections/users/auth-methods').then(function (m) {
+      var ps = (m.oauth2 && m.oauth2.enabled && m.oauth2.providers) || [];
+      google = ps.filter(function (p) { return p.name === 'google'; })[0] || null;
+      $('btnGoogle').hidden = !google;
+    }).catch(function () { /* sin Google */ });
+  }
+  $('btnGoogle').addEventListener('click', function () {
+    if (!google) return;
+    try { sessionStorage.setItem('pesca-oauth', JSON.stringify({ state: google.state, codeVerifier: google.codeVerifier })); } catch (e) { /* sin almacenamiento */ }
+    location.href = google.authURL + encodeURIComponent(REDIRECCION);
+  });
+  function volverDeGoogle() {
+    var q = new URLSearchParams(location.search);
+    if (!q.get('code') && !q.get('error')) return false;
+    var guardado = null;
+    try { guardado = JSON.parse(sessionStorage.getItem('pesca-oauth') || 'null'); sessionStorage.removeItem('pesca-oauth'); } catch (e) { /* nada */ }
+    history.replaceState(null, '', location.pathname);
+    mostrarVista('comunidad');
+    if (q.get('error') || !guardado || guardado.state !== q.get('state')) {
+      $('cuenta').hidden = false;
+      $('msgCuenta').className = 'msg err';
+      $('msgCuenta').textContent = 'No se pudo completar el ingreso con Google. Probá de nuevo.';
+      return true;
+    }
+    api('/api/collections/users/auth-with-oauth2', { method: 'POST', json: {
+      provider: 'google', code: q.get('code'), codeVerifier: guardado.codeVerifier, redirectURL: REDIRECCION
+    } }).then(despuesDeEntrar).catch(function (e) {
+      $('cuenta').hidden = false;
+      $('msgCuenta').className = 'msg err';
+      $('msgCuenta').textContent = e.message;
+    });
+    return true;
+  }
+  function refrescarSesion() {
+    if (!auth || !auth.token) return;
+    api('/api/collections/users/auth-refresh', { method: 'POST' }).then(function (r) {
+      guardarAuth({ token: r.token, record: r.record });
+    }).catch(function (e) { if (e.status === 401 || e.status === 403 || e.status === 404) guardarAuth(null); });
+  }
+
+  // --- qué está picando ---
+  function cargarPicando() {
+    var desde = fechaPB(new Date(Date.now() - 3 * 86400000));
+    var filtro = encodeURIComponent('fecha >= "' + desde + '"');
+    api('/api/collections/capturas/records?perPage=500&fields=especie,zona&filter=' + filtro).then(function (r) {
+      picando = {};
+      var zonas = {};
+      r.items.forEach(function (c) { picando[c.especie] = (picando[c.especie] || 0) + 1; zonas[c.zona] = (zonas[c.zona] || 0) + 1; });
+      var orden = Object.keys(picando).sort(function (a, b) { return picando[b] - picando[a]; });
+      $('picando').innerHTML = orden.length
+        ? '<div class="picando">' + orden.map(function (k) { return '<span class="chip">' + esc(ESPECIE_N[k] || k) + ' · ' + picando[k] + '</span>'; }).join('') + '</div>' +
+          '<p class="leyenda">Zonas: ' + Object.keys(zonas).map(function (z) { return esc(ZONA_N[z] || z) + ' (' + zonas[z] + ')'; }).join(', ') + '</p>'
+        : '<p class="leyenda">Todavía no hay capturas en los últimos 3 días. ¡Subí la primera!</p>';
+      renderPecesActual();
+    }).catch(function (e) { $('picando').innerHTML = '<p class="leyenda">No se pudo cargar: ' + esc(e.message) + '</p>'; });
+  }
+
+  // --- muro ---
+  function opciones(sel, mapa, todas) {
+    sel.innerHTML = (todas ? '<option value="">' + todas + '</option>' : '') +
+      Object.keys(mapa).map(function (k) { return '<option value="' + k + '">' + esc(mapa[k]) + '</option>'; }).join('');
+  }
+  function cargarMuro(desdeCero) {
+    if (desdeCero) muro.pagina = 1;
+    var f = [];
+    if ($('filEspecie').value) f.push('especie = "' + $('filEspecie').value + '"');
+    if ($('filZona').value) f.push('zona = "' + $('filZona').value + '"');
+    var q = '?page=' + muro.pagina + '&perPage=10&sort=-fecha,-created&expand=usuario' + (f.length ? '&filter=' + encodeURIComponent(f.join(' && ')) : '');
+    if (desdeCero) $('muro').innerHTML = '<p class="leyenda">Cargando…</p>';
+    api('/api/collections/capturas/records' + q).then(function (r) {
+      var html = r.items.map(htmlPost).join('');
+      if (desdeCero) $('muro').innerHTML = html || '<p class="leyenda">Todavía no hay capturas con estos filtros.</p>';
+      else $('muro').insertAdjacentHTML('beforeend', html);
+      $('btnMas').hidden = r.page >= r.totalPages;
+    }).catch(function (e) {
+      $('muro').innerHTML = '<div class="error">No se pudo cargar el muro: ' + esc(e.message) + '. El servidor de la comunidad puede estar apagado; probá más tarde.</div>';
+      $('btnMas').hidden = true;
+    });
+  }
+  function htmlPost(c) {
+    var u = c.expand && c.expand.usuario;
+    var mio = auth && auth.record && c.usuario === auth.record.id;
+    var esp = c.especie === 'otra' ? (c.especie_otra || 'Otra especie') : (ESPECIE_N[c.especie] || c.especie);
+    var foto = API + '/api/files/' + c.collectionId + '/' + c.id + '/' + encodeURIComponent(c.foto);
+    var cond = c.condiciones || {};
+    var datos = [];
+    if (c.tamano_cm) datos.push('📏 ' + fmt(c.tamano_cm, 0) + ' cm');
+    if (c.peso_kg) datos.push('⚖️ ' + fmt(c.peso_kg, 1) + ' kg');
+    if (c.carnada) datos.push('🎣 ' + esc(c.carnada));
+    if (c.anzuelo) datos.push('🪝 ' + esc(c.anzuelo));
+    var condTxt = [];
+    if (cond.ola != null) condTxt.push('🌊 ' + fmt(cond.ola, 1) + ' m');
+    if (cond.viento != null) condTxt.push('💨 ' + fmt(cond.viento, 0) + ' kn ' + cardinal(cond.dir));
+    if (cond.luna) condTxt.push(esc(cond.luna));
+    return '<article class="post" data-id="' + c.id + '">' +
+      '<div class="cab"><span>👤 <b>' + esc(nombreUsuario(u)) + '</b></span><span class="leyenda">' + esc(fechaTexto(c.fecha)) + '</span></div>' +
+      '<a href="' + esc(foto) + '" target="_blank" rel="noopener"><img class="fotop" loading="lazy" alt="Foto de ' + esc(esp) + '" src="' + esc(foto) + '?thumb=480x0"></a>' +
+      '<div><b>' + esc(esp) + '</b> · ' + esc(ZONA_N[c.zona] || c.zona) + (c.liberado ? ' · <span class="etq hoy">liberado</span>' : '') +
+      (c.oculta ? ' · <span class="etq prot">oculta por moderación</span>' : '') + '</div>' +
+      (datos.length ? '<div class="datos">' + datos.join(' · ') + '</div>' : '') +
+      (c.comentario ? '<p style="margin:4px 0">' + esc(c.comentario) + '</p>' : '') +
+      (condTxt.length ? '<div class="leyenda">Condiciones: ' + condTxt.join(' · ') + '</div>' : '') +
+      '<div class="acc">' +
+        '<button type="button" class="chico" data-acc="coms">💬 Comentarios</button>' +
+        (mio ? '<button type="button" class="chico" data-acc="borrar">🗑 Borrar</button>'
+             : '<button type="button" class="chico" data-acc="reportar">⚠️ Reportar</button>') +
+      '</div><div class="coms" hidden></div><div class="rep" hidden></div></article>';
+  }
+  $('muro').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-acc]');
+    if (!b) return;
+    var post = b.closest('.post'), id = post.dataset.id, acc = b.dataset.acc;
+    if (acc === 'coms') {
+      var cont = post.querySelector('.coms');
+      cont.hidden = !cont.hidden;
+      if (!cont.hidden) cargarComentarios(id, cont);
+    } else if (acc === 'borrar') {
+      if (!confirm('¿Borrar esta captura? No se puede deshacer.')) return;
+      api('/api/collections/capturas/records/' + id, { method: 'DELETE' }).then(function () { post.remove(); cargarPicando(); })
+        .catch(function (e) { alert(e.message); });
+    } else if (acc === 'reportar') {
+      if (!auth) { alert('Para reportar tenés que ingresar.'); return; }
+      var rep = post.querySelector('.rep');
+      rep.hidden = false;
+      rep.innerHTML = '<form class="form"><label>Motivo</label><select name="motivo">' +
+        Object.keys(MOTIVOS).map(function (k) { return '<option value="' + k + '">' + MOTIVOS[k] + '</option>'; }).join('') +
+        '</select><label>Detalle (opcional)</label><input name="detalle" maxlength="300">' +
+        '<div class="barra" style="margin:8px 0 0"><button class="chico primario">Enviar reporte</button></div></form>';
+    } else if (acc === 'comentar') {
+      var inp = post.querySelector('input[name="texto"]'), texto = inp.value.trim();
+      if (!texto) return;
+      b.disabled = true;
+      api('/api/collections/comentarios/records', { method: 'POST', json: { captura: id, usuario: auth.record.id, texto: texto } })
+        .then(function () { cargarComentarios(id, post.querySelector('.coms')); })
+        .catch(function (e) { alert(e.message); b.disabled = false; });
+    } else if (acc === 'borrarcom') {
+      api('/api/collections/comentarios/records/' + b.dataset.cid, { method: 'DELETE' })
+        .then(function () { cargarComentarios(id, post.querySelector('.coms')); }).catch(function (e) { alert(e.message); });
+    }
+  });
+  $('muro').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var f = ev.target, post = f.closest('.post'), rep = post.querySelector('.rep');
+    api('/api/collections/reportes/records', { method: 'POST', json: {
+      usuario: auth.record.id, captura: post.dataset.id, motivo: f.motivo.value, detalle: f.detalle.value.trim()
+    } }).then(function () { rep.innerHTML = '<p class="msg ok">Gracias, el reporte le llegó al administrador.</p>'; })
+      .catch(function (e) { rep.innerHTML = '<p class="msg err">' + esc(e.message) + '</p>'; });
+  });
+  function cargarComentarios(id, cont) {
+    cont.innerHTML = '<p class="leyenda">Cargando…</p>';
+    api('/api/collections/comentarios/records?perPage=100&sort=created&expand=usuario&filter=' + encodeURIComponent('captura = "' + id + '"')).then(function (r) {
+      var html = r.items.map(function (c) {
+        var mio = auth && auth.record && c.usuario === auth.record.id;
+        return '<div class="com"><b>' + esc(nombreUsuario(c.expand && c.expand.usuario)) + '</b> ' + esc(c.texto) +
+          ' <span class="leyenda">' + esc(fechaTexto(c.created)) + '</span>' +
+          (mio ? ' <button type="button" class="chico" data-acc="borrarcom" data-cid="' + c.id + '" aria-label="Borrar comentario">🗑</button>' : '') + '</div>';
+      }).join('') || '<p class="leyenda">Sin comentarios todavía.</p>';
+      html += auth
+        ? '<div class="form" style="display:flex;gap:6px;margin-top:6px"><input name="texto" maxlength="500" placeholder="Escribí un comentario"><button type="button" class="chico primario" data-acc="comentar">Enviar</button></div>'
+        : '<p class="leyenda">Ingresá para comentar.</p>';
+      cont.innerHTML = html;
+    }).catch(function (e) { cont.innerHTML = '<p class="msg err">' + esc(e.message) + '</p>'; });
+  }
+  $('btnMas').addEventListener('click', function () { muro.pagina++; cargarMuro(false); });
+  $('filEspecie').addEventListener('change', function () { cargarMuro(true); });
+  $('filZona').addEventListener('change', function () { cargarMuro(true); });
+
+  // --- subir captura ---
+  function ahoraLocalInput() {
+    var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+  $('btnNueva').addEventListener('click', function () {
+    if (!auth) { $('cuenta').hidden = false; $('cEmail').focus(); $('msgCuenta').className = 'msg'; $('msgCuenta').textContent = 'Para publicar, ingresá o creá una cuenta.'; return; }
+    $('nueva').hidden = false;
+    $('fFecha').value = ahoraLocalInput();
+    $('nueva').scrollIntoView({ behavior: 'smooth' });
+  });
+  $('btnCancelar').addEventListener('click', function () { $('formCaptura').reset(); fotoLista = null; $('fPrevia').hidden = true; $('nueva').hidden = true; });
+  $('fEspecie').addEventListener('change', function () {
+    var v = this.value;
+    $('campoOtra').hidden = v !== 'otra';
+    var mero = v === 'mero_guasa';
+    $('fLiberado').checked = mero ? true : $('fLiberado').checked;
+    $('fLiberado').disabled = mero;
+    var i = ESPECIES_K.indexOf(v);
+    $('fAnzuelo').placeholder = i >= 0 ? PECES[i].anz.split(/[;(]/)[0].replace('N.º ', '').trim().slice(0, 30) : 'ej. 2/0';
+  });
+  $('fFoto').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    fotoLista = null; $('fPrevia').hidden = true;
+    if (!f) return;
+    achicarFoto(f).then(function (blob) {
+      fotoLista = blob;
+      $('fPrevia').src = URL.createObjectURL(blob);
+      $('fPrevia').hidden = false;
+    }).catch(function () { $('msgCaptura').className = 'msg err'; $('msgCaptura').textContent = 'No se pudo leer la foto. Probá con otra.'; });
+  });
+  // Redimensiona a 1600 px como máximo y la pasa a JPEG: pesa menos y pierde los
+  // metadatos EXIF (incluida la ubicación GPS de la cámara).
+  function achicarFoto(file) {
+    var abrir = window.createImageBitmap
+      ? createImageBitmap(file, { imageOrientation: 'from-image' })
+      : new Promise(function (ok, mal) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = mal; im.src = URL.createObjectURL(file); });
+    return abrir.then(function (img) {
+      var max = 1600, w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement('canvas');
+      c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      return new Promise(function (ok, mal) { c.toBlob(function (b) { b ? ok(b) : mal(new Error('sin imagen')); }, 'image/jpeg', 0.82); });
+    });
+  }
+  // Condiciones del pronóstico cargado (punto del semáforo) para la hora de la captura.
+  function condicionesPara(fecha) {
+    var p = partesBogota(fecha), clave = p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':00';
+    var c = {};
+    if (datos) datos.dias.forEach(function (d) { d.horas.forEach(function (h) { if (h.t === clave) c = h; }); });
+    var fl = faseLunar(fecha.getTime());
+    var out = { luna: fl.emoji + ' ' + fl.nombre, lunaIlum: Math.round(fl.ilum * 100) };
+    ['ola', 'periodo', 'dirOla', 'viento', 'rafaga', 'dir', 'uv'].forEach(function (k) { if (c[k] != null && isFinite(c[k])) out[k] = c[k]; });
+    if (c.t) out.color = colorHora(c);
+    return out;
+  }
+  $('formCaptura').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var msg = $('msgCaptura');
+    if (!fotoLista) { msg.className = 'msg err'; msg.textContent = 'Elegí una foto.'; return; }
+    var fecha = new Date($('fFecha').value);
+    if (isNaN(fecha)) { msg.className = 'msg err'; msg.textContent = 'Revisá la fecha.'; return; }
+    if (fecha.getTime() > Date.now() + 3600000) { msg.className = 'msg err'; msg.textContent = 'La fecha no puede ser futura.'; return; }
+    var fd = new FormData();
+    fd.append('usuario', auth.record.id);
+    fd.append('foto', fotoLista, 'captura.jpg');
+    fd.append('especie', $('fEspecie').value);
+    if ($('fEspecie').value === 'otra') fd.append('especie_otra', $('fOtra').value.trim());
+    fd.append('zona', $('fZona').value);
+    fd.append('fecha', fechaPB(fecha));
+    if ($('fTam').value) fd.append('tamano_cm', $('fTam').value);
+    if ($('fPeso').value) fd.append('peso_kg', $('fPeso').value);
+    fd.append('carnada', $('fCarnada').value.trim());
+    fd.append('anzuelo', $('fAnzuelo').value.trim());
+    fd.append('liberado', String($('fLiberado').checked));
+    fd.append('comentario', $('fComentario').value.trim());
+    fd.append('condiciones', JSON.stringify(condicionesPara(fecha)));
+    $('btnPublicar').disabled = true;
+    msg.className = 'msg'; msg.textContent = 'Subiendo…';
+    api('/api/collections/capturas/records', { method: 'POST', body: fd }).then(function () {
+      msg.className = 'msg ok'; msg.textContent = '¡Publicada!';
+      $('formCaptura').reset(); fotoLista = null; $('fPrevia').hidden = true;
+      setTimeout(function () { $('nueva').hidden = true; msg.textContent = ''; }, 1200);
+      cargarMuro(true); cargarPicando();
+    }).catch(function (e) { msg.className = 'msg err'; msg.textContent = e.message; })
+      .then(function () { $('btnPublicar').disabled = false; });
+  });
+
+  opciones($('fEspecie'), ESPECIE_N);
+  opciones($('fZona'), ZONA_N);
+  opciones($('filEspecie'), ESPECIE_N, 'Todas');
+  opciones($('filZona'), ZONA_N, 'Todas');
+  $('fZona').value = 'tajamar_bocas';
+  renderSesion();
+  prepararGoogle();
+  refrescarSesion();
+
   // ---------- inicio ----------
   centrarMapa(punto.lat, punto.lon);
   renderLuna();
   renderPeces(null);
   cargar();
+  if (!volverDeGoogle()) {
+    if (leer(CLAVE_VISTA) === 'comunidad') mostrarVista('comunidad');
+    else cargarPicando();
+  }
 })();
 </script>
 </body>
