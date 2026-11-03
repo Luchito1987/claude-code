@@ -25,6 +25,7 @@
     --uv: #7a3db8;
     --uv-bg: #f1e8fb;
     --destacado: #0b7a99;
+    --info-bg: #e5f3f7;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -41,6 +42,7 @@
       --uv: #c39af0;
       --uv-bg: #2a1d3b;
       --destacado: #4fc3e0;
+      --info-bg: #10303b;
     }
   }
   * { box-sizing: border-box; }
@@ -60,6 +62,8 @@
   header h1 { margin: 0; font-size: 1.25rem; }
   header p { margin: 2px 0 0; font-size: .85rem; opacity: .85; }
   main { max-width: 720px; margin: 0 auto; padding: 12px 16px 24px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
   .aviso {
     background: var(--amarillo-bg);
     border-left: 4px solid var(--amarillo);
@@ -80,6 +84,7 @@
     cursor: pointer;
   }
   button.primario { background: var(--destacado); border-color: var(--destacado); color: #fff; }
+  button.chico { min-height: 34px; padding: 4px 10px; font-size: .88rem; }
   .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
   .tabs button { flex: 1 0 auto; font-size: .9rem; }
   .tabs button[aria-selected="true"] { background: var(--destacado); color: #fff; border-color: var(--destacado); }
@@ -90,8 +95,7 @@
     padding: 12px;
     margin-bottom: 12px;
   }
-  .dia-cab h2 { margin: 0 0 4px; font-size: 1.1rem; }
-  .sol { color: var(--muted); font-size: .9rem; }
+  .sol, .leyenda { color: var(--muted); font-size: .88rem; }
   .uv {
     display: inline-block;
     background: var(--uv-bg);
@@ -103,6 +107,50 @@
     margin-top: 6px;
   }
   .seccion { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 8px; }
+
+  /* Mapa */
+  .mapa {
+    position: relative;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #aad3df;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: crosshair;
+    margin: 8px 0;
+  }
+  .mapa .teselas img { position: absolute; width: 256px; height: 256px; max-width: none; pointer-events: none; }
+  .mapa .zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 3; }
+  .mapa .zoom button { width: 38px; min-height: 38px; padding: 0; font-size: 1.2rem; font-weight: 700; }
+  .mapa .atrib {
+    position: absolute; right: 0; bottom: 0; z-index: 3;
+    background: rgba(255,255,255,.85); color: #333; font-size: 10px; padding: 1px 4px;
+  }
+  .mapa .atrib a { color: #0b5e75; }
+  .marca { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, -100%); font-size: 28px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+  .marca.mar {
+    transform: translate(-50%, -50%);
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #0b7a99; border: 3px solid #fff; font-size: 0;
+  }
+  .marca.velero { transform: translate(-50%, -50%); font-size: 18px; }
+  .punto-info { font-size: .9rem; }
+  .punto-info b { font-variant-numeric: tabular-nums; }
+
+  /* Luna */
+  .luna { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
+  .luna .emoji { font-size: 48px; line-height: 1; text-align: center; }
+  .luna .rango { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: var(--info-bg); font-size: .9rem; }
+
+  /* Análisis */
+  .analisis { background: var(--info-bg); border: 1px solid var(--line); }
+  .analisis .veredicto { font-size: 1.05rem; font-weight: 700; margin: 0 0 6px; }
+  .analisis ul { margin: 0; padding-left: 18px; }
+  .analisis li { margin-bottom: 6px; }
+
+  /* Franjas */
   .franja {
     display: grid;
     grid-template-columns: 14px 1fr;
@@ -119,13 +167,12 @@
   .franja.destacada { border: 2px solid var(--destacado); }
   .franja.pasada { opacity: .5; }
   .f-tit { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .f-tit strong { font-size: 1rem; }
   .estado { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   .verde .estado { color: var(--verde); } .amarillo .estado { color: var(--amarillo); } .rojo .estado { color: var(--rojo); }
   .vals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; margin-top: 6px; font-size: .9rem; }
-  .vals span b { font-variant-numeric: tabular-nums; }
-  .vals .malo { color: var(--rojo); font-weight: 700; }
-  .vals .medio { color: var(--amarillo); font-weight: 700; }
+  .vals b { font-variant-numeric: tabular-nums; }
+  .malo { color: var(--rojo); font-weight: 700; }
+  .medio { color: var(--amarillo); font-weight: 700; }
   .flecha { display: inline-block; font-weight: 700; }
   details { margin-top: 6px; font-size: .85rem; }
   summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
@@ -135,6 +182,17 @@
   th { font-weight: 600; color: var(--muted); font-size: .78rem; }
   td .punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; background: var(--gris); }
   td .punto.verde { background: var(--verde); } td .punto.amarillo { background: var(--amarillo); } td .punto.rojo { background: var(--rojo); }
+
+  /* Peces */
+  .pez { border-top: 1px solid var(--line); padding: 10px 0; }
+  .pez:first-of-type { border-top: 0; }
+  .pez .nom { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .pez .cient { font-style: italic; color: var(--muted); font-size: .85rem; }
+  .pez p { margin: 4px 0 0; font-size: .9rem; }
+  .etq { display: inline-block; font-size: .75rem; font-weight: 600; border-radius: 6px; padding: 1px 6px; margin-right: 4px; background: var(--gris-bg); color: var(--muted); }
+  .etq.hoy { background: var(--verde-bg); color: var(--verde); }
+  .etq.prot { background: var(--rojo-bg); color: var(--rojo); }
+
   #umbrales label { display: grid; grid-template-columns: 1fr 76px 76px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: .92rem; }
   #umbrales .cols { display: grid; grid-template-columns: 1fr 76px 76px; gap: 8px; font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
   #umbrales input {
@@ -142,7 +200,6 @@
     border: 1px solid var(--line); background: var(--bg); color: var(--ink); text-align: center;
   }
   .error { background: var(--rojo-bg); border-left: 4px solid var(--rojo); padding: 10px 12px; border-radius: 8px; }
-  .leyenda { font-size: .82rem; color: var(--muted); }
   footer { max-width: 720px; margin: 0 auto; padding: 0 16px 32px; font-size: .78rem; color: var(--muted); }
   footer a { color: var(--destacado); word-break: break-all; }
   footer p { margin: 6px 0; }
@@ -152,7 +209,7 @@
 <body>
 <header>
   <h1>🎣 Semáforo de pesca de orilla</h1>
-  <p>Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá</p>
+  <p id="subtitulo">Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá</p>
 </header>
 
 <main>
@@ -172,11 +229,36 @@
       <button id="btnGuardar" class="primario" type="button">Guardar</button>
       <button id="btnDefecto" type="button">Valores por defecto</button>
     </div>
-    <p class="leyenda">Se guardan en este navegador. El color de cada franja es el peor de ola, viento y ráfagas. La dirección del viento y el UV no cambian el color.</p>
+    <p class="leyenda">Se guardan en este navegador. El color de cada franja es el peor de ola, viento y ráfagas. La dirección del viento, el UV y la luna no cambian el color.</p>
   </section>
+
+  <section class="card">
+    <h2>🗺️ Punto del reporte</h2>
+    <p class="leyenda" style="margin:0">Tocá el mapa para elegir otro punto. Arrastrá para moverlo y usá + / − para el zoom.</p>
+    <div class="mapa" id="mapa">
+      <div class="teselas"></div>
+      <div class="marca velero" id="mVelero" title="Marina Puerto Velero">⛵</div>
+      <div class="marca mar" id="mMar" title="Celda de mar de la Marine API" hidden></div>
+      <div class="marca" id="mPunto" title="Punto elegido">📍</div>
+      <div class="zoom">
+        <button type="button" id="zMas" aria-label="Acercar">+</button>
+        <button type="button" id="zMenos" aria-label="Alejar">−</button>
+      </div>
+      <div class="atrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
+    </div>
+    <div class="punto-info" id="puntoInfo"></div>
+    <div class="barra" style="margin:8px 0 0">
+      <button type="button" class="chico" id="btnVelero">⛵ Volver a Puerto Velero</button>
+      <button type="button" class="chico" id="btnUbicacion">📍 Mi ubicación</button>
+    </div>
+  </section>
+
+  <section class="card" id="lunaCard"></section>
 
   <nav class="tabs" id="tabs" role="tablist"></nav>
   <div id="contenido"><p class="leyenda">Cargando pronóstico…</p></div>
+
+  <section class="card" id="peces"></section>
 </main>
 
 <footer id="pie"></footer>
@@ -185,55 +267,45 @@
 (function () {
   'use strict';
 
-  // Celda de mar devuelta por la Marine API para este punto: 10.958, -75.042.
-  // Marina Puerto Velero: aprox. 10.941, -75.034.
-  var LAT = 10.94;
-  var LON = -75.04;
+  // ---------- configuración ----------
+  // Marina Puerto Velero: aprox. 10.941, -75.034. La Marine API usa la celda de mar 10.958, -75.042.
+  var VELERO = { lat: 10.94, lon: -75.04 };
+  // En Puerto Velero la costa corre de NE a SO y el mar queda hacia el noroeste.
+  var RUMBO_MAR = 315;
   var TZ = 'America/Bogota';
   var DIAS = 4; // hoy + 3
   var CLAVE = 'pesca-velero-umbrales-v1';
+  var CLAVE_PUNTO = 'pesca-velero-punto-v1';
   var DEFECTO = { olaA: 0.7, olaR: 1.1, vientoA: 10, vientoR: 14, rafagaA: 14, rafagaR: 18 };
 
-  var URL_MARINE = 'https://marine-api.open-meteo.com/v1/marine' +
-    '?latitude=' + LAT + '&longitude=' + LON +
-    '&hourly=wave_height,wave_period' +
-    '&timezone=' + encodeURIComponent(TZ) +
-    '&forecast_days=' + DIAS +
-    '&cell_selection=sea';
-
-  var URL_FORECAST = 'https://api.open-meteo.com/v1/forecast' +
-    '?latitude=' + LAT + '&longitude=' + LON +
-    '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index' +
-    '&daily=sunrise,sunset,uv_index_max' +
-    '&wind_speed_unit=kn' +
-    '&timezone=' + encodeURIComponent(TZ) +
-    '&forecast_days=' + DIAS;
-
   var umbrales = cargarUmbrales();
-  var datos = null;      // datos combinados
+  var punto = cargarPunto();
+  var datos = null;
   var diaSel = 0;
+  var urls = {};
+  var pedido = 0;
 
-  // ---------- umbrales ----------
+  // ---------- almacenamiento ----------
+  function leer(clave) {
+    try { var s = localStorage.getItem(clave); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  }
+  function escribir(clave, v) {
+    try { if (v == null) localStorage.removeItem(clave); else localStorage.setItem(clave, JSON.stringify(v)); } catch (e) { /* ignorar */ }
+  }
   function cargarUmbrales() {
-    var u = Object.assign({}, DEFECTO);
-    try {
-      var s = localStorage.getItem(CLAVE);
-      if (s) {
-        var o = JSON.parse(s);
-        Object.keys(DEFECTO).forEach(function (k) {
-          if (typeof o[k] === 'number' && isFinite(o[k])) u[k] = o[k];
-        });
-      }
-    } catch (e) { /* sin almacenamiento: se usan los valores por defecto */ }
+    var u = Object.assign({}, DEFECTO), o = leer(CLAVE);
+    if (o) Object.keys(DEFECTO).forEach(function (k) {
+      if (typeof o[k] === 'number' && isFinite(o[k])) u[k] = o[k];
+    });
     return u;
   }
-  function guardarUmbrales(u) {
-    try { localStorage.setItem(CLAVE, JSON.stringify(u)); } catch (e) { /* ignorar */ }
+  function cargarPunto() {
+    var o = leer(CLAVE_PUNTO);
+    if (o && isFinite(o.lat) && isFinite(o.lon) && Math.abs(o.lat) <= 85 && Math.abs(o.lon) <= 180) return { lat: o.lat, lon: o.lon };
+    return { lat: VELERO.lat, lon: VELERO.lon };
   }
   function llenarFormulario() {
-    document.querySelectorAll('#umbrales input').forEach(function (inp) {
-      inp.value = umbrales[inp.dataset.k];
-    });
+    document.querySelectorAll('#umbrales input').forEach(function (inp) { inp.value = umbrales[inp.dataset.k]; });
   }
 
   // ---------- utilidades ----------
@@ -288,11 +360,10 @@
     if (!n) return null;
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
-  function maximo(lista) {
-    var m = null;
-    lista.forEach(function (v) { if (v != null && isFinite(v) && (m === null || v > m)) m = v; });
-    return m;
-  }
+  function valores(hs, k) { return hs.map(function (h) { return h[k]; }).filter(function (v) { return v != null && isFinite(v); }); }
+  function maximo(lista) { return lista.length ? Math.max.apply(null, lista) : null; }
+  function minimo(lista) { return lista.length ? Math.min.apply(null, lista) : null; }
+  function promedio(lista) { return lista.length ? lista.reduce(function (a, b) { return a + b; }, 0) / lista.length : null; }
   function avisoUV(uv) {
     if (uv == null || !isFinite(uv)) return '';
     if (uv >= 11) return 'UV extremo: evitá el sol directo';
@@ -301,22 +372,32 @@
     return '';
   }
   function hhmm(iso) { return iso ? iso.slice(11, 16) : '–'; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
   }
-  function ahoraBogota() {
-    // Devuelve "YYYY-MM-DDTHH:MM" en hora de Bogotá
+  function difAng(a, b) { var d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; }
+  function distanciaKm(a, b) {
+    var R = 6371, r = Math.PI / 180;
+    var dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  function partesBogota(fecha) {
     var p = {};
     new Intl.DateTimeFormat('en-CA', {
       timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-    }).formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    }).formatToParts(fecha).forEach(function (x) { p[x.type] = x.value; });
+    return p;
+  }
+  function ahoraBogota() {
+    var p = partesBogota(new Date());
     return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
   }
+  function mayuscula(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
   function nombreDia(fecha, i) {
-    var d = new Date(fecha + 'T12:00:00Z');
-    var txt = d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' });
-    txt = txt.charAt(0).toUpperCase() + txt.slice(1);
+    var txt = mayuscula(new Date(fecha + 'T12:00:00Z').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }));
     if (i === 0) return 'Hoy · ' + txt;
     if (i === 1) return 'Mañana · ' + txt;
     return txt;
@@ -324,11 +405,277 @@
   function nombreTab(fecha, i) {
     if (i === 0) return 'Hoy';
     if (i === 1) return 'Mañana';
-    var d = new Date(fecha + 'T12:00:00Z');
-    return d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+    return new Date(fecha + 'T12:00:00Z').toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+  function fechaCorta(d) {
+    return mayuscula(d.toLocaleString('es-CO', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }));
+  }
+
+  // ---------- luna ----------
+  // Longitudes aproximadas de la Luna y el Sol (Meeus, términos principales). Error de las fases: unos minutos.
+  var MES_SINODICO = 29.530588853;
+  function elongacion(ms) {
+    var T = (ms / 86400000 + 2440587.5 - 2451545) / 36525, r = Math.PI / 180;
+    var L0 = 218.3164477 + 481267.88123421 * T, D = 297.8501921 + 445267.1114034 * T;
+    var M = 357.5291092 + 35999.0502909 * T, Mp = 134.9633964 + 477198.8675055 * T, F = 93.2720950 + 483202.0175233 * T;
+    function s(x) { return Math.sin(x * r); }
+    var luna = L0 + 6.288774 * s(Mp) + 1.274027 * s(2 * D - Mp) + 0.658314 * s(2 * D) + 0.213618 * s(2 * Mp) -
+      0.185116 * s(M) - 0.114332 * s(2 * F) + 0.058793 * s(2 * D - 2 * Mp) + 0.057066 * s(2 * D - M - Mp) +
+      0.053322 * s(2 * D + Mp) + 0.045758 * s(2 * D - M);
+    var sol = 280.46646 + 36000.76983 * T + (1.914602 - 0.004817 * T) * s(M) + 0.019993 * s(2 * M) + 0.000289 * s(3 * M);
+    return (((luna - sol) % 360) + 360) % 360;
+  }
+  // Busca el próximo (dir 1) o el anterior (dir -1) momento en que la elongación vale "objetivo" (0 nueva, 180 llena).
+  function buscarFase(ms, objetivo, dir) {
+    function g(t) { return ((elongacion(t) - objetivo + 540) % 360) - 180; }
+    var paso = dir * 6 * 3600000, a = ms, ga = g(a);
+    for (var i = 0; i < 200; i++) {
+      var b = a + paso, gb = g(b);
+      if (dir > 0 ? (ga < 0 && gb >= 0) : (ga >= 0 && gb < 0)) {
+        var lo = Math.min(a, b), hi = Math.max(a, b);
+        for (var k = 0; k < 40; k++) { var m = (lo + hi) / 2; if (g(m) < 0) lo = m; else hi = m; }
+        return new Date((lo + hi) / 2);
+      }
+      a = b; ga = gb;
+    }
+    return null;
+  }
+  function faseLunar(ms) {
+    var e = elongacion(ms);
+    var ilum = (1 - Math.cos(e * Math.PI / 180)) / 2;
+    var nombre, emoji;
+    if (e < 12 || e >= 348) { nombre = 'Luna nueva'; emoji = '🌑'; }
+    else if (e < 78) { nombre = 'Creciente'; emoji = '🌒'; }
+    else if (e < 102) { nombre = 'Cuarto creciente'; emoji = '🌓'; }
+    else if (e < 168) { nombre = 'Gibosa creciente'; emoji = '🌔'; }
+    else if (e < 192) { nombre = 'Luna llena'; emoji = '🌕'; }
+    else if (e < 258) { nombre = 'Gibosa menguante'; emoji = '🌖'; }
+    else if (e < 282) { nombre = 'Cuarto menguante'; emoji = '🌗'; }
+    else { nombre = 'Menguante'; emoji = '🌘'; }
+    return { e: e, ilum: ilum, edad: e / 360 * MES_SINODICO, nombre: nombre, emoji: emoji };
+  }
+  var RANGO_DIAS = 2; // días antes y después de luna nueva o llena
+  function estadoLuna(ms) {
+    var dia = 86400000;
+    var eventos = [];
+    [[0, 'luna nueva'], [180, 'luna llena']].forEach(function (f) {
+      var ant = buscarFase(ms, f[0], -1), sig = buscarFase(ms, f[0], 1);
+      if (ant) eventos.push({ t: ant.getTime(), nombre: f[1] });
+      if (sig) eventos.push({ t: sig.getTime(), nombre: f[1] });
+    });
+    eventos.sort(function (a, b) { return a.t - b.t; });
+    var dentro = null, proximo = null;
+    eventos.forEach(function (ev) {
+      if (Math.abs(ev.t - ms) <= RANGO_DIAS * dia) dentro = dentro || ev;
+      if (ev.t > ms && !proximo) proximo = ev;
+    });
+    var siguienteRango = null;
+    eventos.forEach(function (ev) {
+      var ini = ev.t - RANGO_DIAS * dia;
+      if (ini > ms && (!siguienteRango || ini < siguienteRango.ini)) siguienteRango = { ini: ini, ev: ev };
+    });
+    return {
+      fase: faseLunar(ms),
+      dentro: dentro,
+      proximo: proximo,
+      siguienteRango: siguienteRango,
+      nueva: buscarFase(ms, 0, 1),
+      llena: buscarFase(ms, 180, 1)
+    };
+  }
+  function faseDelDia(fecha) {
+    // Fase al mediodía de Bogotá (17:00 UTC)
+    var ms = Date.parse(fecha + 'T17:00:00Z');
+    var f = faseLunar(ms);
+    var e = estadoLuna(ms);
+    f.enRango = !!e.dentro;
+    return f;
+  }
+  function renderLuna() {
+    var ms = Date.now(), dia = 86400000;
+    var s = estadoLuna(ms), f = s.fase;
+    var rango;
+    if (s.dentro) {
+      var dif = (s.dentro.t - ms) / dia;
+      rango = '✅ Estás dentro del rango favorable: ' + s.dentro.nombre + ' ' +
+        (Math.abs(dif) < 0.5 ? 'es hoy' : dif > 0 ? 'en ' + fmt(dif, 1) + ' días' : 'fue hace ' + fmt(-dif, 1) + ' días') +
+        ' (' + fechaCorta(new Date(s.dentro.t)) + ').';
+    } else if (s.siguienteRango) {
+      var falta = (s.siguienteRango.ini - ms) / dia;
+      rango = '⏳ Faltan <b>' + fmt(falta, 1) + ' días</b> para el próximo rango favorable (' + RANGO_DIAS + ' días alrededor de la ' +
+        s.siguienteRango.ev.nombre + ' del ' + fechaCorta(new Date(s.siguienteRango.ev.t)) + ').';
+    } else {
+      rango = '';
+    }
+    document.getElementById('lunaCard').innerHTML =
+      '<h2>Fase lunar</h2>' +
+      '<div class="luna"><div class="emoji" aria-hidden="true">' + f.emoji + '</div><div>' +
+        '<strong>' + f.nombre + '</strong> · ' + Math.round(f.ilum * 100) + ' % iluminada · día ' + fmt(f.edad, 1) + ' del ciclo' +
+        '<div class="leyenda">🌑 Próxima nueva: ' + (s.nueva ? fechaCorta(s.nueva) : '–') +
+        ' · 🌕 Próxima llena: ' + (s.llena ? fechaCorta(s.llena) : '–') + '</div>' +
+      '</div></div>' +
+      (rango ? '<div class="rango">' + rango + '</div>' : '') +
+      '<details><summary>¿Influye la luna en la pesca?</summary>' +
+        '<p>Algo, pero menos que el viento y la ola. Entre los pescadores se tiene como mejores días los cercanos a la <b>luna nueva y la luna llena</b>: ' +
+        'Sol y Luna se alinean, las mareas se mueven más (mareas vivas) y esas corrientes activan a la carnada y a los depredadores. ' +
+        'Por eso acá el “rango favorable” es de ' + RANGO_DIAS + ' días antes a ' + RANGO_DIAS + ' días después de cada una.</p>' +
+        '<p>Matices: en el Caribe colombiano la marea es chica (unas decenas de centímetros), así que el efecto es menor que en otras costas. ' +
+        'Con luna llena hay más luz de noche y muchos peces comen de noche; a veces el amanecer siguiente está más flojo. ' +
+        'Con luna nueva las noches son oscuras y el amanecer y el atardecer suelen rendir mejor. ' +
+        'La evidencia científica es mixta: tomalo como un dato más y anotá en tu bitácora la fase de cada salida.</p>' +
+      '</details>';
+  }
+
+  // ---------- mapa (teselas de OpenStreetMap, sin librerías) ----------
+  var mapa = {
+    el: document.getElementById('mapa'),
+    capa: null,
+    z: 11,
+    cx: 0, cy: 0, // centro en píxeles del mundo
+    imgs: {},
+    mar: null
+  };
+  mapa.capa = mapa.el.querySelector('.teselas');
+  function proyectar(lat, lon, z) {
+    var n = 256 * Math.pow(2, z), r = lat * Math.PI / 180;
+    return { x: (lon + 180) / 360 * n, y: (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n };
+  }
+  function desproyectar(x, y, z) {
+    var n = 256 * Math.pow(2, z);
+    var lon = x / n * 360 - 180;
+    var lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+    return { lat: lat, lon: ((lon + 540) % 360) - 180 };
+  }
+  function centrarMapa(lat, lon) {
+    var p = proyectar(lat, lon, mapa.z);
+    mapa.cx = p.x; mapa.cy = p.y;
+    dibujarMapa();
+  }
+  function ubicarMarca(el, lat, lon, x0, y0) {
+    if (lat == null) { el.hidden = true; return; }
+    var p = proyectar(lat, lon, mapa.z);
+    el.hidden = false;
+    el.style.left = (p.x - x0) + 'px';
+    el.style.top = (p.y - y0) + 'px';
+  }
+  function dibujarMapa() {
+    var w = mapa.el.clientWidth, h = mapa.el.clientHeight;
+    if (!w || !h) return;
+    var x0 = mapa.cx - w / 2, y0 = mapa.cy - h / 2;
+    var n = Math.pow(2, mapa.z), usados = {};
+    for (var tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + w) / 256); tx++) {
+      for (var ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + h) / 256); ty++) {
+        if (ty < 0 || ty >= n) continue;
+        var wx = ((tx % n) + n) % n;
+        var clave = mapa.z + '/' + tx + '/' + ty;
+        var img = mapa.imgs[clave];
+        if (!img) {
+          img = document.createElement('img');
+          img.alt = '';
+          img.draggable = false;
+          img.src = 'https://tile.openstreetmap.org/' + mapa.z + '/' + wx + '/' + ty + '.png';
+          mapa.capa.appendChild(img);
+          mapa.imgs[clave] = img;
+        }
+        img.style.left = Math.round(tx * 256 - x0) + 'px';
+        img.style.top = Math.round(ty * 256 - y0) + 'px';
+        usados[clave] = true;
+      }
+    }
+    Object.keys(mapa.imgs).forEach(function (k) {
+      if (!usados[k]) { mapa.imgs[k].remove(); delete mapa.imgs[k]; }
+    });
+    ubicarMarca(document.getElementById('mPunto'), punto.lat, punto.lon, x0, y0);
+    ubicarMarca(document.getElementById('mVelero'), 10.9411, -75.0339, x0, y0);
+    ubicarMarca(document.getElementById('mMar'), mapa.mar ? mapa.mar.lat : null, mapa.mar ? mapa.mar.lon : null, x0, y0);
+  }
+  function zoomMapa(delta) {
+    var nz = Math.max(5, Math.min(17, mapa.z + delta));
+    if (nz === mapa.z) return;
+    var c = desproyectar(mapa.cx, mapa.cy, mapa.z);
+    mapa.z = nz;
+    centrarMapa(c.lat, c.lon);
+  }
+  (function eventosMapa() {
+    var abajo = null;
+    mapa.el.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button, a')) return;
+      abajo = { x: ev.clientX, y: ev.clientY, cx: mapa.cx, cy: mapa.cy, movido: false, id: ev.pointerId };
+      try { mapa.el.setPointerCapture(ev.pointerId); } catch (e) { /* ignorar */ }
+    });
+    mapa.el.addEventListener('pointermove', function (ev) {
+      if (!abajo || ev.pointerId !== abajo.id) return;
+      var dx = ev.clientX - abajo.x, dy = ev.clientY - abajo.y;
+      if (!abajo.movido && Math.abs(dx) + Math.abs(dy) > 6) abajo.movido = true;
+      if (abajo.movido) {
+        mapa.cx = abajo.cx - dx; mapa.cy = abajo.cy - dy;
+        dibujarMapa();
+      }
+    });
+    function soltar(ev) {
+      if (!abajo || ev.pointerId !== abajo.id) return;
+      var fue = abajo; abajo = null;
+      if (ev.type === 'pointerup' && !fue.movido) {
+        var r = mapa.el.getBoundingClientRect();
+        var x = mapa.cx - r.width / 2 + (ev.clientX - r.left);
+        var y = mapa.cy - r.height / 2 + (ev.clientY - r.top);
+        var c = desproyectar(x, y, mapa.z);
+        elegirPunto(c.lat, c.lon);
+      }
+    }
+    mapa.el.addEventListener('pointerup', soltar);
+    mapa.el.addEventListener('pointercancel', soltar);
+    mapa.el.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      zoomMapa(ev.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    document.getElementById('zMas').addEventListener('click', function () { zoomMapa(1); });
+    document.getElementById('zMenos').addEventListener('click', function () { zoomMapa(-1); });
+    window.addEventListener('resize', dibujarMapa);
+  })();
+
+  function esVelero() { return distanciaKm(punto, VELERO) < 0.05; }
+  function elegirPunto(lat, lon) {
+    punto = { lat: Math.round(lat * 10000) / 10000, lon: Math.round(lon * 10000) / 10000 };
+    escribir(CLAVE_PUNTO, esVelero() ? null : punto);
+    mapa.mar = null;
+    dibujarMapa();
+    cargar();
+  }
+  function renderPunto() {
+    var info = document.getElementById('puntoInfo');
+    var dV = distanciaKm(punto, VELERO);
+    var txt = '📍 <b>' + fmt(punto.lat, 4) + ', ' + fmt(punto.lon, 4) + '</b>' +
+      (esVelero() ? ' · Puerto Velero' : ' · a ' + fmt(dV, 1) + ' km de Puerto Velero');
+    if (datos && datos.celdaMar) {
+      var dM = distanciaKm(punto, datos.celdaMar);
+      txt += '<br><span class="leyenda">🔵 Las olas salen de la celda de mar en ' + fmt(datos.celdaMar.lat, 3) + ', ' + fmt(datos.celdaMar.lon, 3) +
+        ' (a ' + fmt(dM, 1) + ' km del punto). La grilla del modelo de olas tiene celdas de varios km, así que el dato representa el mar abierto frente a la costa, no la rompiente exacta.' +
+        (dM > 15 ? ' <b>Ojo: la celda queda lejos; el dato de ola puede no representar este lugar.</b>' : '') + '</span>';
+    }
+    info.innerHTML = txt;
+    document.getElementById('subtitulo').textContent = esVelero()
+      ? 'Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá'
+      : 'Punto elegido ' + fmt(punto.lat, 3) + ', ' + fmt(punto.lon, 3) + ' · hora de Bogotá';
   }
 
   // ---------- datos ----------
+  function armarUrls() {
+    var lat = punto.lat.toFixed(4).replace(/\.?0+$/, ''), lon = punto.lon.toFixed(4).replace(/\.?0+$/, '');
+    urls.marine = 'https://marine-api.open-meteo.com/v1/marine' +
+      '?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=wave_height,wave_period' +
+      '&timezone=' + encodeURIComponent(TZ) +
+      '&forecast_days=' + DIAS +
+      '&cell_selection=sea';
+    urls.forecast = 'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index' +
+      '&daily=sunrise,sunset,uv_index_max' +
+      '&wind_speed_unit=kn' +
+      '&timezone=' + encodeURIComponent(TZ) +
+      '&forecast_days=' + DIAS;
+  }
   function pedir(url) {
     return fetch(url, { cache: 'no-store' }).then(function (r) {
       return r.json().then(function (j) {
@@ -337,7 +684,6 @@
       });
     });
   }
-
   function combinar(mar, pron) {
     var horas = {};
     function slot(t) { return horas[t] || (horas[t] = { t: t }); }
@@ -359,7 +705,7 @@
     var dias = (pd.time || []).map(function (fecha, i) {
       var hs = [];
       for (var h = 0; h < 24; h++) {
-        var t = fecha + 'T' + (h < 10 ? '0' : '') + h + ':00';
+        var t = fecha + 'T' + pad(h) + ':00';
         hs.push(horas[t] || { t: t });
       }
       return {
@@ -380,50 +726,36 @@
   // ---------- franjas ----------
   function franjasDelDia(dia) {
     var fijas = [];
-    for (var ini = 0; ini < 24; ini += 3) {
-      fijas.push({ ini: ini, fin: ini + 3, titulo: pad(ini) + '–' + pad(ini + 3) + ' h' });
-    }
+    for (var ini = 0; ini < 24; ini += 3) fijas.push({ ini: ini, fin: ini + 3, titulo: pad(ini) + '–' + pad(ini + 3) + ' h' });
     var dest = [{ ini: 6, fin: 9, titulo: 'Mañana · 6–9 h', destacada: true }];
     if (dia.puesta) {
       var hp = parseInt(dia.puesta.slice(11, 13), 10);
       // Atardecer: la hora previa a la puesta, la hora de la puesta y la siguiente
       var ini2 = Math.max(0, hp - 1), fin2 = Math.min(24, hp + 2);
-      dest.push({
-        ini: ini2, fin: fin2, destacada: true,
-        titulo: 'Atardecer · ' + ini2 + '–' + fin2 + ' h',
-        nota: 'puesta del sol ' + hhmm(dia.puesta)
-      });
+      dest.push({ ini: ini2, fin: fin2, destacada: true, titulo: 'Atardecer · ' + ini2 + '–' + fin2 + ' h', nota: 'puesta del sol ' + hhmm(dia.puesta) });
     }
     return { destacadas: dest, resto: fijas };
   }
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
-
   function resumen(dia, f, ahora) {
     var hs = dia.horas.slice(f.ini, f.fin);
-    var colores = hs.map(colorHora);
-    var hayDatos = colores.some(function (c) { return c !== 'gris'; });
-    var color = hayDatos ? peor(colores.filter(function (c) { return c !== 'gris'; })) : 'gris';
+    var colores = hs.map(colorHora).filter(function (c) { return c !== 'gris'; });
     var finIso = dia.fecha + 'T' + pad(Math.min(f.fin, 23)) + (f.fin >= 24 ? ':59' : ':00');
     return {
       hs: hs,
-      color: color,
-      ola: maximo(hs.map(function (h) { return h.ola; })),
-      periodo: maximo(hs.map(function (h) { return h.periodo; })),
-      viento: maximo(hs.map(function (h) { return h.viento; })),
-      rafaga: maximo(hs.map(function (h) { return h.rafaga; })),
-      dir: promedioAngulos(hs.map(function (h) { return h.dir; })),
-      uv: maximo(hs.map(function (h) { return h.uv; })),
-      pasada: finIso <= ahora
+      color: colores.length ? peor(colores) : 'gris',
+      ola: maximo(valores(hs, 'ola')),
+      periodo: maximo(valores(hs, 'periodo')),
+      viento: maximo(valores(hs, 'viento')),
+      rafaga: maximo(valores(hs, 'rafaga')),
+      dir: promedioAngulos(valores(hs, 'dir')),
+      uv: maximo(valores(hs, 'uv')),
+      pasada: ahora ? finIso <= ahora : false
     };
   }
-
   function htmlFranja(dia, f, ahora) {
-    var r = resumen(dia, f, ahora);
-    var u = umbrales;
-    var uvTxt = avisoUV(r.uv);
+    var r = resumen(dia, f, ahora), u = umbrales, uvTxt = avisoUV(r.uv);
     var filas = r.hs.map(function (h) {
-      var c = colorHora(h);
-      return '<tr><td><span class="punto ' + c + '"></span>' + hhmm(h.t) + '</td>' +
+      return '<tr><td><span class="punto ' + colorHora(h) + '"></span>' + hhmm(h.t) + '</td>' +
         '<td>' + fmt(h.ola, 2) + '</td><td>' + fmt(h.periodo, 1) + '</td>' +
         '<td>' + fmt(h.viento, 0) + '</td><td>' + fmt(h.rafaga, 0) + '</td>' +
         '<td>' + flecha(h.dir) + ' ' + cardinal(h.dir) + '</td><td>' + fmt(h.uv, 1) + '</td></tr>';
@@ -447,10 +779,139 @@
       '</div></div>';
   }
 
+  // ---------- análisis ----------
+  function relacionCosta(dir) {
+    if (dir == null) return null;
+    if (difAng(dir, RUMBO_MAR) <= 45) return 'mar';
+    if (difAng(dir, RUMBO_MAR + 180) <= 45) return 'tierra';
+    return 'lateral';
+  }
+  function analizarDia(dia, ahora) {
+    var u = umbrales;
+    // Horas útiles para pescar de día: desde la salida del sol (5 h) hasta pasada la puesta (19 h)
+    var utiles = dia.horas.slice(5, 20).filter(function (h) { return !ahora || h.t.slice(0, 13) >= ahora.slice(0, 13); });
+    if (!utiles.length) return null;
+    var colores = utiles.map(colorHora);
+    var conDatos = colores.filter(function (c) { return c !== 'gris'; });
+    if (!conDatos.length) return null;
+
+    // Mejor ventana: el tramo continuo más largo del mejor color disponible
+    var mejor = conDatos.reduce(function (a, c) { return NIVEL[c] < NIVEL[a] ? c : a; }, 'rojo');
+    var ini = -1, largo = 0, bi = -1, bl = 0;
+    colores.forEach(function (c, i) {
+      if (c === mejor) { if (ini < 0) ini = i; largo = i - ini + 1; if (largo > bl) { bl = largo; bi = ini; } }
+      else { ini = -1; }
+    });
+    var hIni = parseInt(utiles[bi].t.slice(11, 13), 10), hFin = hIni + bl;
+    var verdes = colores.filter(function (c) { return c === 'verde'; }).length;
+    var rojas = colores.filter(function (c) { return c === 'rojo'; }).length;
+
+    var veredicto;
+    if (verdes >= 3) veredicto = '🟢 Buen día para pescar de orilla';
+    else if (verdes > 0 || rojas < conDatos.length / 2) veredicto = '🟡 Día aprovechable, con precaución';
+    else veredicto = '🔴 Día complicado para la orilla';
+
+    var puntos = [];
+    puntos.push('<b>Mejor ventana:</b> de ' + hIni + ' a ' + hFin + ' h (' + TEXTO[mejor] + ').' +
+      (mejor !== 'verde' ? ' Ninguna hora con luz llega a verde con tus umbrales.' : ''));
+
+    // Ola: tendencia y período
+    var hs = dia.horas;
+    var olaM = promedio(valores(hs.slice(5, 10), 'ola')), olaT = promedio(valores(hs.slice(14, 19), 'ola'));
+    var olas = valores(hs.slice(5, 20), 'ola');
+    var per = promedio(valores(hs.slice(5, 20), 'periodo'));
+    var movida = false;
+    if (olas.length) {
+      var tend = '';
+      if (olaM != null && olaT != null) {
+        if (olaT - olaM > 0.15) tend = ' y <b>sube</b> en la tarde';
+        else if (olaM - olaT > 0.15) tend = ' y <b>baja</b> en la tarde';
+        else tend = ', bastante pareja en el día';
+      }
+      var txtOla = '<b>Ola:</b> entre ' + fmt(minimo(olas), 1) + ' y ' + fmt(maximo(olas), 1) + ' m' + tend + '. ';
+      if (per != null) {
+        if (per < 7) txtOla += 'Período corto (' + fmt(per, 1) + ' s): es mar de viento, picado y desordenado; la rompiente es más blanda de lo que dice la altura, pero el agua se enturbia.';
+        else if (per < 10) txtOla += 'Período medio (' + fmt(per, 1) + ' s): mezcla de viento y mar de fondo; las series llegan más espaciadas y con algo más de fuerza.';
+        else txtOla += 'Período largo (' + fmt(per, 1) + ' s): mar de fondo. Aunque la ola parezca baja, rompe con fuerza en la orilla y en las escolleras; ojo con las series.';
+      }
+      if (maximo(olas) >= u.olaA) movida = true;
+      puntos.push(txtOla);
+    }
+
+    // Viento
+    var vM = promedio(valores(hs.slice(6, 10), 'viento')), vT = promedio(valores(hs.slice(13, 18), 'viento'));
+    var dirDia = promedioAngulos(valores(hs.slice(6, 19), 'dir'));
+    if (vM != null || vT != null) {
+      var txtV = '<b>Viento:</b> ';
+      if (vM != null && vT != null) {
+        txtV += 'unos ' + fmt(vM, 0) + ' kn a la mañana y ' + fmt(vT, 0) + ' kn a la tarde' +
+          (vT - vM > 3 ? ' (se arma después del mediodía, típico de la brisa)' : vM - vT > 3 ? ' (afloja a la tarde)' : '') + ', ';
+      }
+      txtV += 'del ' + cardinal(dirDia) + '. ';
+      if (distanciaKm(punto, VELERO) <= 20) {
+        var rel = relacionCosta(dirDia);
+        if (rel === 'mar') { txtV += 'Sopla <b>de mar hacia la orilla</b>: empuja la ola y la espuma a la playa, cuesta lanzar lejos pero la comida se acerca a la rompiente.'; movida = true; }
+        else if (rel === 'tierra') txtV += 'Sopla <b>de tierra hacia el mar</b>: aplana la orilla y ayuda a lanzar lejos; si usás kayak o flotador, cuidado porque te aleja de la costa.';
+        else if (rel === 'lateral') txtV += 'Sopla <b>de costado</b> (paralelo a la playa): arrastra la línea a lo largo de la orilla; usá más plomo para que la carnada se quede quieta.';
+      }
+      if (vT != null && vT >= u.vientoA) movida = true;
+      puntos.push(txtV);
+    }
+
+    // Qué esperar
+    var esperar;
+    if (mejor === 'rojo') esperar = 'Va a ser difícil sostener la línea y hay riesgo en rocas y escolleras. Si vas, buscá zonas abrigadas (dentro de la bahía o detrás de estructuras) y plomos pesados.';
+    else if (movida) esperar = 'Agua movida y algo turbia en la rompiente: favorece a los depredadores que cazan en la espuma (jurel, sábalo, róbalo, pámpano). Usá plomo pirámide o más peso y carnada viva o natural.';
+    else esperar = 'Agua tranquila y más clara: buena para carnada en fondo liviano y anzuelos chicos (mojarra, lisa, pargo, ronco) y para señuelos en las primeras y últimas horas de luz.';
+    puntos.push('<b>Qué esperar:</b> ' + esperar);
+
+    // Luna del día
+    var fl = faseDelDia(dia.fecha);
+    puntos.push('<b>Luna:</b> ' + fl.emoji + ' ' + fl.nombre.toLowerCase() + ' (' + Math.round(fl.ilum * 100) + ' %). ' +
+      (fl.enRango ? 'Dentro del rango de luna nueva o llena: mareas algo más fuertes, a favor.' : 'Fuera del rango de luna nueva o llena: efecto lunar neutro.'));
+
+    var uv = avisoUV(dia.uvMax);
+    if (uv) puntos.push('<b>Sol:</b> ' + uv + '.');
+
+    return { veredicto: veredicto, puntos: puntos, movida: movida, mejor: mejor };
+  }
+
+  // ---------- peces ----------
+  var PECES = [
+    { n: 'Jurel', c: 'Caranx hippos', cond: 'movida', t: 'Muy común desde la orilla y las escolleras. Ataca en la espuma al amanecer y al atardecer.', cb: 'Cucharas, poppers y jigs; sardina o lisa viva.' },
+    { n: 'Sábalo', c: 'Megalops atlanticus', cond: 'movida', t: 'Pez deportivo que entra a la orilla y a las bocas, sobre todo al amanecer, atardecer y de noche. Especie vulnerable: se recomienda captura y suelta.', cb: 'Señuelos de media agua y poppers; lisa o sardina viva.' },
+    { n: 'Róbalo', c: 'Centropomus undecimalis', cond: 'movida', t: 'Le gusta el agua algo turbia, las bocas de ciénagas y las estructuras. Mejor con poca luz.', cb: 'Camarón vivo, señuelos de media agua. Respetá la talla mínima.' },
+    { n: 'Pámpano / palometa', c: 'Trachinotus spp.', cond: 'movida', t: 'Recorre la rompiente de las playas de arena cuando hay ola moderada.', cb: 'Camarón, cangrejito de arena (chipi chipi o similares), anzuelo chico y plomo pirámide.' },
+    { n: 'Mojarra', c: 'Gerreidae (Eugerres, Diapterus, Eucinostomus)', cond: 'calma', t: 'Fondos de arena cerca de la orilla y dentro de bahías. Abundante con agua tranquila.', cb: 'Camarón, lombriz de mar, anzuelo chico.' },
+    { n: 'Lisa / lebranche', c: 'Mugil spp.', cond: 'calma', t: 'Cardúmenes pegados a la orilla y en bocas de ciénagas.', cb: 'Masa o pan con anzuelo muy chico; muchos la pescan con atarraya.' },
+    { n: 'Pargo', c: 'Lutjanus spp. (p. ej. pargo rayado, L. synagris)', cond: 'calma', t: 'Escolleras y fondos con piedra. Mejor al amanecer y de noche.', cb: 'Camarón, calamar o tiras de pescado.' },
+    { n: 'Ronco', c: 'Haemulon spp.', cond: 'calma', t: 'Alrededor de rocas y escolleras; pica bastante con agua calma.', cb: 'Camarón y trozos de calamar, anzuelo chico.' },
+    { n: 'Sierra', c: 'Scomberomorus brasiliensis', cond: 'ambas', t: 'Pasa en cardúmenes cerca de muelles y escolleras con agua clara. Hay que lanzar lejos.', cb: 'Señuelos rápidos (cucharas, jigs) con cable de acero: tiene dientes filosos.' },
+    { n: 'Barracuda / picúa', c: 'Sphyraena barracuda', cond: 'ambas', t: 'Escolleras y bordes de bajos; ataca señuelos brillantes.', cb: 'Cucharas y plugs con cable de acero. No consumas ejemplares grandes: riesgo de ciguatera.' },
+    { n: 'Bagre de mar / chivo', c: 'Familia Ariidae', cond: 'movida', t: 'Fondo, de noche o con agua turbia (después de lluvias).', cb: 'Tiras de pescado o camarón en el fondo. Cuidado: las espinas de las aletas pinchan y duelen mucho.' },
+    { n: 'Mero guasa', c: 'Epinephelus itajara', cond: 'prot', t: 'Especie amenazada y protegida. Si sale, soltalo de inmediato y con cuidado.', cb: 'No se busca.' }
+  ];
+  function renderPeces(analisis) {
+    var hoy = analisis ? (analisis.mejor === 'rojo' ? null : analisis.movida ? 'movida' : 'calma') : null;
+    var etqCond = { movida: 'agua movida', calma: 'agua calma', ambas: 'calma o movida', prot: 'protegida' };
+    var html = '<h2>🐟 Peces de la zona (orilla y escolleras)</h2>' +
+      '<p class="leyenda" style="margin-top:0">Lista orientativa para el litoral del Atlántico. ' +
+      (hoy ? 'En <b>verde</b> los que mejor se adaptan a las condiciones del día seleccionado (' + etqCond[hoy] + ').' : '') +
+      ' Confirmá con pescadores locales y revisá vedas y tallas mínimas en la AUNAP.</p>';
+    PECES.forEach(function (p) {
+      var marca = p.cond === 'prot' ? 'prot' : (hoy && (p.cond === hoy || p.cond === 'ambas')) ? 'hoy' : '';
+      html += '<div class="pez"><div class="nom"><strong>' + esc(p.n) + '</strong><span class="cient">' + esc(p.c) + '</span></div>' +
+        '<p><span class="etq ' + marca + '">' + (marca === 'hoy' ? '✓ ' : '') + etqCond[p.cond] + '</span>' + esc(p.t) + '</p>' +
+        '<p class="leyenda">🎣 ' + esc(p.cb) + '</p></div>';
+    });
+    document.getElementById('peces').innerHTML = html;
+  }
+
   // ---------- render ----------
   function render() {
     var cont = document.getElementById('contenido');
     var tabs = document.getElementById('tabs');
+    renderPunto();
     if (!datos) return;
     var ahora = ahoraBogota();
     var hoy = ahora.slice(0, 10);
@@ -460,20 +921,27 @@
 
     tabs.innerHTML = dias.map(function (d, i) {
       var colorDia = peor(franjasDelDia(d).destacadas.map(function (f) { return resumen(d, f, '').color; }));
-      var punto = { verde: '🟢', amarillo: '🟡', rojo: '🔴', gris: '⚪' }[colorDia];
+      var p = { verde: '🟢', amarillo: '🟡', rojo: '🔴', gris: '⚪' }[colorDia];
       return '<button type="button" role="tab" aria-selected="' + (i === diaSel) + '" data-i="' + i + '">' +
-        punto + ' ' + esc(nombreTab(d.fecha, i)) + '</button>';
+        p + ' ' + esc(nombreTab(d.fecha, i)) + '</button>';
     }).join('');
 
     var d = dias[diaSel];
     var fr = franjasDelDia(d);
     var uvDia = avisoUV(d.uvMax);
+    var fl = faseDelDia(d.fecha);
+    var an = analizarDia(d, d.fecha === hoy ? ahora : '');
     cont.innerHTML =
-      '<section class="card dia-cab">' +
+      '<section class="card">' +
         '<h2>' + esc(nombreDia(d.fecha, diaSel)) + '</h2>' +
-        '<div class="sol">🌅 Sale ' + hhmm(d.salida) + ' · 🌇 Se pone ' + hhmm(d.puesta) + ' · UV máx. ' + fmt(d.uvMax, 1) + '</div>' +
+        '<div class="sol">🌅 Sale ' + hhmm(d.salida) + ' · 🌇 Se pone ' + hhmm(d.puesta) + ' · UV máx. ' + fmt(d.uvMax, 1) +
+        ' · ' + fl.emoji + ' ' + fl.nombre + '</div>' +
         (uvDia ? '<span class="uv">⚠️ ' + uvDia + '</span>' : '') +
       '</section>' +
+      (an ? '<section class="card analisis"><h3>Análisis del día</h3><p class="veredicto">' + an.veredicto + '</p><ul>' +
+        an.puntos.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>' +
+        '<p class="leyenda" style="margin:6px 0 0">Resumen automático a partir del pronóstico y tus umbrales. No reemplaza mirar el mar antes de bajar.</p></section>'
+        : '<section class="card analisis"><p class="leyenda" style="margin:0">Ya no quedan horas de luz para analizar hoy.</p></section>') +
       '<div class="seccion">Franjas destacadas</div>' +
       fr.destacadas.map(function (f) { return htmlFranja(d, f, ahora); }).join('') +
       '<div class="seccion">Todo el día (cada 3 h)</div>' +
@@ -482,37 +950,44 @@
       ' m · viento ' + fmt(umbrales.vientoA, 0) + ' / ' + fmt(umbrales.vientoR, 0) +
       ' kn · ráfagas ' + fmt(umbrales.rafagaA, 0) + ' / ' + fmt(umbrales.rafagaR, 0) + ' kn. ' +
       'Cada franja muestra el máximo de sus horas. La flecha apunta hacia donde sopla el viento.</p>';
+    renderPeces(an);
   }
 
   function renderPie(fechaConsulta, error) {
-    var pie = document.getElementById('pie');
     var cuando = fechaConsulta
       ? fechaConsulta.toLocaleString('es-CO', { timeZone: TZ, dateStyle: 'full', timeStyle: 'medium' }) + ' (hora de Bogotá)'
       : '–';
-    var celdas = '';
-    if (datos) {
-      celdas = '<p>Celda de mar usada por la Marine API: ' + fmt(datos.celdaMar.lat, 3) + ', ' + fmt(datos.celdaMar.lon, 3) +
-        ' · celda de la Forecast API: ' + fmt(datos.celdaTierra.lat, 3) + ', ' + fmt(datos.celdaTierra.lon, 3) + '.</p>';
-    }
-    pie.innerHTML =
+    var celdas = datos ? '<p>Celda de mar usada por la Marine API: ' + fmt(datos.celdaMar.lat, 3) + ', ' + fmt(datos.celdaMar.lon, 3) +
+      ' · celda de la Forecast API: ' + fmt(datos.celdaTierra.lat, 3) + ', ' + fmt(datos.celdaTierra.lon, 3) + '.</p>' : '';
+    document.getElementById('pie').innerHTML =
       '<p><strong>Consulta:</strong> ' + esc(cuando) + (error ? ' · falló' : '') + '</p>' +
-      '<p><strong>Marine API:</strong><br><a href="' + esc(URL_MARINE) + '" target="_blank" rel="noopener">' + esc(URL_MARINE) + '</a></p>' +
-      '<p><strong>Forecast API:</strong><br><a href="' + esc(URL_FORECAST) + '" target="_blank" rel="noopener">' + esc(URL_FORECAST) + '</a></p>' +
+      '<p><strong>Marine API:</strong><br><a href="' + esc(urls.marine) + '" target="_blank" rel="noopener">' + esc(urls.marine) + '</a></p>' +
+      '<p><strong>Forecast API:</strong><br><a href="' + esc(urls.forecast) + '" target="_blank" rel="noopener">' + esc(urls.forecast) + '</a></p>' +
       celdas +
-      '<p>Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Es un pronóstico de modelo, no una medición en la orilla.</p>';
+      '<p>Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Mapa: © colaboradores de OpenStreetMap. ' +
+      'Fase lunar calculada en el teléfono (error de pocos minutos). Es un pronóstico de modelo, no una medición en la orilla.</p>';
   }
 
   function cargar() {
     var cont = document.getElementById('contenido');
     cont.innerHTML = '<p class="leyenda">Cargando pronóstico…</p>';
-    var momento = new Date();
-    Promise.all([pedir(URL_MARINE), pedir(URL_FORECAST)]).then(function (res) {
+    armarUrls();
+    renderPunto();
+    var momento = new Date(), este = ++pedido;
+    Promise.all([pedir(urls.marine), pedir(urls.forecast)]).then(function (res) {
+      if (este !== pedido) return; // llegó una consulta más nueva
       datos = combinar(res[0], res[1]);
+      mapa.mar = datos.celdaMar;
+      dibujarMapa();
       render();
       renderPie(momento, false);
     }).catch(function (e) {
-      cont.innerHTML = '<div class="error">No se pudo obtener el pronóstico: ' + esc(e.message || e) +
-        '. Revisá la conexión y tocá “Actualizar”.</div>';
+      if (este !== pedido) return;
+      datos = null;
+      document.getElementById('tabs').innerHTML = '';
+      cont.innerHTML = '<div class="error">No se pudo obtener el pronóstico para este punto: ' + esc(e.message || e) +
+        '. Si elegiste un punto lejos del mar, probá más cerca de la costa. Si no, revisá la conexión y tocá “Actualizar”.</div>';
+      renderPeces(null);
       renderPie(momento, true);
     });
   }
@@ -524,7 +999,7 @@
     diaSel = parseInt(b.dataset.i, 10);
     render();
   });
-  document.getElementById('btnRecargar').addEventListener('click', cargar);
+  document.getElementById('btnRecargar').addEventListener('click', function () { renderLuna(); cargar(); });
   document.getElementById('btnUmbrales').addEventListener('click', function () {
     var s = document.getElementById('umbrales');
     s.hidden = !s.hidden;
@@ -532,8 +1007,7 @@
     if (!s.hidden) llenarFormulario();
   });
   document.getElementById('btnGuardar').addEventListener('click', function () {
-    var nuevo = Object.assign({}, umbrales);
-    var ok = true;
+    var nuevo = Object.assign({}, umbrales), ok = true;
     document.querySelectorAll('#umbrales input').forEach(function (inp) {
       var v = parseFloat(String(inp.value).replace(',', '.'));
       if (!isFinite(v) || v < 0) ok = false; else nuevo[inp.dataset.k] = v;
@@ -543,16 +1017,38 @@
       return;
     }
     umbrales = nuevo;
-    guardarUmbrales(umbrales);
+    escribir(CLAVE, umbrales);
     render();
   });
   document.getElementById('btnDefecto').addEventListener('click', function () {
     umbrales = Object.assign({}, DEFECTO);
-    try { localStorage.removeItem(CLAVE); } catch (e) { /* ignorar */ }
+    escribir(CLAVE, null);
     llenarFormulario();
     render();
   });
+  document.getElementById('btnVelero').addEventListener('click', function () {
+    mapa.z = 11;
+    elegirPunto(VELERO.lat, VELERO.lon);
+    centrarMapa(VELERO.lat, VELERO.lon);
+  });
+  document.getElementById('btnUbicacion').addEventListener('click', function () {
+    var b = this;
+    if (!navigator.geolocation) { alert('Este navegador no permite obtener la ubicación.'); return; }
+    b.disabled = true;
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      b.disabled = false;
+      elegirPunto(pos.coords.latitude, pos.coords.longitude);
+      centrarMapa(punto.lat, punto.lon);
+    }, function () {
+      b.disabled = false;
+      alert('No se pudo obtener tu ubicación. Revisá el permiso de ubicación del navegador.');
+    }, { enableHighAccuracy: true, timeout: 15000 });
+  });
 
+  // ---------- inicio ----------
+  centrarMapa(punto.lat, punto.lon);
+  renderLuna();
+  renderPeces(null);
   cargar();
 })();
 </script>
