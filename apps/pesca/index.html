@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3d4f">
+<title>Semáforo de pesca · Puerto Velero</title>
+<style>
+  :root {
+    --bg: #f3f6f8;
+    --card: #ffffff;
+    --ink: #13212b;
+    --muted: #5b6b77;
+    --line: #dde4ea;
+    --head: #0b3d4f;
+    --head-ink: #ffffff;
+    --verde: #1e9e4a;
+    --verde-bg: #e3f5e9;
+    --amarillo: #d99a00;
+    --amarillo-bg: #fff4d6;
+    --rojo: #d32f2f;
+    --rojo-bg: #fde4e4;
+    --gris: #8a96a0;
+    --gris-bg: #eef1f3;
+    --uv: #7a3db8;
+    --uv-bg: #f1e8fb;
+    --destacado: #0b7a99;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d151b;
+      --card: #16222b;
+      --ink: #e6edf2;
+      --muted: #9aabb8;
+      --line: #263642;
+      --head: #0a2f3d;
+      --verde-bg: #12301e;
+      --amarillo-bg: #352a08;
+      --rojo-bg: #3a1717;
+      --gris-bg: #1f2b34;
+      --uv: #c39af0;
+      --uv-bg: #2a1d3b;
+      --destacado: #4fc3e0;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    background: var(--head);
+    color: var(--head-ink);
+    padding: 14px 16px 12px;
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  header h1 { margin: 0; font-size: 1.25rem; }
+  header p { margin: 2px 0 0; font-size: .85rem; opacity: .85; }
+  main { max-width: 720px; margin: 0 auto; padding: 12px 16px 24px; }
+  .aviso {
+    background: var(--amarillo-bg);
+    border-left: 4px solid var(--amarillo);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: .9rem;
+    margin: 0 0 12px;
+  }
+  .barra { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    padding: 8px 12px;
+    border-radius: 10px;
+    min-height: 40px;
+    cursor: pointer;
+  }
+  button.primario { background: var(--destacado); border-color: var(--destacado); color: #fff; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+  .tabs button { flex: 1 0 auto; font-size: .9rem; }
+  .tabs button[aria-selected="true"] { background: var(--destacado); color: #fff; border-color: var(--destacado); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .dia-cab h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  .sol { color: var(--muted); font-size: .9rem; }
+  .uv {
+    display: inline-block;
+    background: var(--uv-bg);
+    color: var(--uv);
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .seccion { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 8px; }
+  .franja {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 10px 12px 10px 10px;
+    margin-bottom: 8px;
+    background: var(--gris-bg);
+  }
+  .franja .luz { width: 14px; border-radius: 7px; background: var(--gris); }
+  .franja.verde { background: var(--verde-bg); } .franja.verde .luz { background: var(--verde); }
+  .franja.amarillo { background: var(--amarillo-bg); } .franja.amarillo .luz { background: var(--amarillo); }
+  .franja.rojo { background: var(--rojo-bg); } .franja.rojo .luz { background: var(--rojo); }
+  .franja.destacada { border: 2px solid var(--destacado); }
+  .franja.pasada { opacity: .5; }
+  .f-tit { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .f-tit strong { font-size: 1rem; }
+  .estado { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .verde .estado { color: var(--verde); } .amarillo .estado { color: var(--amarillo); } .rojo .estado { color: var(--rojo); }
+  .vals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; margin-top: 6px; font-size: .9rem; }
+  .vals span b { font-variant-numeric: tabular-nums; }
+  .vals .malo { color: var(--rojo); font-weight: 700; }
+  .vals .medio { color: var(--amarillo); font-weight: 700; }
+  .flecha { display: inline-block; font-weight: 700; }
+  details { margin-top: 6px; font-size: .85rem; }
+  summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-weight: 600; color: var(--muted); font-size: .78rem; }
+  td .punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; background: var(--gris); }
+  td .punto.verde { background: var(--verde); } td .punto.amarillo { background: var(--amarillo); } td .punto.rojo { background: var(--rojo); }
+  #umbrales label { display: grid; grid-template-columns: 1fr 76px 76px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: .92rem; }
+  #umbrales .cols { display: grid; grid-template-columns: 1fr 76px 76px; gap: 8px; font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
+  #umbrales input {
+    font: inherit; width: 100%; padding: 6px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); text-align: center;
+  }
+  .error { background: var(--rojo-bg); border-left: 4px solid var(--rojo); padding: 10px 12px; border-radius: 8px; }
+  .leyenda { font-size: .82rem; color: var(--muted); }
+  footer { max-width: 720px; margin: 0 auto; padding: 0 16px 32px; font-size: .78rem; color: var(--muted); }
+  footer a { color: var(--destacado); word-break: break-all; }
+  footer p { margin: 6px 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎣 Semáforo de pesca de orilla</h1>
+  <p>Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá</p>
+</header>
+
+<main>
+  <p class="aviso">⚠️ Valores provisorios, ajustalos con tu bitácora.</p>
+
+  <div class="barra">
+    <button id="btnRecargar" class="primario" type="button">↻ Actualizar</button>
+    <button id="btnUmbrales" type="button" aria-expanded="false">⚙️ Umbrales</button>
+  </div>
+
+  <section id="umbrales" class="card" hidden>
+    <div class="cols"><span>Variable</span><span>Amarillo ≥</span><span>Rojo ≥</span></div>
+    <label>Ola (m) <input type="number" inputmode="decimal" step="0.1" min="0" data-k="olaA"><input type="number" inputmode="decimal" step="0.1" min="0" data-k="olaR"></label>
+    <label>Viento (kn) <input type="number" inputmode="decimal" step="1" min="0" data-k="vientoA"><input type="number" inputmode="decimal" step="1" min="0" data-k="vientoR"></label>
+    <label>Ráfagas (kn) <input type="number" inputmode="decimal" step="1" min="0" data-k="rafagaA"><input type="number" inputmode="decimal" step="1" min="0" data-k="rafagaR"></label>
+    <div class="barra" style="margin:8px 0 4px">
+      <button id="btnGuardar" class="primario" type="button">Guardar</button>
+      <button id="btnDefecto" type="button">Valores por defecto</button>
+    </div>
+    <p class="leyenda">Se guardan en este navegador. El color de cada franja es el peor de ola, viento y ráfagas. La dirección del viento y el UV no cambian el color.</p>
+  </section>
+
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div id="contenido"><p class="leyenda">Cargando pronóstico…</p></div>
+</main>
+
+<footer id="pie"></footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // Celda de mar devuelta por la Marine API para este punto: 10.958, -75.042.
+  // Marina Puerto Velero: aprox. 10.941, -75.034.
+  var LAT = 10.94;
+  var LON = -75.04;
+  var TZ = 'America/Bogota';
+  var DIAS = 4; // hoy + 3
+  var CLAVE = 'pesca-velero-umbrales-v1';
+  var DEFECTO = { olaA: 0.7, olaR: 1.1, vientoA: 10, vientoR: 14, rafagaA: 14, rafagaR: 18 };
+
+  var URL_MARINE = 'https://marine-api.open-meteo.com/v1/marine' +
+    '?latitude=' + LAT + '&longitude=' + LON +
+    '&hourly=wave_height,wave_period' +
+    '&timezone=' + encodeURIComponent(TZ) +
+    '&forecast_days=' + DIAS +
+    '&cell_selection=sea';
+
+  var URL_FORECAST = 'https://api.open-meteo.com/v1/forecast' +
+    '?latitude=' + LAT + '&longitude=' + LON +
+    '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index' +
+    '&daily=sunrise,sunset,uv_index_max' +
+    '&wind_speed_unit=kn' +
+    '&timezone=' + encodeURIComponent(TZ) +
+    '&forecast_days=' + DIAS;
+
+  var umbrales = cargarUmbrales();
+  var datos = null;      // datos combinados
+  var diaSel = 0;
+
+  // ---------- umbrales ----------
+  function cargarUmbrales() {
+    var u = Object.assign({}, DEFECTO);
+    try {
+      var s = localStorage.getItem(CLAVE);
+      if (s) {
+        var o = JSON.parse(s);
+        Object.keys(DEFECTO).forEach(function (k) {
+          if (typeof o[k] === 'number' && isFinite(o[k])) u[k] = o[k];
+        });
+      }
+    } catch (e) { /* sin almacenamiento: se usan los valores por defecto */ }
+    return u;
+  }
+  function guardarUmbrales(u) {
+    try { localStorage.setItem(CLAVE, JSON.stringify(u)); } catch (e) { /* ignorar */ }
+  }
+  function llenarFormulario() {
+    document.querySelectorAll('#umbrales input').forEach(function (inp) {
+      inp.value = umbrales[inp.dataset.k];
+    });
+  }
+
+  // ---------- utilidades ----------
+  var NIVEL = { gris: -1, verde: 0, amarillo: 1, rojo: 2 };
+  var TEXTO = { gris: 'sin datos', verde: 'verde', amarillo: 'precaución', rojo: 'no conviene' };
+
+  function nivelVar(v, a, r) {
+    if (v == null || !isFinite(v)) return 'gris';
+    if (v >= r) return 'rojo';
+    if (v >= a) return 'amarillo';
+    return 'verde';
+  }
+  function peor(lista) {
+    var res = 'gris';
+    lista.forEach(function (c) { if (NIVEL[c] > NIVEL[res]) res = c; });
+    return res;
+  }
+  function colorHora(h) {
+    var c = [
+      nivelVar(h.ola, umbrales.olaA, umbrales.olaR),
+      nivelVar(h.viento, umbrales.vientoA, umbrales.vientoR),
+      nivelVar(h.rafaga, umbrales.rafagaA, umbrales.rafagaR)
+    ];
+    // Si falta alguna variable no se puede asegurar verde
+    if (c.indexOf('gris') !== -1 && peor(c) === 'verde') return 'gris';
+    return peor(c);
+  }
+  function claseValor(v, a, r) {
+    var n = nivelVar(v, a, r);
+    return n === 'rojo' ? 'malo' : n === 'amarillo' ? 'medio' : '';
+  }
+  function fmt(v, dec) {
+    if (v == null || !isFinite(v)) return '–';
+    return v.toFixed(dec).replace('.', ',');
+  }
+  var PUNTOS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
+  function cardinal(g) {
+    if (g == null || !isFinite(g)) return '–';
+    return PUNTOS[Math.round(((g % 360) + 360) % 360 / 22.5) % 16];
+  }
+  function flecha(g) {
+    if (g == null || !isFinite(g)) return '';
+    // La dirección indica de dónde viene el viento; la flecha apunta hacia dónde va.
+    return '<span class="flecha" style="transform:rotate(' + Math.round(g + 180) + 'deg)" aria-hidden="true">↑</span>';
+  }
+  function promedioAngulos(lista) {
+    var x = 0, y = 0, n = 0;
+    lista.forEach(function (g) {
+      if (g == null || !isFinite(g)) return;
+      x += Math.cos(g * Math.PI / 180); y += Math.sin(g * Math.PI / 180); n++;
+    });
+    if (!n) return null;
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+  function maximo(lista) {
+    var m = null;
+    lista.forEach(function (v) { if (v != null && isFinite(v) && (m === null || v > m)) m = v; });
+    return m;
+  }
+  function avisoUV(uv) {
+    if (uv == null || !isFinite(uv)) return '';
+    if (uv >= 11) return 'UV extremo: evitá el sol directo';
+    if (uv >= 8) return 'UV muy alto: evitá de 10 a 15 h';
+    if (uv >= 6) return 'UV alto: manga larga y gorra';
+    return '';
+  }
+  function hhmm(iso) { return iso ? iso.slice(11, 16) : '–'; }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  }
+  function ahoraBogota() {
+    // Devuelve "YYYY-MM-DDTHH:MM" en hora de Bogotá
+    var p = {};
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
+  }
+  function nombreDia(fecha, i) {
+    var d = new Date(fecha + 'T12:00:00Z');
+    var txt = d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    txt = txt.charAt(0).toUpperCase() + txt.slice(1);
+    if (i === 0) return 'Hoy · ' + txt;
+    if (i === 1) return 'Mañana · ' + txt;
+    return txt;
+  }
+  function nombreTab(fecha, i) {
+    if (i === 0) return 'Hoy';
+    if (i === 1) return 'Mañana';
+    var d = new Date(fecha + 'T12:00:00Z');
+    return d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+
+  // ---------- datos ----------
+  function pedir(url) {
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok || j.error) throw new Error((j && j.reason) || ('HTTP ' + r.status));
+        return j;
+      });
+    });
+  }
+
+  function combinar(mar, pron) {
+    var horas = {};
+    function slot(t) { return horas[t] || (horas[t] = { t: t }); }
+    var mh = mar.hourly || {};
+    (mh.time || []).forEach(function (t, i) {
+      var s = slot(t);
+      s.ola = mh.wave_height ? mh.wave_height[i] : null;
+      s.periodo = mh.wave_period ? mh.wave_period[i] : null;
+    });
+    var ph = pron.hourly || {};
+    (ph.time || []).forEach(function (t, i) {
+      var s = slot(t);
+      s.viento = ph.wind_speed_10m ? ph.wind_speed_10m[i] : null;
+      s.rafaga = ph.wind_gusts_10m ? ph.wind_gusts_10m[i] : null;
+      s.dir = ph.wind_direction_10m ? ph.wind_direction_10m[i] : null;
+      s.uv = ph.uv_index ? ph.uv_index[i] : null;
+    });
+    var pd = pron.daily || {};
+    var dias = (pd.time || []).map(function (fecha, i) {
+      var hs = [];
+      for (var h = 0; h < 24; h++) {
+        var t = fecha + 'T' + (h < 10 ? '0' : '') + h + ':00';
+        hs.push(horas[t] || { t: t });
+      }
+      return {
+        fecha: fecha,
+        salida: pd.sunrise ? pd.sunrise[i] : null,
+        puesta: pd.sunset ? pd.sunset[i] : null,
+        uvMax: pd.uv_index_max ? pd.uv_index_max[i] : null,
+        horas: hs
+      };
+    });
+    return {
+      dias: dias,
+      celdaMar: { lat: mar.latitude, lon: mar.longitude },
+      celdaTierra: { lat: pron.latitude, lon: pron.longitude }
+    };
+  }
+
+  // ---------- franjas ----------
+  function franjasDelDia(dia) {
+    var fijas = [];
+    for (var ini = 0; ini < 24; ini += 3) {
+      fijas.push({ ini: ini, fin: ini + 3, titulo: pad(ini) + '–' + pad(ini + 3) + ' h' });
+    }
+    var dest = [{ ini: 6, fin: 9, titulo: 'Mañana · 6–9 h', destacada: true }];
+    if (dia.puesta) {
+      var hp = parseInt(dia.puesta.slice(11, 13), 10);
+      // Atardecer: la hora previa a la puesta, la hora de la puesta y la siguiente
+      var ini2 = Math.max(0, hp - 1), fin2 = Math.min(24, hp + 2);
+      dest.push({
+        ini: ini2, fin: fin2, destacada: true,
+        titulo: 'Atardecer · ' + ini2 + '–' + fin2 + ' h',
+        nota: 'puesta del sol ' + hhmm(dia.puesta)
+      });
+    }
+    return { destacadas: dest, resto: fijas };
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function resumen(dia, f, ahora) {
+    var hs = dia.horas.slice(f.ini, f.fin);
+    var colores = hs.map(colorHora);
+    var hayDatos = colores.some(function (c) { return c !== 'gris'; });
+    var color = hayDatos ? peor(colores.filter(function (c) { return c !== 'gris'; })) : 'gris';
+    var finIso = dia.fecha + 'T' + pad(Math.min(f.fin, 23)) + (f.fin >= 24 ? ':59' : ':00');
+    return {
+      hs: hs,
+      color: color,
+      ola: maximo(hs.map(function (h) { return h.ola; })),
+      periodo: maximo(hs.map(function (h) { return h.periodo; })),
+      viento: maximo(hs.map(function (h) { return h.viento; })),
+      rafaga: maximo(hs.map(function (h) { return h.rafaga; })),
+      dir: promedioAngulos(hs.map(function (h) { return h.dir; })),
+      uv: maximo(hs.map(function (h) { return h.uv; })),
+      pasada: finIso <= ahora
+    };
+  }
+
+  function htmlFranja(dia, f, ahora) {
+    var r = resumen(dia, f, ahora);
+    var u = umbrales;
+    var uvTxt = avisoUV(r.uv);
+    var filas = r.hs.map(function (h) {
+      var c = colorHora(h);
+      return '<tr><td><span class="punto ' + c + '"></span>' + hhmm(h.t) + '</td>' +
+        '<td>' + fmt(h.ola, 2) + '</td><td>' + fmt(h.periodo, 1) + '</td>' +
+        '<td>' + fmt(h.viento, 0) + '</td><td>' + fmt(h.rafaga, 0) + '</td>' +
+        '<td>' + flecha(h.dir) + ' ' + cardinal(h.dir) + '</td><td>' + fmt(h.uv, 1) + '</td></tr>';
+    }).join('');
+    return '<div class="franja ' + r.color + (f.destacada ? ' destacada' : '') + (r.pasada ? ' pasada' : '') + '">' +
+      '<div class="luz"></div><div>' +
+      '<div class="f-tit"><strong>' + esc(f.titulo) + '</strong><span class="estado">' + TEXTO[r.color] + '</span></div>' +
+      (f.nota ? '<div class="leyenda">' + esc(f.nota) + '</div>' : '') +
+      '<div class="vals">' +
+        '<span>🌊 Ola máx. <b class="' + claseValor(r.ola, u.olaA, u.olaR) + '">' + fmt(r.ola, 2) + ' m</b></span>' +
+        '<span>⏱ Período <b>' + fmt(r.periodo, 1) + ' s</b></span>' +
+        '<span>💨 Viento <b class="' + claseValor(r.viento, u.vientoA, u.vientoR) + '">' + fmt(r.viento, 0) + ' kn</b></span>' +
+        '<span>🌬 Ráfagas <b class="' + claseValor(r.rafaga, u.rafagaA, u.rafagaR) + '">' + fmt(r.rafaga, 0) + ' kn</b></span>' +
+        '<span>🧭 Del <b>' + cardinal(r.dir) + '</b> ' + flecha(r.dir) + '</span>' +
+        '<span>☀️ UV máx. <b>' + fmt(r.uv, 1) + '</b></span>' +
+      '</div>' +
+      (uvTxt ? '<span class="uv">⚠️ ' + uvTxt + '</span>' : '') +
+      '<details><summary>Hora por hora</summary><table>' +
+        '<tr><th>Hora</th><th>Ola m</th><th>Per. s</th><th>Vto kn</th><th>Ráf kn</th><th>Dir</th><th>UV</th></tr>' +
+        filas + '</table></details>' +
+      '</div></div>';
+  }
+
+  // ---------- render ----------
+  function render() {
+    var cont = document.getElementById('contenido');
+    var tabs = document.getElementById('tabs');
+    if (!datos) return;
+    var ahora = ahoraBogota();
+    var hoy = ahora.slice(0, 10);
+    var dias = datos.dias.filter(function (d) { return d.fecha >= hoy; }).slice(0, DIAS);
+    if (!dias.length) dias = datos.dias;
+    if (diaSel >= dias.length) diaSel = 0;
+
+    tabs.innerHTML = dias.map(function (d, i) {
+      var colorDia = peor(franjasDelDia(d).destacadas.map(function (f) { return resumen(d, f, '').color; }));
+      var punto = { verde: '🟢', amarillo: '🟡', rojo: '🔴', gris: '⚪' }[colorDia];
+      return '<button type="button" role="tab" aria-selected="' + (i === diaSel) + '" data-i="' + i + '">' +
+        punto + ' ' + esc(nombreTab(d.fecha, i)) + '</button>';
+    }).join('');
+
+    var d = dias[diaSel];
+    var fr = franjasDelDia(d);
+    var uvDia = avisoUV(d.uvMax);
+    cont.innerHTML =
+      '<section class="card dia-cab">' +
+        '<h2>' + esc(nombreDia(d.fecha, diaSel)) + '</h2>' +
+        '<div class="sol">🌅 Sale ' + hhmm(d.salida) + ' · 🌇 Se pone ' + hhmm(d.puesta) + ' · UV máx. ' + fmt(d.uvMax, 1) + '</div>' +
+        (uvDia ? '<span class="uv">⚠️ ' + uvDia + '</span>' : '') +
+      '</section>' +
+      '<div class="seccion">Franjas destacadas</div>' +
+      fr.destacadas.map(function (f) { return htmlFranja(d, f, ahora); }).join('') +
+      '<div class="seccion">Todo el día (cada 3 h)</div>' +
+      fr.resto.map(function (f) { return htmlFranja(d, f, ahora); }).join('') +
+      '<p class="leyenda">Umbrales actuales (amarillo / rojo): ola ' + fmt(umbrales.olaA, 1) + ' / ' + fmt(umbrales.olaR, 1) +
+      ' m · viento ' + fmt(umbrales.vientoA, 0) + ' / ' + fmt(umbrales.vientoR, 0) +
+      ' kn · ráfagas ' + fmt(umbrales.rafagaA, 0) + ' / ' + fmt(umbrales.rafagaR, 0) + ' kn. ' +
+      'Cada franja muestra el máximo de sus horas. La flecha apunta hacia donde sopla el viento.</p>';
+  }
+
+  function renderPie(fechaConsulta, error) {
+    var pie = document.getElementById('pie');
+    var cuando = fechaConsulta
+      ? fechaConsulta.toLocaleString('es-CO', { timeZone: TZ, dateStyle: 'full', timeStyle: 'medium' }) + ' (hora de Bogotá)'
+      : '–';
+    var celdas = '';
+    if (datos) {
+      celdas = '<p>Celda de mar usada por la Marine API: ' + fmt(datos.celdaMar.lat, 3) + ', ' + fmt(datos.celdaMar.lon, 3) +
+        ' · celda de la Forecast API: ' + fmt(datos.celdaTierra.lat, 3) + ', ' + fmt(datos.celdaTierra.lon, 3) + '.</p>';
+    }
+    pie.innerHTML =
+      '<p><strong>Consulta:</strong> ' + esc(cuando) + (error ? ' · falló' : '') + '</p>' +
+      '<p><strong>Marine API:</strong><br><a href="' + esc(URL_MARINE) + '" target="_blank" rel="noopener">' + esc(URL_MARINE) + '</a></p>' +
+      '<p><strong>Forecast API:</strong><br><a href="' + esc(URL_FORECAST) + '" target="_blank" rel="noopener">' + esc(URL_FORECAST) + '</a></p>' +
+      celdas +
+      '<p>Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Es un pronóstico de modelo, no una medición en la orilla.</p>';
+  }
+
+  function cargar() {
+    var cont = document.getElementById('contenido');
+    cont.innerHTML = '<p class="leyenda">Cargando pronóstico…</p>';
+    var momento = new Date();
+    Promise.all([pedir(URL_MARINE), pedir(URL_FORECAST)]).then(function (res) {
+      datos = combinar(res[0], res[1]);
+      render();
+      renderPie(momento, false);
+    }).catch(function (e) {
+      cont.innerHTML = '<div class="error">No se pudo obtener el pronóstico: ' + esc(e.message || e) +
+        '. Revisá la conexión y tocá “Actualizar”.</div>';
+      renderPie(momento, true);
+    });
+  }
+
+  // ---------- eventos ----------
+  document.getElementById('tabs').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-i]');
+    if (!b) return;
+    diaSel = parseInt(b.dataset.i, 10);
+    render();
+  });
+  document.getElementById('btnRecargar').addEventListener('click', cargar);
+  document.getElementById('btnUmbrales').addEventListener('click', function () {
+    var s = document.getElementById('umbrales');
+    s.hidden = !s.hidden;
+    this.setAttribute('aria-expanded', String(!s.hidden));
+    if (!s.hidden) llenarFormulario();
+  });
+  document.getElementById('btnGuardar').addEventListener('click', function () {
+    var nuevo = Object.assign({}, umbrales);
+    var ok = true;
+    document.querySelectorAll('#umbrales input').forEach(function (inp) {
+      var v = parseFloat(String(inp.value).replace(',', '.'));
+      if (!isFinite(v) || v < 0) ok = false; else nuevo[inp.dataset.k] = v;
+    });
+    if (!ok || nuevo.olaR < nuevo.olaA || nuevo.vientoR < nuevo.vientoA || nuevo.rafagaR < nuevo.rafagaA) {
+      alert('Revisá los valores: tienen que ser números positivos y el rojo no puede ser menor que el amarillo.');
+      return;
+    }
+    umbrales = nuevo;
+    guardarUmbrales(umbrales);
+    render();
+  });
+  document.getElementById('btnDefecto').addEventListener('click', function () {
+    umbrales = Object.assign({}, DEFECTO);
+    try { localStorage.removeItem(CLAVE); } catch (e) { /* ignorar */ }
+    llenarFormulario();
+    render();
+  });
+
+  cargar();
+})();
+</script>
+</body>
+</html>
