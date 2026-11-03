@@ -282,13 +282,14 @@
   var MI_PUNTO = { lat: 11.0712, lon: -74.8487 };
   // Desembocadura del río Magdalena (Bocas de Ceniza), aprox.
   var BOCAS = { lat: 11.10, lon: -74.85 };
-  // Tajamar occidental de Bocas de Ceniza: corre aprox. de sur a norte; al oeste el mar, al este el canal del río.
+  // Tajamar occidental de Bocas de Ceniza: entra al mar con rumbo aprox. 345° (NNO); al oeste el mar, al este el canal del río.
+  var EJE_TAJAMAR = 345;
   var TAJAMAR_KM = 3; // a menos de esta distancia de MI_PUNTO se usa el análisis del tajamar
   function enTajamar() { return distanciaKm(punto, MI_PUNTO) <= TAJAMAR_KM; }
   function sector(dir) {
     // Sector de donde viene el viento o la ola, respecto de un tajamar orientado de sur a norte
     if (dir == null) return null;
-    var d = ((dir % 360) + 360) % 360;
+    var d = (((dir - EJE_TAJAMAR) % 360) + 360) % 360; // ángulo respecto del eje del tajamar
     if (d >= 330 || d < 30) return 'norte';
     if (d < 150) return 'este';
     if (d < 210) return 'sur';
@@ -707,12 +708,22 @@
       '&timezone=' + encodeURIComponent(TZ) +
       '&forecast_days=' + DIAS;
   }
-  function pedir(url) {
+  function pedir(url, intentos) {
+    if (intentos == null) intentos = 3;
     return fetch(url, { cache: 'no-store' }).then(function (r) {
       return r.json().then(function (j) {
-        if (!r.ok || j.error) throw new Error((j && j.reason) || ('HTTP ' + r.status));
+        if (!r.ok || j.error) {
+          var e = new Error((j && j.reason) || ('HTTP ' + r.status));
+          e.reintentar = r.status === 429 || r.status >= 500;
+          throw e;
+        }
         return j;
       });
+    }).catch(function (e) {
+      // Fallas de red o del servidor: reintenta con espera creciente
+      var reintentar = e.reintentar || e instanceof TypeError;
+      if (!reintentar || intentos <= 1) throw e;
+      return new Promise(function (ok) { setTimeout(ok, (4 - intentos) * 2000); }).then(function () { return pedir(url, intentos - 1); });
     });
   }
   function combinar(mar, pron) {
@@ -1208,7 +1219,15 @@
       // Solo se acepta el taxón cuyo nombre científico coincide exactamente
       var t = (j.results || []).filter(function (x) { return (x.name || '').toLowerCase() === nombre.toLowerCase(); })[0];
       if (!t || !t.default_photo) throw new Error('sin foto');
-      var f = t.default_photo;
+      if (t.default_photo.license_code) return { t: t, f: t.default_photo };
+      // La foto principal tiene todos los derechos reservados: se busca otra con licencia abierta
+      return fetch('https://api.inaturalist.org/v1/taxa/' + encodeURIComponent(t.id)).then(function (r) { return r.json(); }).then(function (k) {
+        var fotos = ((k.results && k.results[0] && k.results[0].taxon_photos) || []).map(function (x) { return x.photo; });
+        var libre = fotos.filter(function (ph) { return ph && ph.license_code; })[0];
+        return { t: t, f: libre || t.default_photo };
+      });
+    }).then(function (res) {
+      var t = res.t, f = res.f;
       var src = f.medium_url || (f.url || '').replace('/square.', '/medium.');
       cont.innerHTML = '<figure class="foto" style="margin:6px 0 0"><img loading="lazy" alt="Foto de ' + esc(p.n) + ' (' + esc(t.name) + ')" src="' + esc(src) + '">' +
         '<figcaption><i>' + esc(t.name) + '</i>' + (t.preferred_common_name ? ' (' + esc(t.preferred_common_name) + ')' : '') +
