@@ -184,11 +184,17 @@
   td .punto.verde { background: var(--verde); } td .punto.amarillo { background: var(--amarillo); } td .punto.rojo { background: var(--rojo); }
 
   /* Peces */
-  .pez { border-top: 1px solid var(--line); padding: 10px 0; }
+  .pez { border-top: 1px solid var(--line); padding: 12px 0; }
   .pez:first-of-type { border-top: 0; }
   .pez .nom { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
   .pez .cient { font-style: italic; color: var(--muted); font-size: .85rem; }
   .pez p { margin: 4px 0 0; font-size: .9rem; }
+  .pez ul { margin: 4px 0 0; padding-left: 18px; font-size: .9rem; }
+  .pez li { margin-bottom: 2px; }
+  .dibujo { display: block; width: 100%; max-width: 380px; height: auto; margin: 6px auto 2px; background: linear-gradient(#dff1f7, #c4e4ef); border-radius: 10px; }
+  .foto { margin-top: 6px; }
+  .foto img { display: block; width: 100%; max-width: 380px; height: auto; border-radius: 10px; margin: 0 auto; }
+  .foto figcaption { font-size: .75rem; color: var(--muted); text-align: center; margin-top: 2px; }
   .etq { display: inline-block; font-size: .75rem; font-weight: 600; border-radius: 6px; padding: 1px 6px; margin-right: 4px; background: var(--gris-bg); color: var(--muted); }
   .etq.hoy { background: var(--verde-bg); color: var(--verde); }
   .etq.prot { background: var(--rojo-bg); color: var(--rojo); }
@@ -877,35 +883,316 @@
   }
 
   // ---------- peces ----------
+  // Dibujos esquemáticos generados en SVG a partir de unos pocos parámetros por especie.
+  // Lienzo 260 x 120. Hocico en x0 = 16, base de la cola en xe, eje del cuerpo en cy = 60.
+  function dibujarPez(o, id) {
+    var x0 = 16, xe = o.xe || 190, cy = 60;
+    var h = o.h, hb = o.hb, ped = o.ped;
+    var xm = x0 + (xe - x0) * o.pico;
+    var kf = { roma: 0.32, normal: 0.55, aguda: 0.8 }[o.frente || 'normal'];
+    function top(x) {
+      if (x <= xm) { var t = (xm - x) / (xm - x0); return cy - h * Math.pow(Math.max(0, 1 - t * t), kf); }
+      var s = (x - xm) / (xe - xm); return cy - (ped + (h - ped) * Math.pow(Math.max(0, 1 - s * s), 0.9));
+    }
+    function bot(x) {
+      if (x <= xm) { var t = (xm - x) / (xm - x0); return cy + hb * Math.pow(Math.max(0, 1 - t * t), 0.5); }
+      var s = (x - xm) / (xe - xm); return cy + (ped + (hb - ped) * Math.pow(Math.max(0, 1 - s * s), 0.9));
+    }
+    function n(v) { return Math.round(v * 10) / 10; }
+    function at(x, f) { return top(x) + (bot(x) - top(x)) * f; } // f = 0 arriba, 1 abajo
+    var i, x, pts = [];
+    for (i = 0; i <= 60; i++) { x = x0 + (xe - x0) * i / 60; pts.push(n(x) + ',' + n(top(x))); }
+    for (i = 60; i >= 0; i--) { x = x0 + (xe - x0) * i / 60; pts.push(n(x) + ',' + n(bot(x))); }
+    var cuerpo = 'M' + pts.join(' L') + ' Z';
+    var aleta = o.aletas || '#8a9aa5', borde = o.borde || '#33414b';
+    var out = [];
+
+    // Aletas detrás del cuerpo
+    function aletaD(f, abajo) {
+      var a = f.x0, b = f.x1, fh = f.h, y = abajo ? bot : top, sg = abajo ? 1 : -1, w = b - a, d;
+      var ya = y(a), yb = y(b), c = f.color || aleta;
+      if (f.tipo === 'espinosa') {
+        d = 'M' + n(a) + ',' + n(ya + sg * -2) + ' L' + n(a + w * 0.25) + ',' + n(ya + sg * fh) + ' L' + n(a + w * 0.6) + ',' + n(y(a + w * 0.6) + sg * fh * 0.75) +
+          ' L' + n(b) + ',' + n(yb + sg * fh * 0.3) + ' L' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".8"/>');
+        for (var k = 1; k < 6; k++) {
+          var xs = a + w * k / 6, yt = y(xs);
+          out.push('<line x1="' + n(xs) + '" y1="' + n(yt) + '" x2="' + n(xs + 2) + '" y2="' + n(yt + sg * fh * (k < 2 ? 0.95 : 0.85 - k * 0.08)) + '" stroke="' + borde + '" stroke-width=".7"/>');
+        }
+        if (f.punta) out.push('<path d="M' + n(a) + ',' + n(ya) + ' L' + n(a + w * 0.25) + ',' + n(ya + sg * fh) + ' L' + n(a + w * 0.45) + ',' + n(y(a + w * 0.45) + sg * fh * 0.8) + ' Z" fill="' + f.punta + '"/>');
+      } else if (f.tipo === 'hoz') {
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' L' + n(a + w * 0.12) + ',' + n(ya + sg * fh) + ' Q' + n(a + w * 0.35) + ',' + n(ya + sg * fh * 0.35) + ' ' + n(b) + ',' + n(yb + sg * 3) + ' L' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".8"/>');
+      } else if (f.tipo === 'redonda') {
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' C' + n(a + w * 0.2) + ',' + n(ya + sg * fh * 1.2) + ' ' + n(b - w * 0.05) + ',' + n(yb + sg * fh * 1.3) + ' ' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".8"/>');
+      } else if (f.tipo === 'adiposa') {
+        d = 'M' + n(a) + ',' + n(ya - sg * 1) + ' Q' + n(a + w * 0.5) + ',' + n(ya + sg * fh * 1.6) + ' ' + n(b) + ',' + n(yb - sg * 1) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" stroke="' + borde + '" stroke-width=".8"/>');
+      } else if (f.tipo === 'espina') {
+        // una espina fuerte y alta (bagre)
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' L' + n(a + 6) + ',' + n(ya + sg * fh) + ' Q' + n(a + w * 0.5) + ',' + n(ya + sg * fh * 0.5) + ' ' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".8"/>');
+        out.push('<line x1="' + n(a) + '" y1="' + n(ya) + '" x2="' + n(a + 6) + '" y2="' + n(ya + sg * fh) + '" stroke="' + borde + '" stroke-width="2"/>');
+      } else { // blanda
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' L' + n(a + w * 0.18) + ',' + n(ya + sg * fh) + ' Q' + n(a + w * 0.7) + ',' + n(ya + sg * fh * 0.85) + ' ' + n(b + 3) + ',' + n(yb + sg * fh * 0.35) + ' L' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".8"/>');
+      }
+      if (f.filamento) {
+        out.push('<path d="M' + n(b) + ',' + n(yb + sg * fh * 0.3) + ' Q' + n(b + 20) + ',' + n(yb + sg * (fh + 4)) + ' ' + n(b + f.filamento) + ',' + n(yb + sg * (fh * 0.6)) + '" fill="none" stroke="' + borde + '" stroke-width="1.4"/>');
+      }
+    }
+    (o.dorsales || []).forEach(function (f) { aletaD(f, false); });
+    (o.anales || []).forEach(function (f) { aletaD(f, true); });
+
+    // Pínulas (aletitas detrás de la dorsal y la anal)
+    if (o.pinulas) {
+      for (x = o.pinulas[0]; x < o.pinulas[1]; x += 6) {
+        out.push('<path d="M' + n(x) + ',' + n(top(x) + 1) + ' L' + n(x + 4) + ',' + n(top(x) - 5) + ' L' + n(x + 5) + ',' + n(top(x + 5) + 1) + ' Z" fill="' + (o.colPinulas || aleta) + '"/>');
+        out.push('<path d="M' + n(x) + ',' + n(bot(x) - 1) + ' L' + n(x + 4) + ',' + n(bot(x) + 5) + ' L' + n(x + 5) + ',' + n(bot(x + 5) - 1) + ' Z" fill="' + (o.colPinulas || aleta) + '"/>');
+      }
+    }
+
+    // Cola
+    var cc = o.colCola || aleta, ct = o.cola, p = ped, d2;
+    if (ct === 'redonda') d2 = 'M' + xe + ',' + (cy - p) + ' C' + (xe + 40) + ',' + (cy - p - 22) + ' ' + (xe + 40) + ',' + (cy + p + 22) + ' ' + xe + ',' + (cy + p) + ' Z';
+    else if (ct === 'truncada') d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 28) + ',' + (cy - p - 16) + ' Q' + (xe + 32) + ',' + cy + ' ' + (xe + 28) + ',' + (cy + p + 16) + ' L' + xe + ',' + (cy + p) + ' Z';
+    else if (ct === 'luna') d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 34) + ',' + (cy - p - 30) + ' Q' + (xe + 16) + ',' + cy + ' ' + (xe + 34) + ',' + (cy + p + 30) + ' L' + xe + ',' + (cy + p) + ' Z';
+    else if (ct === 'profunda') d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 42) + ',' + (cy - p - 32) + ' L' + (xe + 18) + ',' + cy + ' L' + (xe + 42) + ',' + (cy + p + 32) + ' L' + xe + ',' + (cy + p) + ' Z';
+    else d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 36) + ',' + (cy - p - 22) + ' L' + (xe + 22) + ',' + cy + ' L' + (xe + 36) + ',' + (cy + p + 22) + ' L' + xe + ',' + (cy + p) + ' Z';
+    out.push('<path d="' + d2 + '" fill="' + cc + '" fill-opacity=".92" stroke="' + borde + '" stroke-width=".8"/>');
+    if (o.puntasCola) {
+      out.push('<circle cx="' + (xe + 36) + '" cy="' + (cy - p - 21) + '" r="3" fill="' + o.puntasCola + '"/><circle cx="' + (xe + 36) + '" cy="' + (cy + p + 21) + '" r="3" fill="' + o.puntasCola + '"/>');
+    }
+
+    // Cuerpo con degradé
+    out.push('<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' + o.dorso + '"/><stop offset=".5" stop-color="' + o.flanco + '"/><stop offset="1" stop-color="' + o.vientre + '"/></linearGradient>' +
+      '<clipPath id="c' + id + '"><path d="' + cuerpo + '"/></clipPath></defs>');
+    out.push('<path d="' + cuerpo + '" fill="url(#g' + id + ')"/>');
+
+    // Marcas dentro del cuerpo
+    var m = [];
+    var mk = o.marcas || {};
+    if (mk.escamas) {
+      for (x = x0 + (xm - x0) * 0.75; x < xe - 4; x += 9) {
+        for (var f = 0.12; f < 0.95; f += 0.16) {
+          var yy = at(x, f) + ((Math.round((x - x0) / 9) % 2) ? 4 : 0);
+          m.push('<path d="M' + n(x) + ',' + n(yy - 5) + ' Q' + n(x + 6) + ',' + n(yy) + ' ' + n(x) + ',' + n(yy + 5) + '" fill="none" stroke="' + mk.escamas + '" stroke-width=".7" opacity=".7"/>');
+        }
+      }
+    }
+    (mk.franjas || []).forEach(function (fr) {
+      var ps = [], xa = fr.desde || x0, xb = fr.hasta || xe;
+      for (var j = 0; j <= 30; j++) { var xx = xa + (xb - xa) * j / 30; ps.push(n(xx) + ',' + n(at(xx, fr.f) + (fr.incl || 0) * (xx - xa) / (xb - xa))); }
+      m.push('<polyline points="' + ps.join(' ') + '" fill="none" stroke="' + fr.color + '" stroke-width="' + (fr.ancho || 1.5) + '" opacity="' + (fr.op || 0.9) + '" stroke-linecap="round"/>');
+    });
+    (mk.barras || []).forEach(function (bx) {
+      m.push('<path d="M' + n(bx.x) + ',' + n(top(bx.x) - 2) + ' L' + n(bx.x + (bx.incl || 0)) + ',' + n(at(bx.x, bx.hasta || 0.5)) + '" stroke="' + bx.color + '" stroke-width="' + (bx.ancho || 4) + '" opacity="' + (bx.op || 0.6) + '" stroke-linecap="round"/>');
+    });
+    (mk.manchas || []).forEach(function (s) {
+      m.push('<ellipse cx="' + n(s.x) + '" cy="' + n(at(s.x, s.f)) + '" rx="' + (s.rx || s.r) + '" ry="' + (s.ry || s.r) + '" fill="' + s.color + '" opacity="' + (s.op || 1) + '"/>');
+    });
+    if (mk.escudetes) {
+      for (x = mk.escudetes[0]; x < xe; x += 3.2) {
+        m.push('<path d="M' + n(x) + ',' + n(at(x, 0.5) - 2.5) + ' L' + n(x + 2.5) + ',' + n(at(x, 0.5)) + ' L' + n(x) + ',' + n(at(x, 0.5) + 2.5) + '" fill="none" stroke="#3b4a52" stroke-width=".8"/>');
+      }
+    }
+    out.push('<g clip-path="url(#c' + id + ')">' + m.join('') + '</g>');
+
+    // Línea lateral
+    if (o.lateral !== false) {
+      var lp = [], lc = (mk.lateral && mk.lateral.color) || 'rgba(40,50,60,.45)', lw = (mk.lateral && mk.lateral.ancho) || 0.8;
+      var la = x0 + (xm - x0) * 0.62, lb = mk.lateral && mk.lateral.cola ? xe + 22 : xe;
+      for (i = 0; i <= 30; i++) {
+        x = la + (lb - la) * i / 30;
+        var xx2 = Math.min(x, xe);
+        var ff = (mk.lateral && mk.lateral.f != null) ? mk.lateral.f : (0.3 + 0.2 * i / 30);
+        lp.push(n(x) + ',' + n(at(xx2, ff)));
+      }
+      out.push('<polyline points="' + lp.join(' ') + '" fill="none" stroke="' + lc + '" stroke-width="' + lw + '"/>');
+    }
+
+    // Cabeza: opérculo, ojo, boca
+    var opx = x0 + (xm - x0) * (o.opx || 0.58);
+    out.push('<path d="M' + n(opx - 4) + ',' + n(top(opx) + 4) + ' Q' + n(opx + 8) + ',' + cy + ' ' + n(opx - 4) + ',' + n(bot(opx) - 4) + '" fill="none" stroke="' + borde + '" stroke-width="1" opacity=".7"/>');
+    if (mk.opercular) out.push('<ellipse cx="' + n(opx + 1) + '" cy="' + n(at(opx, 0.32)) + '" rx="2.5" ry="4" fill="#1d2329"/>');
+    var ex = x0 + (xm - x0) * (o.ojoX || 0.28), ey = at(ex, o.ojoF || 0.3), er = o.ojo || 4.5;
+    out.push('<circle cx="' + n(ex) + '" cy="' + n(ey) + '" r="' + er + '" fill="' + (o.colOjo || '#f2f0e6') + '" stroke="' + borde + '" stroke-width=".8"/>');
+    out.push('<circle cx="' + n(ex + er * 0.1) + '" cy="' + n(ey) + '" r="' + n(er * 0.55) + '" fill="#111"/>');
+    out.push('<circle cx="' + n(ex - er * 0.25) + '" cy="' + n(ey - er * 0.3) + '" r="' + n(er * 0.18) + '" fill="#fff"/>');
+    var boca = o.boca || 'normal';
+    var bl = (xm - x0) * (o.bocaL || 0.22);
+    if (boca === 'superior') {
+      out.push('<path d="M' + (x0 - 2) + ',' + (cy - 4) + ' L' + n(x0 + bl) + ',' + (cy + 6) + '" stroke="' + borde + '" stroke-width="1.4"/>');
+    } else if (boca === 'saliente') {
+      out.push('<path d="M' + (x0 + 3) + ',' + (cy - 1) + ' L' + n(x0 + bl) + ',' + (cy + 2) + ' M' + (x0 - 3) + ',' + (cy + 2) + ' L' + n(x0 + bl) + ',' + (cy + 3) + '" stroke="' + borde + '" stroke-width="1.3" fill="none"/>');
+    } else if (boca === 'chica') {
+      out.push('<path d="M' + x0 + ',' + (cy + 1) + ' l6,1" stroke="' + borde + '" stroke-width="1.2"/>');
+    } else {
+      out.push('<path d="M' + x0 + ',' + (cy + 1) + ' L' + n(x0 + bl) + ',' + (cy + 3) + '" stroke="' + borde + '" stroke-width="1.2"/>');
+    }
+    if (o.colBoca) out.push('<path d="M' + x0 + ',' + (cy + 1) + ' L' + n(x0 + bl) + ',' + (cy + 3) + ' L' + x0 + ',' + (cy + 4) + ' Z" fill="' + o.colBoca + '"/>');
+    if (o.tubo) out.push('<path d="M' + x0 + ',' + (cy + 1) + ' l-9,9 l5,3 l8,-8" fill="none" stroke="' + borde + '" stroke-width=".9" stroke-dasharray="2 1.5"/>');
+    if (o.dientes) {
+      for (i = 0; i < 5; i++) out.push('<path d="M' + n(x0 + 3 + i * bl / 5) + ',' + (cy + 2) + ' l1.5,-3 l1.5,3 Z" fill="#fff" stroke="' + borde + '" stroke-width=".3"/>');
+    }
+    (o.barbillas || []).forEach(function (b) {
+      out.push('<path d="M' + n(x0 + b.x) + ',' + n(cy + b.y) + ' q' + b.dx * 0.5 + ',' + (b.dy * 0.2) + ' ' + b.dx + ',' + b.dy + '" fill="none" stroke="' + borde + '" stroke-width="' + (b.ancho || 1.1) + '" stroke-linecap="round"/>');
+    });
+
+    // Pectoral y pélvica (encima del cuerpo)
+    var px = opx + 4, py = at(px, 0.58), pl = o.pectoral || 22;
+    var colP = o.colPectoral || aleta;
+    if (o.pectoralRedonda) {
+      out.push('<path d="M' + n(px) + ',' + n(py - 3) + ' C' + n(px + pl) + ',' + n(py - 8) + ' ' + n(px + pl) + ',' + n(py + 14) + ' ' + n(px) + ',' + n(py + 4) + ' Z" fill="' + colP + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".7"/>');
+    } else {
+      out.push('<path d="M' + n(px) + ',' + n(py - 3) + ' Q' + n(px + pl * 0.6) + ',' + n(py - 4) + ' ' + n(px + pl) + ',' + n(py + 4) + ' Q' + n(px + pl * 0.5) + ',' + n(py + 4) + ' ' + n(px) + ',' + n(py + 3) + ' Z" fill="' + colP + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".7"/>');
+    }
+    if (o.espinaPectoral) out.push('<line x1="' + n(px) + '" y1="' + n(py - 3) + '" x2="' + n(px + pl * 0.8) + '" y2="' + n(py - 2) + '" stroke="' + borde + '" stroke-width="1.8"/>');
+    if (mk.axila) out.push('<ellipse cx="' + n(px + 2) + '" cy="' + n(py) + '" rx="3" ry="3.5" fill="#1d2329"/>');
+    var vx = px + 6, vy = bot(vx);
+    out.push('<path d="M' + n(vx) + ',' + n(vy - 2) + ' L' + n(vx + 6) + ',' + n(vy + 9) + ' L' + n(vx + 14) + ',' + n(vy + 1) + ' Z" fill="' + (o.colPelvica || aleta) + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".7"/>');
+
+    return '<svg class="dibujo" viewBox="0 0 260 120" role="img" aria-label="Dibujo de ' + esc(o.alt || '') + '">' + out.join('') + '</svg>';
+  }
+
   var PECES = [
-    { n: 'Jurel', c: 'Caranx hippos', cond: 'movida', t: 'Muy común desde la orilla y las escolleras. Ataca en la espuma al amanecer y al atardecer.', cb: 'Cucharas, poppers y jigs; sardina o lisa viva.' },
-    { n: 'Sábalo', c: 'Megalops atlanticus', cond: 'movida', t: 'Pez deportivo que entra a la orilla y a las bocas, sobre todo al amanecer, atardecer y de noche. Especie vulnerable: se recomienda captura y suelta.', cb: 'Señuelos de media agua y poppers; lisa o sardina viva.' },
-    { n: 'Róbalo', c: 'Centropomus undecimalis', cond: 'movida', t: 'Le gusta el agua algo turbia, las bocas de ciénagas y las estructuras. Mejor con poca luz.', cb: 'Camarón vivo, señuelos de media agua. Respetá la talla mínima.' },
-    { n: 'Pámpano / palometa', c: 'Trachinotus spp.', cond: 'movida', t: 'Recorre la rompiente de las playas de arena cuando hay ola moderada.', cb: 'Camarón, cangrejito de arena (chipi chipi o similares), anzuelo chico y plomo pirámide.' },
-    { n: 'Mojarra', c: 'Gerreidae (Eugerres, Diapterus, Eucinostomus)', cond: 'calma', t: 'Fondos de arena cerca de la orilla y dentro de bahías. Abundante con agua tranquila.', cb: 'Camarón, lombriz de mar, anzuelo chico.' },
-    { n: 'Lisa / lebranche', c: 'Mugil spp.', cond: 'calma', t: 'Cardúmenes pegados a la orilla y en bocas de ciénagas.', cb: 'Masa o pan con anzuelo muy chico; muchos la pescan con atarraya.' },
-    { n: 'Pargo', c: 'Lutjanus spp. (p. ej. pargo rayado, L. synagris)', cond: 'calma', t: 'Escolleras y fondos con piedra. Mejor al amanecer y de noche.', cb: 'Camarón, calamar o tiras de pescado.' },
-    { n: 'Ronco', c: 'Haemulon spp.', cond: 'calma', t: 'Alrededor de rocas y escolleras; pica bastante con agua calma.', cb: 'Camarón y trozos de calamar, anzuelo chico.' },
-    { n: 'Sierra', c: 'Scomberomorus brasiliensis', cond: 'ambas', t: 'Pasa en cardúmenes cerca de muelles y escolleras con agua clara. Hay que lanzar lejos.', cb: 'Señuelos rápidos (cucharas, jigs) con cable de acero: tiene dientes filosos.' },
-    { n: 'Barracuda / picúa', c: 'Sphyraena barracuda', cond: 'ambas', t: 'Escolleras y bordes de bajos; ataca señuelos brillantes.', cb: 'Cucharas y plugs con cable de acero. No consumas ejemplares grandes: riesgo de ciguatera.' },
-    { n: 'Bagre de mar / chivo', c: 'Familia Ariidae', cond: 'movida', t: 'Fondo, de noche o con agua turbia (después de lluvias).', cb: 'Tiras de pescado o camarón en el fondo. Cuidado: las espinas de las aletas pinchan y duelen mucho.' },
-    { n: 'Mero guasa', c: 'Epinephelus itajara', cond: 'prot', t: 'Especie amenazada y protegida. Si sale, soltalo de inmediato y con cuidado.', cb: 'No se busca.' }
+    { n: 'Jurel', c: 'Caranx hippos', wiki: 'Caranx hippos', cond: 'movida', tam: 'en orilla, 30 a 60 cm (llega a más de 1 m)',
+      claves: ['Cuerpo alto y aplanado de costado, frente muy redondeada y empinada.', 'Mancha negra en el borde de la tapa de las agallas y otra en la base de la aleta del pecho.', 'Fila de escamas duras como escudos (escudetes) en el último tramo antes de la cola.', 'Cola en horquilla, a menudo amarillenta.'],
+      t: 'Muy común desde la orilla y las escolleras. Ataca en la espuma al amanecer y al atardecer.', cb: 'Cucharas, poppers y jigs; sardina o lisa viva.',
+      d: { h: 36, hb: 30, pico: 0.36, ped: 4, frente: 'roma', dorso: '#466a7c', flanco: '#c9d4d2', vientre: '#e9dfa5', aletas: '#c7b25a', colCola: '#d8bc45', cola: 'profunda',
+        dorsales: [{ x0: 86, x1: 106, h: 13, tipo: 'espinosa' }, { x0: 110, x1: 168, h: 18, tipo: 'hoz' }], anales: [{ x0: 120, x1: 168, h: 15, tipo: 'hoz' }],
+        ojo: 6, ojoF: 0.32, marcas: { opercular: true, axila: true, escudetes: [145] } } },
+    { n: 'Sábalo', c: 'Megalops atlanticus', wiki: 'Megalops atlanticus', cond: 'movida', tam: 'de 1 a 2 m (puede pasar de 2 m)',
+      claves: ['Escamas plateadas enormes, como espejos (se ven una por una).', 'Boca grande que mira hacia arriba, con la mandíbula de abajo saliente.', 'El último rayo de la aleta del lomo es un filamento largo.', 'Lomo azul verdoso oscuro y cola en horquilla grande.'],
+      t: 'Pez deportivo que entra a la orilla y a las bocas, sobre todo al amanecer, atardecer y de noche. Especie vulnerable: se recomienda captura y suelta.', cb: 'Señuelos de media agua y poppers; lisa o sardina viva.',
+      d: { h: 27, hb: 25, pico: 0.42, ped: 8, xe: 192, frente: 'normal', dorso: '#2f4e5c', flanco: '#d6dfe4', vientre: '#f3f5f6', aletas: '#7f909a', cola: 'profunda', boca: 'superior', bocaL: 0.3,
+        dorsales: [{ x0: 100, x1: 122, h: 20, tipo: 'blanda', filamento: 38 }], anales: [{ x0: 140, x1: 168, h: 14, tipo: 'hoz' }],
+        ojo: 6, ojoF: 0.3, marcas: { escamas: '#7b8c96' } } },
+    { n: 'Róbalo', c: 'Centropomus undecimalis', wiki: 'Centropomus undecimalis', cond: 'movida', tam: 'de 40 a 90 cm (llega a 1,4 m)',
+      claves: ['Línea negra muy marcada a lo largo del costado, desde la cabeza hasta el final de la cola.', 'Hocico largo y frente cóncava; la mandíbula de abajo sobresale.', 'Dos aletas en el lomo, bien separadas.', 'Color plateado dorado o verdoso; aletas de abajo amarillentas.'],
+      t: 'Le gusta el agua algo turbia, las bocas de ciénagas y las estructuras. Mejor con poca luz.', cb: 'Camarón vivo, señuelos de media agua. Respetá la talla mínima.',
+      d: { h: 21, hb: 19, pico: 0.46, ped: 7, frente: 'aguda', dorso: '#6c6b45', flanco: '#d7d4b9', vientre: '#f0efe6', aletas: '#9a9a78', colPelvica: '#e2c94a', colCola: '#8d8d6b', cola: 'horquilla', boca: 'saliente', bocaL: 0.32,
+        dorsales: [{ x0: 78, x1: 108, h: 22, tipo: 'espinosa' }, { x0: 116, x1: 150, h: 15, tipo: 'blanda' }], anales: [{ x0: 140, x1: 158, h: 13, tipo: 'blanda' }],
+        ojo: 4.5, ojoF: 0.28, marcas: { lateral: { color: '#141414', ancho: 2.2, f: 0.42, cola: true } } } },
+    { n: 'Pámpano / palometa', c: 'Trachinotus spp.', wiki: 'Trachinotus falcatus', cond: 'movida', tam: 'de 25 a 50 cm (el pámpano grande pasa de 1 m)',
+      claves: ['Cuerpo alto, casi redondo, plateado y liso (escamas muy finas).', 'Aletas del lomo y de abajo largas, en forma de hoz y oscuras en la punta.', 'Frente muy roma y boca chica.', 'Vientre y aletas de abajo a menudo amarillos o anaranjados.'],
+      t: 'Recorre la rompiente de las playas de arena cuando hay ola moderada.', cb: 'Camarón, cangrejito de arena, anzuelo chico y plomo pirámide.',
+      d: { h: 33, hb: 31, pico: 0.38, ped: 4, frente: 'roma', dorso: '#7d8d97', flanco: '#dfe4e6', vientre: '#e6be4a', aletas: '#4a5258', colPelvica: '#e3a53b', cola: 'luna', boca: 'chica',
+        dorsales: [{ x0: 108, x1: 168, h: 22, tipo: 'hoz' }], anales: [{ x0: 110, x1: 168, h: 22, tipo: 'hoz', color: '#d99a3a' }],
+        ojo: 5, ojoF: 0.36, lateral: true } },
+    { n: 'Mojarra', c: 'Eugerres plumieri y otras', wiki: 'Eugerres plumieri', cond: 'calma', tam: 'de 15 a 30 cm',
+      claves: ['Cuerpo alto y en forma de rombo, muy plateado.', 'Boca que se estira hacia abajo como un tubo al comer (línea punteada en el dibujo).', 'Rayas oscuras finas a lo largo de las filas de escamas (mojarra rayada).', 'Aletas de abajo amarillentas.'],
+      t: 'Fondos de arena cerca de la orilla y dentro de bahías. Abundante con agua tranquila.', cb: 'Camarón, lombriz de mar, anzuelo chico.',
+      d: { h: 33, hb: 26, pico: 0.4, ped: 5, frente: 'aguda', dorso: '#7c8a91', flanco: '#dde3e6', vientre: '#f4f6f7', aletas: '#9aa5ab', colPelvica: '#e2c94a', cola: 'horquilla', boca: 'chica', tubo: true,
+        dorsales: [{ x0: 78, x1: 122, h: 26, tipo: 'espinosa' }, { x0: 122, x1: 162, h: 12, tipo: 'blanda' }], anales: [{ x0: 136, x1: 162, h: 14, tipo: 'blanda', color: '#e2c94a' }],
+        ojo: 6, ojoF: 0.34, marcas: { franjas: [0.18, 0.3, 0.42, 0.54, 0.66].map(function (f) { return { f: f, color: '#55636b', ancho: 0.9, op: 0.6, desde: 60 }; }) } } },
+    { n: 'Lisa / lebranche', c: 'Mugil spp.', wiki: 'Mugil curema', cond: 'calma', tam: 'de 25 a 50 cm',
+      claves: ['Cuerpo alargado y redondeado (como un cilindro), cabeza ancha y chata.', 'Dos aletas cortas en el lomo, bien separadas.', 'Boca chica, sin dientes visibles; ojos con un párpado gelatinoso.', 'Lomo gris azulado y flancos plateados; algunas con rayas oscuras a lo largo.'],
+      t: 'Cardúmenes pegados a la orilla y en bocas de ciénagas.', cb: 'Masa o pan con anzuelo muy chico; muchos la pescan con atarraya.',
+      d: { h: 19, hb: 18, pico: 0.4, ped: 8, frente: 'roma', dorso: '#4c6070', flanco: '#c9d3d9', vientre: '#eff2f4', aletas: '#8996a0', cola: 'horquilla', boca: 'chica',
+        dorsales: [{ x0: 88, x1: 102, h: 13, tipo: 'espinosa' }, { x0: 128, x1: 146, h: 12, tipo: 'blanda' }], anales: [{ x0: 126, x1: 148, h: 11, tipo: 'blanda' }],
+        ojo: 4.5, ojoF: 0.36, lateral: false, marcas: { axila: true, franjas: [0.2, 0.32, 0.44].map(function (f) { return { f: f, color: '#4c5b66', ancho: 1, op: 0.5, desde: 50 }; }) } } },
+    { n: 'Pargo rayado / biajaiba', c: 'Lutjanus synagris', wiki: 'Lutjanus synagris', cond: 'calma', tam: 'de 20 a 35 cm',
+      claves: ['Cuerpo rosado o rojizo con rayas amarillas a lo largo del costado.', 'Mancha negra difusa sobre la línea lateral, debajo del final de la aleta del lomo.', 'Colmillos (dos dientes grandes) adelante en la boca.', 'Cola rosada, algo ahorquillada.'],
+      t: 'Escolleras y fondos con piedra. Mejor al amanecer y de noche.', cb: 'Camarón, calamar o tiras de pescado.',
+      d: { h: 29, hb: 24, pico: 0.4, ped: 6, frente: 'aguda', dorso: '#c26a6a', flanco: '#eba6a2', vientre: '#f6dcd6', aletas: '#e4a36e', colCola: '#d9827a', cola: 'horquilla', dientes: true, colOjo: '#e7b9a8',
+        dorsales: [{ x0: 72, x1: 126, h: 18, tipo: 'espinosa' }, { x0: 126, x1: 160, h: 14, tipo: 'blanda' }], anales: [{ x0: 136, x1: 160, h: 14, tipo: 'blanda' }],
+        ojo: 5.5, ojoF: 0.3, marcas: { franjas: [0.22, 0.34, 0.46, 0.58, 0.7, 0.82].map(function (f) { return { f: f, color: '#f2d33c', ancho: 2, op: 0.95, desde: 34 }; }), manchas: [{ x: 132, f: 0.32, rx: 8, ry: 6, color: '#2a1a1a', op: 0.55 }] } } },
+    { n: 'Ronco', c: 'Haemulon spp.', wiki: 'Haemulon plumierii', cond: 'calma', tam: 'de 20 a 35 cm',
+      claves: ['Cuerpo gris amarillento, con líneas azules y amarillas en la cabeza.', 'El interior de la boca es rojo intenso.', 'Al sacarlo del agua hace un ruido como un gruñido (de ahí “ronco”).', 'Aleta del lomo continua, con espinas adelante.'],
+      t: 'Alrededor de rocas y escolleras; pica bastante con agua calma.', cb: 'Camarón y trozos de calamar, anzuelo chico.',
+      d: { h: 29, hb: 24, pico: 0.4, ped: 6, frente: 'normal', dorso: '#8c8e86', flanco: '#d3d2c3', vientre: '#eeece0', aletas: '#a7a48c', cola: 'horquilla', colBoca: '#d23c3c',
+        dorsales: [{ x0: 72, x1: 126, h: 18, tipo: 'espinosa' }, { x0: 126, x1: 160, h: 12, tipo: 'blanda' }], anales: [{ x0: 136, x1: 160, h: 13, tipo: 'blanda' }],
+        ojo: 5.5, ojoF: 0.3, marcas: { franjas: [0.15, 0.28, 0.41, 0.54, 0.67].map(function (f, i) { return { f: f, color: i % 2 ? '#e8c53a' : '#2f6fb3', ancho: 1.8, desde: 16, hasta: 70, incl: 4 }; }) } } },
+    { n: 'Sierra', c: 'Scomberomorus brasiliensis', wiki: 'Scomberomorus brasiliensis', cond: 'ambas', tam: 'de 40 a 70 cm (llega a más de 1 m)',
+      claves: ['Cuerpo largo y fino, plateado, con varias filas de manchas doradas ovaladas.', 'Primera aleta del lomo con la parte de adelante negra.', 'Aletitas sueltas (pínulas) entre las aletas y la cola.', 'Dientes triangulares muy filosos y cola en horquilla profunda.'],
+      t: 'Pasa en cardúmenes cerca de muelles y escolleras con agua clara. Hay que lanzar lejos.', cb: 'Señuelos rápidos (cucharas, jigs) con cable de acero: tiene dientes filosos.',
+      d: { h: 18, hb: 16, pico: 0.44, ped: 4, xe: 196, frente: 'aguda', dorso: '#3c5a73', flanco: '#cbd5dd', vientre: '#f2f4f6', aletas: '#8395a3', cola: 'luna', dientes: true, bocaL: 0.3,
+        dorsales: [{ x0: 70, x1: 122, h: 12, tipo: 'espinosa', punta: '#151a1e' }, { x0: 128, x1: 148, h: 15, tipo: 'hoz' }], anales: [{ x0: 132, x1: 150, h: 14, tipo: 'hoz' }],
+        pinulas: [152, 190], ojo: 4, ojoF: 0.32,
+        marcas: { manchas: [0.36, 0.5, 0.64].reduce(function (acc, f, r) { for (var xx = 64 + r * 6; xx < 186; xx += 13) acc.push({ x: xx, f: f, rx: 3.6, ry: 2.4, color: '#e0a92a' }); return acc; }, []) } } },
+    { n: 'Barracuda / picúa', c: 'Sphyraena barracuda', wiki: 'Sphyraena barracuda', cond: 'ambas', tam: 'de 60 cm a 1,5 m',
+      claves: ['Cuerpo largo como un torpedo, cabeza puntiaguda.', 'Mandíbula de abajo saliente con colmillos grandes a la vista.', 'Barras oscuras inclinadas en el lomo y manchas negras sueltas en la parte de atrás del costado.', 'Dos aletas del lomo muy separadas; cola con las puntas claras.'],
+      t: 'Escolleras y bordes de bajos; ataca señuelos brillantes.', cb: 'Cucharas y plugs con cable de acero. No consumas ejemplares grandes: riesgo de ciguatera.',
+      d: { h: 14, hb: 14, pico: 0.5, ped: 6, xe: 198, frente: 'aguda', dorso: '#4b5e6e', flanco: '#c3cdd4', vientre: '#eef1f3', aletas: '#6a7a86', cola: 'horquilla', puntasCola: '#f4f6f7', boca: 'saliente', bocaL: 0.34, dientes: true,
+        dorsales: [{ x0: 88, x1: 104, h: 15, tipo: 'espinosa' }, { x0: 146, x1: 160, h: 12, tipo: 'blanda' }], anales: [{ x0: 146, x1: 162, h: 11, tipo: 'blanda' }],
+        ojo: 4.5, ojoF: 0.3,
+        marcas: { barras: [70, 84, 98, 112, 126, 140, 154, 168].map(function (x) { return { x: x, incl: -6, hasta: 0.4, color: '#24313a', ancho: 4, op: 0.55 }; }),
+          manchas: [{ x: 140, f: 0.72, r: 2.2, color: '#111' }, { x: 156, f: 0.62, r: 2, color: '#111' }, { x: 170, f: 0.75, r: 2, color: '#111' }, { x: 182, f: 0.6, r: 1.8, color: '#111' }, { x: 126, f: 0.8, r: 1.8, color: '#111' }] } } },
+    { n: 'Bagre de mar / chivo', c: 'Familia Ariidae (p. ej. Bagre marinus)', wiki: 'Bagre marinus', cond: 'movida', tam: 'de 30 a 60 cm',
+      claves: ['Piel lisa, sin escamas, gris azulada arriba y blanca abajo.', 'Bigotes (barbillas) alrededor de la boca.', 'Espinas duras y aserradas en la aleta del lomo y en las del pecho: pinchan y duelen mucho.', 'Aleta pequeña y carnosa (adiposa) entre la del lomo y la cola; cabeza chata con una placa dura.'],
+      t: 'Fondo, de noche o con agua turbia (después de lluvias).', cb: 'Tiras de pescado o camarón en el fondo. Agarralo con trapo o pinza, cuidando las espinas.',
+      d: { h: 23, hb: 18, pico: 0.3, ped: 6, frente: 'roma', dorso: '#5b6876', flanco: '#a8b2bb', vientre: '#eef1f3', aletas: '#7a8691', cola: 'profunda', espinaPectoral: true, pectoral: 26,
+        dorsales: [{ x0: 70, x1: 92, h: 26, tipo: 'espina', filamento: 20 }, { x0: 146, x1: 162, h: 6, tipo: 'adiposa' }], anales: [{ x0: 134, x1: 162, h: 12, tipo: 'blanda' }],
+        ojo: 3.5, ojoF: 0.35, lateral: false,
+        barbillas: [{ x: 3, y: 0, dx: 24, dy: 22, ancho: 1.6 }, { x: 2, y: 3, dx: 8, dy: 10 }, { x: 5, y: 5, dx: 6, dy: 9 }] } },
+    { n: 'Mero guasa', c: 'Epinephelus itajara', wiki: 'Epinephelus itajara', cond: 'prot', tam: 'puede superar los 2 m; los juveniles se ven en escolleras',
+      claves: ['Muy robusto, cabeza ancha y chata, ojos chicos.', 'Todas las aletas redondeadas, también la cola.', 'Color marrón amarillento con manchas oscuras irregulares y puntitos negros.', 'Si sale uno, aunque sea chico: especie protegida, soltalo.'],
+      t: 'Especie amenazada y protegida. Si sale, soltalo de inmediato y con cuidado.', cb: 'No se busca.',
+      d: { h: 35, hb: 30, pico: 0.34, ped: 12, frente: 'roma', dorso: '#6e5f3d', flanco: '#a69466', vientre: '#cbbd8f', aletas: '#7d6c48', cola: 'redonda', pectoralRedonda: true, pectoral: 26,
+        dorsales: [{ x0: 72, x1: 120, h: 9, tipo: 'espinosa' }, { x0: 120, x1: 166, h: 16, tipo: 'redonda' }], anales: [{ x0: 138, x1: 164, h: 15, tipo: 'redonda' }],
+        ojo: 3.2, ojoF: 0.3, bocaL: 0.3,
+        marcas: { manchas: [[60, 0.3, 9, 6], [92, 0.25, 10, 7], [124, 0.3, 9, 8], [156, 0.35, 8, 6], [78, 0.62, 9, 7], [112, 0.66, 10, 6], [146, 0.62, 8, 6], [176, 0.5, 6, 5]].map(function (s) { return { x: s[0], f: s[1], rx: s[2], ry: s[3], color: '#3f3420', op: 0.55 }; })
+          .concat([[50, 0.5], [70, 0.45], [100, 0.45], [134, 0.48], [166, 0.6], [86, 0.82], [120, 0.85], [150, 0.8]].map(function (s) { return { x: s[0], f: s[1], r: 1.2, color: '#1b160c' }; })) } } }
   ];
+
+  function cargarFoto(i, btn) {
+    var p = PECES[i];
+    var cont = document.getElementById('foto' + i);
+    btn.disabled = true;
+    btn.textContent = 'Buscando foto…';
+    var titulo = encodeURIComponent(p.wiki.replace(/ /g, '_'));
+    function probar(idioma) {
+      return fetch('https://' + idioma + '.wikipedia.org/api/rest_v1/page/summary/' + titulo).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (j) {
+        var src = (j.originalimage && j.originalimage.source) || (j.thumbnail && j.thumbnail.source);
+        if (!src) throw new Error('sin imagen');
+        if (j.thumbnail && j.thumbnail.source && j.originalimage && j.originalimage.width > 800) src = j.thumbnail.source.replace(/\/\d+px-/, '/640px-');
+        var pagina = (j.content_urls && j.content_urls.mobile && j.content_urls.mobile.page) || ('https://' + idioma + '.wikipedia.org/wiki/' + titulo);
+        return { src: src, pagina: pagina };
+      });
+    }
+    probar('es').catch(function () { return probar('en'); }).then(function (f) {
+      cont.innerHTML = '<figure class="foto" style="margin:6px 0 0"><img loading="lazy" alt="Foto de ' + esc(p.n) + '" src="' + esc(f.src) + '">' +
+        '<figcaption>Imagen de <a href="' + esc(f.pagina) + '" target="_blank" rel="noopener">Wikipedia</a> (ver autor y licencia en la página)</figcaption></figure>';
+      btn.remove();
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = '📷 Reintentar foto';
+      cont.innerHTML = '<p class="leyenda">No se pudo cargar la foto. Buscá “' + esc(p.wiki) + '” en Wikipedia.</p>';
+    });
+  }
+
   function renderPeces(analisis) {
     var hoy = analisis ? (analisis.mejor === 'rojo' ? null : analisis.movida ? 'movida' : 'calma') : null;
     var etqCond = { movida: 'agua movida', calma: 'agua calma', ambas: 'calma o movida', prot: 'protegida' };
-    var html = '<h2>🐟 Peces de la zona (orilla y escolleras)</h2>' +
-      '<p class="leyenda" style="margin-top:0">Lista orientativa para el litoral del Atlántico. ' +
-      (hoy ? 'En <b>verde</b> los que mejor se adaptan a las condiciones del día seleccionado (' + etqCond[hoy] + ').' : '') +
-      ' Confirmá con pescadores locales y revisá vedas y tallas mínimas en la AUNAP.</p>';
-    PECES.forEach(function (p) {
+    var html = '<h2>🐟 Peces de la zona: cómo reconocerlos</h2>' +
+      '<p class="leyenda" style="margin-top:0">Dibujos esquemáticos (no a escala) que marcan los rasgos para identificarlos. Tocá “Ver foto real” para una imagen de Wikipedia. ' +
+      (hoy ? 'En <b>verde</b> los que mejor se adaptan a las condiciones del día seleccionado (' + etqCond[hoy] + '). ' : '') +
+      'Lista orientativa: confirmá con pescadores locales y revisá vedas y tallas mínimas en la AUNAP.</p>';
+    PECES.forEach(function (p, i) {
       var marca = p.cond === 'prot' ? 'prot' : (hoy && (p.cond === hoy || p.cond === 'ambas')) ? 'hoy' : '';
+      p.d.alt = p.n;
       html += '<div class="pez"><div class="nom"><strong>' + esc(p.n) + '</strong><span class="cient">' + esc(p.c) + '</span></div>' +
-        '<p><span class="etq ' + marca + '">' + (marca === 'hoy' ? '✓ ' : '') + etqCond[p.cond] + '</span>' + esc(p.t) + '</p>' +
-        '<p class="leyenda">🎣 ' + esc(p.cb) + '</p></div>';
+        dibujarPez(p.d, i) +
+        '<p><span class="etq ' + marca + '">' + (marca === 'hoy' ? '✓ ' : '') + etqCond[p.cond] + '</span><span class="leyenda">Tamaño: ' + esc(p.tam) + '</span></p>' +
+        '<ul>' + p.claves.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>' +
+        '<p>' + esc(p.t) + '</p>' +
+        '<p class="leyenda">🎣 ' + esc(p.cb) + '</p>' +
+        '<div id="foto' + i + '"></div>' +
+        '<button type="button" class="chico" data-foto="' + i + '" style="margin-top:6px">📷 Ver foto real</button>' +
+        '</div>';
     });
     document.getElementById('peces').innerHTML = html;
   }
+  document.getElementById('peces').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-foto]');
+    if (b) cargarFoto(parseInt(b.dataset.foto, 10), b);
+  });
 
   // ---------- render ----------
   function render() {
