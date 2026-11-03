@@ -1,0 +1,1428 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3d4f">
+<title>Semáforo de pesca · Puerto Velero</title>
+<style>
+  :root {
+    --bg: #f3f6f8;
+    --card: #ffffff;
+    --ink: #13212b;
+    --muted: #5b6b77;
+    --line: #dde4ea;
+    --head: #0b3d4f;
+    --head-ink: #ffffff;
+    --verde: #1e9e4a;
+    --verde-bg: #e3f5e9;
+    --amarillo: #d99a00;
+    --amarillo-bg: #fff4d6;
+    --rojo: #d32f2f;
+    --rojo-bg: #fde4e4;
+    --gris: #8a96a0;
+    --gris-bg: #eef1f3;
+    --uv: #7a3db8;
+    --uv-bg: #f1e8fb;
+    --destacado: #0b7a99;
+    --info-bg: #e5f3f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d151b;
+      --card: #16222b;
+      --ink: #e6edf2;
+      --muted: #9aabb8;
+      --line: #263642;
+      --head: #0a2f3d;
+      --verde-bg: #12301e;
+      --amarillo-bg: #352a08;
+      --rojo-bg: #3a1717;
+      --gris-bg: #1f2b34;
+      --uv: #c39af0;
+      --uv-bg: #2a1d3b;
+      --destacado: #4fc3e0;
+      --info-bg: #10303b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    background: var(--head);
+    color: var(--head-ink);
+    padding: 14px 16px 12px;
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  header h1 { margin: 0; font-size: 1.25rem; }
+  header p { margin: 2px 0 0; font-size: .85rem; opacity: .85; }
+  main { max-width: 720px; margin: 0 auto; padding: 12px 16px 24px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  .aviso {
+    background: var(--amarillo-bg);
+    border-left: 4px solid var(--amarillo);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: .9rem;
+    margin: 0 0 12px;
+  }
+  .barra { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    padding: 8px 12px;
+    border-radius: 10px;
+    min-height: 40px;
+    cursor: pointer;
+  }
+  button.primario { background: var(--destacado); border-color: var(--destacado); color: #fff; }
+  button.chico { min-height: 34px; padding: 4px 10px; font-size: .88rem; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+  .tabs button { flex: 1 0 auto; font-size: .9rem; }
+  .tabs button[aria-selected="true"] { background: var(--destacado); color: #fff; border-color: var(--destacado); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .sol, .leyenda { color: var(--muted); font-size: .88rem; }
+  .uv {
+    display: inline-block;
+    background: var(--uv-bg);
+    color: var(--uv);
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .seccion { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 8px; }
+
+  /* Mapa */
+  .mapa {
+    position: relative;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #aad3df;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: crosshair;
+    margin: 8px 0;
+  }
+  .mapa .teselas img { position: absolute; width: 256px; height: 256px; max-width: none; pointer-events: none; }
+  .mapa .zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 3; }
+  .mapa .zoom button { width: 38px; min-height: 38px; padding: 0; font-size: 1.2rem; font-weight: 700; }
+  .mapa .atrib {
+    position: absolute; right: 0; bottom: 0; z-index: 3;
+    background: rgba(255,255,255,.85); color: #333; font-size: 10px; padding: 1px 4px;
+  }
+  .mapa .atrib a { color: #0b5e75; }
+  .marca { position: absolute; z-index: 2; pointer-events: none; transform: translate(-50%, -100%); font-size: 28px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+  .marca.mar {
+    transform: translate(-50%, -50%);
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #0b7a99; border: 3px solid #fff; font-size: 0;
+  }
+  .marca.velero { transform: translate(-50%, -50%); font-size: 18px; }
+  .punto-info { font-size: .9rem; }
+  .punto-info b { font-variant-numeric: tabular-nums; }
+
+  /* Luna */
+  .luna { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
+  .luna .emoji { font-size: 48px; line-height: 1; text-align: center; }
+  .luna .rango { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: var(--info-bg); font-size: .9rem; }
+
+  /* Análisis */
+  .analisis { background: var(--info-bg); border: 1px solid var(--line); }
+  .analisis .veredicto { font-size: 1.05rem; font-weight: 700; margin: 0 0 6px; }
+  .analisis ul { margin: 0; padding-left: 18px; }
+  .analisis li { margin-bottom: 6px; }
+
+  /* Franjas */
+  .franja {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 10px 12px 10px 10px;
+    margin-bottom: 8px;
+    background: var(--gris-bg);
+  }
+  .franja .luz { width: 14px; border-radius: 7px; background: var(--gris); }
+  .franja.verde { background: var(--verde-bg); } .franja.verde .luz { background: var(--verde); }
+  .franja.amarillo { background: var(--amarillo-bg); } .franja.amarillo .luz { background: var(--amarillo); }
+  .franja.rojo { background: var(--rojo-bg); } .franja.rojo .luz { background: var(--rojo); }
+  .franja.destacada { border: 2px solid var(--destacado); }
+  .franja.pasada { opacity: .5; }
+  .f-tit { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .estado { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .verde .estado { color: var(--verde); } .amarillo .estado { color: var(--amarillo); } .rojo .estado { color: var(--rojo); }
+  .vals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; margin-top: 6px; font-size: .9rem; }
+  .vals b { font-variant-numeric: tabular-nums; }
+  .malo { color: var(--rojo); font-weight: 700; }
+  .medio { color: var(--amarillo); font-weight: 700; }
+  .flecha { display: inline-block; font-weight: 700; }
+  details { margin-top: 6px; font-size: .85rem; }
+  summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-weight: 600; color: var(--muted); font-size: .78rem; }
+  td .punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; background: var(--gris); }
+  td .punto.verde { background: var(--verde); } td .punto.amarillo { background: var(--amarillo); } td .punto.rojo { background: var(--rojo); }
+
+  /* Peces */
+  .pez { border-top: 1px solid var(--line); padding: 12px 0; }
+  .pez:first-of-type { border-top: 0; }
+  .pez .nom { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .pez .cient { font-style: italic; color: var(--muted); font-size: .85rem; }
+  .pez p { margin: 4px 0 0; font-size: .9rem; }
+  .pez ul { margin: 4px 0 0; padding-left: 18px; font-size: .9rem; }
+  .pez li { margin-bottom: 2px; }
+  .dibujo { display: block; width: 100%; max-width: 380px; height: auto; margin: 6px auto 2px; background: linear-gradient(#dff1f7, #c4e4ef); border-radius: 10px; }
+  .foto { margin-top: 6px; }
+  .foto img { display: block; width: 100%; max-width: 380px; height: auto; border-radius: 10px; margin: 0 auto; }
+  .foto figcaption { font-size: .75rem; color: var(--muted); text-align: center; margin-top: 2px; }
+  .etq { display: inline-block; font-size: .75rem; font-weight: 600; border-radius: 6px; padding: 1px 6px; margin-right: 4px; background: var(--gris-bg); color: var(--muted); }
+  .etq.hoy { background: var(--verde-bg); color: var(--verde); }
+  .etq.prot { background: var(--rojo-bg); color: var(--rojo); }
+
+  #umbrales label { display: grid; grid-template-columns: 1fr 76px 76px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: .92rem; }
+  #umbrales .cols { display: grid; grid-template-columns: 1fr 76px 76px; gap: 8px; font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
+  #umbrales input {
+    font: inherit; width: 100%; padding: 6px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); text-align: center;
+  }
+  .error { background: var(--rojo-bg); border-left: 4px solid var(--rojo); padding: 10px 12px; border-radius: 8px; }
+  footer { max-width: 720px; margin: 0 auto; padding: 0 16px 32px; font-size: .78rem; color: var(--muted); }
+  footer a { color: var(--destacado); word-break: break-all; }
+  footer p { margin: 6px 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎣 Semáforo de pesca de orilla</h1>
+  <p id="subtitulo">Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá</p>
+</header>
+
+<main>
+  <p class="aviso">⚠️ Valores provisorios, ajustalos con tu bitácora.</p>
+
+  <div class="barra">
+    <button id="btnRecargar" class="primario" type="button">↻ Actualizar</button>
+    <button id="btnUmbrales" type="button" aria-expanded="false">⚙️ Umbrales</button>
+  </div>
+
+  <section id="umbrales" class="card" hidden>
+    <div class="cols"><span>Variable</span><span>Amarillo ≥</span><span>Rojo ≥</span></div>
+    <label>Ola (m) <input type="number" inputmode="decimal" step="0.1" min="0" data-k="olaA"><input type="number" inputmode="decimal" step="0.1" min="0" data-k="olaR"></label>
+    <label>Viento (kn) <input type="number" inputmode="decimal" step="1" min="0" data-k="vientoA"><input type="number" inputmode="decimal" step="1" min="0" data-k="vientoR"></label>
+    <label>Ráfagas (kn) <input type="number" inputmode="decimal" step="1" min="0" data-k="rafagaA"><input type="number" inputmode="decimal" step="1" min="0" data-k="rafagaR"></label>
+    <div class="barra" style="margin:8px 0 4px">
+      <button id="btnGuardar" class="primario" type="button">Guardar</button>
+      <button id="btnDefecto" type="button">Valores por defecto</button>
+    </div>
+    <p class="leyenda">Se guardan en este navegador. El color de cada franja es el peor de ola, viento y ráfagas. La dirección del viento, el UV y la luna no cambian el color.</p>
+  </section>
+
+  <section class="card">
+    <h2>🗺️ Punto del reporte</h2>
+    <p class="leyenda" style="margin:0">Tocá el mapa para elegir otro punto. Arrastrá para moverlo y usá + / − para el zoom.</p>
+    <div class="mapa" id="mapa">
+      <div class="teselas"></div>
+      <div class="marca velero" id="mVelero" title="Marina Puerto Velero">⛵</div>
+      <div class="marca velero" id="mMiPunto" title="Mi punto de pesca">🎣</div>
+      <div class="marca mar" id="mMar" title="Celda de mar de la Marine API" hidden></div>
+      <div class="marca" id="mPunto" title="Punto elegido">📍</div>
+      <div class="zoom">
+        <button type="button" id="zMas" aria-label="Acercar">+</button>
+        <button type="button" id="zMenos" aria-label="Alejar">−</button>
+      </div>
+      <div class="atrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
+    </div>
+    <div class="punto-info" id="puntoInfo"></div>
+    <div class="barra" style="margin:8px 0 0">
+      <button type="button" class="chico" id="btnMiPunto">🎣 Mi punto</button>
+      <button type="button" class="chico" id="btnVelero">⛵ Puerto Velero</button>
+      <button type="button" class="chico" id="btnUbicacion">📍 Mi ubicación</button>
+    </div>
+  </section>
+
+  <section class="card" id="lunaCard"></section>
+
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div id="contenido"><p class="leyenda">Cargando pronóstico…</p></div>
+
+  <section class="card" id="peces"></section>
+</main>
+
+<footer id="pie"></footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- configuración ----------
+  // Marina Puerto Velero: aprox. 10.941, -75.034. La Marine API usa la celda de mar 10.958, -75.042.
+  var VELERO = { lat: 10.94, lon: -75.04 };
+  // Punto habitual de pesca del usuario: es el punto de inicio de la página.
+  var MI_PUNTO = { lat: 11.0712, lon: -74.8487 };
+  // Desembocadura del río Magdalena (Bocas de Ceniza), aprox.
+  var BOCAS = { lat: 11.10, lon: -74.85 };
+  // Tajamar occidental de Bocas de Ceniza: entra al mar con rumbo aprox. 345° (NNO); al oeste el mar, al este el canal del río.
+  var EJE_TAJAMAR = 345;
+  var TAJAMAR_KM = 3; // a menos de esta distancia de MI_PUNTO se usa el análisis del tajamar
+  function enTajamar() { return distanciaKm(punto, MI_PUNTO) <= TAJAMAR_KM; }
+  function sector(dir) {
+    // Sector de donde viene el viento o la ola, respecto de un tajamar orientado de sur a norte
+    if (dir == null) return null;
+    var d = (((dir - EJE_TAJAMAR) % 360) + 360) % 360; // ángulo respecto del eje del tajamar
+    if (d >= 330 || d < 30) return 'norte';
+    if (d < 150) return 'este';
+    if (d < 210) return 'sur';
+    return 'oeste';
+  }
+  // En Puerto Velero la costa corre de NE a SO y el mar queda hacia el noroeste.
+  var RUMBO_MAR = 315;
+  var TZ = 'America/Bogota';
+  var DIAS = 4; // hoy + 3
+  var CLAVE = 'pesca-velero-umbrales-v1';
+  var CLAVE_PUNTO = 'pesca-velero-punto-v1';
+  var DEFECTO = { olaA: 0.7, olaR: 1.1, vientoA: 10, vientoR: 14, rafagaA: 14, rafagaR: 18 };
+
+  var umbrales = cargarUmbrales();
+  var punto = cargarPunto();
+  var datos = null;
+  var diaSel = 0;
+  var urls = {};
+  var pedido = 0;
+
+  // ---------- almacenamiento ----------
+  function leer(clave) {
+    try { var s = localStorage.getItem(clave); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  }
+  function escribir(clave, v) {
+    try { if (v == null) localStorage.removeItem(clave); else localStorage.setItem(clave, JSON.stringify(v)); } catch (e) { /* ignorar */ }
+  }
+  function cargarUmbrales() {
+    var u = Object.assign({}, DEFECTO), o = leer(CLAVE);
+    if (o) Object.keys(DEFECTO).forEach(function (k) {
+      if (typeof o[k] === 'number' && isFinite(o[k])) u[k] = o[k];
+    });
+    return u;
+  }
+  function cargarPunto() {
+    var o = leer(CLAVE_PUNTO);
+    if (o && isFinite(o.lat) && isFinite(o.lon) && Math.abs(o.lat) <= 85 && Math.abs(o.lon) <= 180) return { lat: o.lat, lon: o.lon };
+    return { lat: MI_PUNTO.lat, lon: MI_PUNTO.lon };
+  }
+  function llenarFormulario() {
+    document.querySelectorAll('#umbrales input').forEach(function (inp) { inp.value = umbrales[inp.dataset.k]; });
+  }
+
+  // ---------- utilidades ----------
+  var NIVEL = { gris: -1, verde: 0, amarillo: 1, rojo: 2 };
+  var TEXTO = { gris: 'sin datos', verde: 'verde', amarillo: 'precaución', rojo: 'no conviene' };
+
+  function nivelVar(v, a, r) {
+    if (v == null || !isFinite(v)) return 'gris';
+    if (v >= r) return 'rojo';
+    if (v >= a) return 'amarillo';
+    return 'verde';
+  }
+  function peor(lista) {
+    var res = 'gris';
+    lista.forEach(function (c) { if (NIVEL[c] > NIVEL[res]) res = c; });
+    return res;
+  }
+  function colorHora(h) {
+    var c = [
+      nivelVar(h.ola, umbrales.olaA, umbrales.olaR),
+      nivelVar(h.viento, umbrales.vientoA, umbrales.vientoR),
+      nivelVar(h.rafaga, umbrales.rafagaA, umbrales.rafagaR)
+    ];
+    // Si falta alguna variable no se puede asegurar verde
+    if (c.indexOf('gris') !== -1 && peor(c) === 'verde') return 'gris';
+    return peor(c);
+  }
+  function claseValor(v, a, r) {
+    var n = nivelVar(v, a, r);
+    return n === 'rojo' ? 'malo' : n === 'amarillo' ? 'medio' : '';
+  }
+  function fmt(v, dec) {
+    if (v == null || !isFinite(v)) return '–';
+    return v.toFixed(dec).replace('.', ',');
+  }
+  var PUNTOS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
+  function cardinal(g) {
+    if (g == null || !isFinite(g)) return '–';
+    return PUNTOS[Math.round(((g % 360) + 360) % 360 / 22.5) % 16];
+  }
+  function flecha(g) {
+    if (g == null || !isFinite(g)) return '';
+    // La dirección indica de dónde viene el viento; la flecha apunta hacia dónde va.
+    return '<span class="flecha" style="transform:rotate(' + Math.round(g + 180) + 'deg)" aria-hidden="true">↑</span>';
+  }
+  function promedioAngulos(lista) {
+    var x = 0, y = 0, n = 0;
+    lista.forEach(function (g) {
+      if (g == null || !isFinite(g)) return;
+      x += Math.cos(g * Math.PI / 180); y += Math.sin(g * Math.PI / 180); n++;
+    });
+    if (!n) return null;
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+  function valores(hs, k) { return hs.map(function (h) { return h[k]; }).filter(function (v) { return v != null && isFinite(v); }); }
+  function maximo(lista) { return lista.length ? Math.max.apply(null, lista) : null; }
+  function minimo(lista) { return lista.length ? Math.min.apply(null, lista) : null; }
+  function promedio(lista) { return lista.length ? lista.reduce(function (a, b) { return a + b; }, 0) / lista.length : null; }
+  function avisoUV(uv) {
+    if (uv == null || !isFinite(uv)) return '';
+    if (uv >= 11) return 'UV extremo: evitá el sol directo';
+    if (uv >= 8) return 'UV muy alto: evitá de 10 a 15 h';
+    if (uv >= 6) return 'UV alto: manga larga y gorra';
+    return '';
+  }
+  function hhmm(iso) { return iso ? iso.slice(11, 16) : '–'; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  }
+  function difAng(a, b) { var d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; }
+  function distanciaKm(a, b) {
+    var R = 6371, r = Math.PI / 180;
+    var dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  function partesBogota(fecha) {
+    var p = {};
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(fecha).forEach(function (x) { p[x.type] = x.value; });
+    return p;
+  }
+  function ahoraBogota() {
+    var p = partesBogota(new Date());
+    return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
+  }
+  function mayuscula(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  function nombreDia(fecha, i) {
+    var txt = mayuscula(new Date(fecha + 'T12:00:00Z').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }));
+    if (i === 0) return 'Hoy · ' + txt;
+    if (i === 1) return 'Mañana · ' + txt;
+    return txt;
+  }
+  function nombreTab(fecha, i) {
+    if (i === 0) return 'Hoy';
+    if (i === 1) return 'Mañana';
+    return new Date(fecha + 'T12:00:00Z').toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+  function fechaCorta(d) {
+    return mayuscula(d.toLocaleString('es-CO', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }));
+  }
+
+  // ---------- luna ----------
+  // Longitudes aproximadas de la Luna y el Sol (Meeus, términos principales). Error de las fases: unos minutos.
+  var MES_SINODICO = 29.530588853;
+  function elongacion(ms) {
+    var T = (ms / 86400000 + 2440587.5 - 2451545) / 36525, r = Math.PI / 180;
+    var L0 = 218.3164477 + 481267.88123421 * T, D = 297.8501921 + 445267.1114034 * T;
+    var M = 357.5291092 + 35999.0502909 * T, Mp = 134.9633964 + 477198.8675055 * T, F = 93.2720950 + 483202.0175233 * T;
+    function s(x) { return Math.sin(x * r); }
+    var luna = L0 + 6.288774 * s(Mp) + 1.274027 * s(2 * D - Mp) + 0.658314 * s(2 * D) + 0.213618 * s(2 * Mp) -
+      0.185116 * s(M) - 0.114332 * s(2 * F) + 0.058793 * s(2 * D - 2 * Mp) + 0.057066 * s(2 * D - M - Mp) +
+      0.053322 * s(2 * D + Mp) + 0.045758 * s(2 * D - M);
+    var sol = 280.46646 + 36000.76983 * T + (1.914602 - 0.004817 * T) * s(M) + 0.019993 * s(2 * M) + 0.000289 * s(3 * M);
+    return (((luna - sol) % 360) + 360) % 360;
+  }
+  // Busca el próximo (dir 1) o el anterior (dir -1) momento en que la elongación vale "objetivo" (0 nueva, 180 llena).
+  function buscarFase(ms, objetivo, dir) {
+    function g(t) { return ((elongacion(t) - objetivo + 540) % 360) - 180; }
+    var paso = dir * 6 * 3600000, a = ms, ga = g(a);
+    for (var i = 0; i < 200; i++) {
+      var b = a + paso, gb = g(b);
+      if (dir > 0 ? (ga < 0 && gb >= 0) : (ga >= 0 && gb < 0)) {
+        var lo = Math.min(a, b), hi = Math.max(a, b);
+        for (var k = 0; k < 40; k++) { var m = (lo + hi) / 2; if (g(m) < 0) lo = m; else hi = m; }
+        return new Date((lo + hi) / 2);
+      }
+      a = b; ga = gb;
+    }
+    return null;
+  }
+  function faseLunar(ms) {
+    var e = elongacion(ms);
+    var ilum = (1 - Math.cos(e * Math.PI / 180)) / 2;
+    var nombre, emoji;
+    if (e < 12 || e >= 348) { nombre = 'Luna nueva'; emoji = '🌑'; }
+    else if (e < 78) { nombre = 'Creciente'; emoji = '🌒'; }
+    else if (e < 102) { nombre = 'Cuarto creciente'; emoji = '🌓'; }
+    else if (e < 168) { nombre = 'Gibosa creciente'; emoji = '🌔'; }
+    else if (e < 192) { nombre = 'Luna llena'; emoji = '🌕'; }
+    else if (e < 258) { nombre = 'Gibosa menguante'; emoji = '🌖'; }
+    else if (e < 282) { nombre = 'Cuarto menguante'; emoji = '🌗'; }
+    else { nombre = 'Menguante'; emoji = '🌘'; }
+    return { e: e, ilum: ilum, edad: e / 360 * MES_SINODICO, nombre: nombre, emoji: emoji };
+  }
+  var RANGO_DIAS = 2; // días antes y después de luna nueva o llena
+  function estadoLuna(ms) {
+    var dia = 86400000;
+    var eventos = [];
+    [[0, 'luna nueva'], [180, 'luna llena']].forEach(function (f) {
+      var ant = buscarFase(ms, f[0], -1), sig = buscarFase(ms, f[0], 1);
+      if (ant) eventos.push({ t: ant.getTime(), nombre: f[1] });
+      if (sig) eventos.push({ t: sig.getTime(), nombre: f[1] });
+    });
+    eventos.sort(function (a, b) { return a.t - b.t; });
+    var dentro = null, proximo = null;
+    eventos.forEach(function (ev) {
+      if (Math.abs(ev.t - ms) <= RANGO_DIAS * dia) dentro = dentro || ev;
+      if (ev.t > ms && !proximo) proximo = ev;
+    });
+    var siguienteRango = null;
+    eventos.forEach(function (ev) {
+      var ini = ev.t - RANGO_DIAS * dia;
+      if (ini > ms && (!siguienteRango || ini < siguienteRango.ini)) siguienteRango = { ini: ini, ev: ev };
+    });
+    return {
+      fase: faseLunar(ms),
+      dentro: dentro,
+      proximo: proximo,
+      siguienteRango: siguienteRango,
+      nueva: buscarFase(ms, 0, 1),
+      llena: buscarFase(ms, 180, 1)
+    };
+  }
+  function faseDelDia(fecha) {
+    // Fase al mediodía de Bogotá (17:00 UTC)
+    var ms = Date.parse(fecha + 'T17:00:00Z');
+    var f = faseLunar(ms);
+    var e = estadoLuna(ms);
+    f.enRango = !!e.dentro;
+    return f;
+  }
+  function renderLuna() {
+    var ms = Date.now(), dia = 86400000;
+    var s = estadoLuna(ms), f = s.fase;
+    var rango;
+    if (s.dentro) {
+      var dif = (s.dentro.t - ms) / dia;
+      rango = '✅ Estás dentro del rango favorable: ' + s.dentro.nombre + ' ' +
+        (Math.abs(dif) < 0.5 ? 'es hoy' : dif > 0 ? 'en ' + fmt(dif, 1) + ' días' : 'fue hace ' + fmt(-dif, 1) + ' días') +
+        ' (' + fechaCorta(new Date(s.dentro.t)) + ').';
+    } else if (s.siguienteRango) {
+      var falta = (s.siguienteRango.ini - ms) / dia;
+      rango = '⏳ Faltan <b>' + fmt(falta, 1) + ' días</b> para el próximo rango favorable (' + RANGO_DIAS + ' días alrededor de la ' +
+        s.siguienteRango.ev.nombre + ' del ' + fechaCorta(new Date(s.siguienteRango.ev.t)) + ').';
+    } else {
+      rango = '';
+    }
+    document.getElementById('lunaCard').innerHTML =
+      '<h2>Fase lunar</h2>' +
+      '<div class="luna"><div class="emoji" aria-hidden="true">' + f.emoji + '</div><div>' +
+        '<strong>' + f.nombre + '</strong> · ' + Math.round(f.ilum * 100) + ' % iluminada · día ' + fmt(f.edad, 1) + ' del ciclo' +
+        '<div class="leyenda">🌑 Próxima nueva: ' + (s.nueva ? fechaCorta(s.nueva) : '–') +
+        ' · 🌕 Próxima llena: ' + (s.llena ? fechaCorta(s.llena) : '–') + '</div>' +
+      '</div></div>' +
+      (rango ? '<div class="rango">' + rango + '</div>' : '') +
+      '<details><summary>¿Influye la luna en la pesca?</summary>' +
+        '<p>Algo, pero menos que el viento y la ola. Entre los pescadores se tiene como mejores días los cercanos a la <b>luna nueva y la luna llena</b>: ' +
+        'Sol y Luna se alinean, las mareas se mueven más (mareas vivas) y esas corrientes activan a la carnada y a los depredadores. ' +
+        'Por eso acá el “rango favorable” es de ' + RANGO_DIAS + ' días antes a ' + RANGO_DIAS + ' días después de cada una.</p>' +
+        '<p>Matices: en el Caribe colombiano la marea es chica (unas decenas de centímetros), así que el efecto es menor que en otras costas. ' +
+        'Con luna llena hay más luz de noche y muchos peces comen de noche; a veces el amanecer siguiente está más flojo. ' +
+        'Con luna nueva las noches son oscuras y el amanecer y el atardecer suelen rendir mejor. ' +
+        'La evidencia científica es mixta: tomalo como un dato más y anotá en tu bitácora la fase de cada salida.</p>' +
+      '</details>';
+  }
+
+  // ---------- mapa (teselas de OpenStreetMap, sin librerías) ----------
+  var mapa = {
+    el: document.getElementById('mapa'),
+    capa: null,
+    z: 12,
+    cx: 0, cy: 0, // centro en píxeles del mundo
+    imgs: {},
+    mar: null
+  };
+  mapa.capa = mapa.el.querySelector('.teselas');
+  function proyectar(lat, lon, z) {
+    var n = 256 * Math.pow(2, z), r = lat * Math.PI / 180;
+    return { x: (lon + 180) / 360 * n, y: (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n };
+  }
+  function desproyectar(x, y, z) {
+    var n = 256 * Math.pow(2, z);
+    var lon = x / n * 360 - 180;
+    var lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+    return { lat: lat, lon: ((lon + 540) % 360) - 180 };
+  }
+  function centrarMapa(lat, lon) {
+    var p = proyectar(lat, lon, mapa.z);
+    mapa.cx = p.x; mapa.cy = p.y;
+    dibujarMapa();
+  }
+  function ubicarMarca(el, lat, lon, x0, y0) {
+    if (lat == null) { el.hidden = true; return; }
+    var p = proyectar(lat, lon, mapa.z);
+    el.hidden = false;
+    el.style.left = (p.x - x0) + 'px';
+    el.style.top = (p.y - y0) + 'px';
+  }
+  function dibujarMapa() {
+    var w = mapa.el.clientWidth, h = mapa.el.clientHeight;
+    if (!w || !h) return;
+    var x0 = mapa.cx - w / 2, y0 = mapa.cy - h / 2;
+    var n = Math.pow(2, mapa.z), usados = {};
+    for (var tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + w) / 256); tx++) {
+      for (var ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + h) / 256); ty++) {
+        if (ty < 0 || ty >= n) continue;
+        var wx = ((tx % n) + n) % n;
+        var clave = mapa.z + '/' + tx + '/' + ty;
+        var img = mapa.imgs[clave];
+        if (!img) {
+          img = document.createElement('img');
+          img.alt = '';
+          img.draggable = false;
+          img.src = 'https://tile.openstreetmap.org/' + mapa.z + '/' + wx + '/' + ty + '.png';
+          mapa.capa.appendChild(img);
+          mapa.imgs[clave] = img;
+        }
+        img.style.left = Math.round(tx * 256 - x0) + 'px';
+        img.style.top = Math.round(ty * 256 - y0) + 'px';
+        usados[clave] = true;
+      }
+    }
+    Object.keys(mapa.imgs).forEach(function (k) {
+      if (!usados[k]) { mapa.imgs[k].remove(); delete mapa.imgs[k]; }
+    });
+    ubicarMarca(document.getElementById('mPunto'), punto.lat, punto.lon, x0, y0);
+    ubicarMarca(document.getElementById('mVelero'), 10.9411, -75.0339, x0, y0);
+    ubicarMarca(document.getElementById('mMiPunto'), esMiPunto() ? null : MI_PUNTO.lat, MI_PUNTO.lon, x0, y0);
+    ubicarMarca(document.getElementById('mMar'), mapa.mar ? mapa.mar.lat : null, mapa.mar ? mapa.mar.lon : null, x0, y0);
+  }
+  function zoomMapa(delta) {
+    var nz = Math.max(5, Math.min(17, mapa.z + delta));
+    if (nz === mapa.z) return;
+    var c = desproyectar(mapa.cx, mapa.cy, mapa.z);
+    mapa.z = nz;
+    centrarMapa(c.lat, c.lon);
+  }
+  (function eventosMapa() {
+    var abajo = null;
+    mapa.el.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button, a')) return;
+      abajo = { x: ev.clientX, y: ev.clientY, cx: mapa.cx, cy: mapa.cy, movido: false, id: ev.pointerId };
+      try { mapa.el.setPointerCapture(ev.pointerId); } catch (e) { /* ignorar */ }
+    });
+    mapa.el.addEventListener('pointermove', function (ev) {
+      if (!abajo || ev.pointerId !== abajo.id) return;
+      var dx = ev.clientX - abajo.x, dy = ev.clientY - abajo.y;
+      if (!abajo.movido && Math.abs(dx) + Math.abs(dy) > 6) abajo.movido = true;
+      if (abajo.movido) {
+        mapa.cx = abajo.cx - dx; mapa.cy = abajo.cy - dy;
+        dibujarMapa();
+      }
+    });
+    function soltar(ev) {
+      if (!abajo || ev.pointerId !== abajo.id) return;
+      var fue = abajo; abajo = null;
+      if (ev.type === 'pointerup' && !fue.movido) {
+        var r = mapa.el.getBoundingClientRect();
+        var x = mapa.cx - r.width / 2 + (ev.clientX - r.left);
+        var y = mapa.cy - r.height / 2 + (ev.clientY - r.top);
+        var c = desproyectar(x, y, mapa.z);
+        elegirPunto(c.lat, c.lon);
+      }
+    }
+    mapa.el.addEventListener('pointerup', soltar);
+    mapa.el.addEventListener('pointercancel', soltar);
+    mapa.el.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      zoomMapa(ev.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    document.getElementById('zMas').addEventListener('click', function () { zoomMapa(1); });
+    document.getElementById('zMenos').addEventListener('click', function () { zoomMapa(-1); });
+    window.addEventListener('resize', dibujarMapa);
+  })();
+
+  function esVelero() { return distanciaKm(punto, VELERO) < 0.05; }
+  function esMiPunto() { return distanciaKm(punto, MI_PUNTO) < 0.05; }
+  function nombrePunto() { return esMiPunto() ? 'Mi punto de pesca' : esVelero() ? 'Puerto Velero' : 'Punto elegido'; }
+  function elegirPunto(lat, lon) {
+    punto = { lat: Math.round(lat * 10000) / 10000, lon: Math.round(lon * 10000) / 10000 };
+    escribir(CLAVE_PUNTO, esMiPunto() ? null : punto);
+    mapa.mar = null;
+    dibujarMapa();
+    cargar();
+  }
+  function renderPunto() {
+    var info = document.getElementById('puntoInfo');
+    var txt = '📍 <b>' + nombrePunto() + '</b> · ' + fmt(punto.lat, 4) + ', ' + fmt(punto.lon, 4);
+    if (!esMiPunto()) txt += ' · a ' + fmt(distanciaKm(punto, MI_PUNTO), 1) + ' km de tu punto';
+    txt += '<br><span class="leyenda">🔄 Al elegir otro punto se recalcula todo el reporte.</span>';
+    if (datos && datos.celdaMar) {
+      var dM = distanciaKm(punto, datos.celdaMar), dT = distanciaKm(punto, datos.celdaTierra);
+      txt += '<ul class="leyenda" style="margin:4px 0 0;padding-left:18px">' +
+        '<li>💨 <b>Viento, ráfagas, UV y sol:</b> para este punto (celda del modelo a ' + fmt(dT, 1) + ' km).</li>' +
+        '<li>🌊 <b>Olas:</b> de la celda de mar más cercana del modelo de olas (🔵 en el mapa), en ' + fmt(datos.celdaMar.lat, 3) + ', ' + fmt(datos.celdaMar.lon, 3) +
+        ', a ' + fmt(dM, 1) + ' km. Representa el mar abierto cercano, no la rompiente exacta.' +
+        (dM > 8 ? ' <b>Queda lejos:</b> cerca de desembocaduras, bahías y escolleras el modelo de olas no tiene celdas de mar, así que toma la más próxima. ' +
+          'En tu orilla la ola puede ser menor (zona abrigada) o mayor (donde el mar pega de frente). Ajustá los umbrales con lo que veas.' : '') +
+        '</li></ul>';
+    }
+    info.innerHTML = txt;
+    document.getElementById('subtitulo').textContent = (esVelero()
+      ? 'Puerto Velero, Tubará (Atlántico)'
+      : nombrePunto() + ' ' + fmt(punto.lat, 3) + ', ' + fmt(punto.lon, 3)) + ' · hora de Bogotá';
+  }
+
+  // ---------- datos ----------
+  function armarUrls() {
+    var lat = punto.lat.toFixed(4).replace(/\.?0+$/, ''), lon = punto.lon.toFixed(4).replace(/\.?0+$/, '');
+    urls.marine = 'https://marine-api.open-meteo.com/v1/marine' +
+      '?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=wave_height,wave_period,wave_direction' +
+      '&timezone=' + encodeURIComponent(TZ) +
+      '&forecast_days=' + DIAS +
+      '&cell_selection=sea';
+    urls.forecast = 'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index' +
+      '&daily=sunrise,sunset,uv_index_max' +
+      '&wind_speed_unit=kn' +
+      '&timezone=' + encodeURIComponent(TZ) +
+      '&forecast_days=' + DIAS;
+  }
+  function pedir(url, intentos) {
+    if (intentos == null) intentos = 3;
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok || j.error) {
+          var e = new Error((j && j.reason) || ('HTTP ' + r.status));
+          e.reintentar = r.status === 429 || r.status >= 500;
+          throw e;
+        }
+        return j;
+      });
+    }).catch(function (e) {
+      // Fallas de red o del servidor: reintenta con espera creciente
+      var reintentar = e.reintentar || e instanceof TypeError;
+      if (!reintentar || intentos <= 1) throw e;
+      return new Promise(function (ok) { setTimeout(ok, (4 - intentos) * 2000); }).then(function () { return pedir(url, intentos - 1); });
+    });
+  }
+  function combinar(mar, pron) {
+    var horas = {};
+    function slot(t) { return horas[t] || (horas[t] = { t: t }); }
+    var mh = mar.hourly || {};
+    (mh.time || []).forEach(function (t, i) {
+      var s = slot(t);
+      s.ola = mh.wave_height ? mh.wave_height[i] : null;
+      s.periodo = mh.wave_period ? mh.wave_period[i] : null;
+      s.dirOla = mh.wave_direction ? mh.wave_direction[i] : null;
+    });
+    var ph = pron.hourly || {};
+    (ph.time || []).forEach(function (t, i) {
+      var s = slot(t);
+      s.viento = ph.wind_speed_10m ? ph.wind_speed_10m[i] : null;
+      s.rafaga = ph.wind_gusts_10m ? ph.wind_gusts_10m[i] : null;
+      s.dir = ph.wind_direction_10m ? ph.wind_direction_10m[i] : null;
+      s.uv = ph.uv_index ? ph.uv_index[i] : null;
+    });
+    var pd = pron.daily || {};
+    var dias = (pd.time || []).map(function (fecha, i) {
+      var hs = [];
+      for (var h = 0; h < 24; h++) {
+        var t = fecha + 'T' + pad(h) + ':00';
+        hs.push(horas[t] || { t: t });
+      }
+      return {
+        fecha: fecha,
+        salida: pd.sunrise ? pd.sunrise[i] : null,
+        puesta: pd.sunset ? pd.sunset[i] : null,
+        uvMax: pd.uv_index_max ? pd.uv_index_max[i] : null,
+        horas: hs
+      };
+    });
+    return {
+      dias: dias,
+      celdaMar: { lat: mar.latitude, lon: mar.longitude },
+      celdaTierra: { lat: pron.latitude, lon: pron.longitude }
+    };
+  }
+
+  // ---------- franjas ----------
+  function franjasDelDia(dia) {
+    var fijas = [];
+    for (var ini = 0; ini < 24; ini += 3) fijas.push({ ini: ini, fin: ini + 3, titulo: pad(ini) + '–' + pad(ini + 3) + ' h' });
+    var dest = [{ ini: 6, fin: 9, titulo: 'Mañana · 6–9 h', destacada: true }];
+    if (dia.puesta) {
+      var hp = parseInt(dia.puesta.slice(11, 13), 10);
+      // Atardecer: la hora previa a la puesta, la hora de la puesta y la siguiente
+      var ini2 = Math.max(0, hp - 1), fin2 = Math.min(24, hp + 2);
+      dest.push({ ini: ini2, fin: fin2, destacada: true, titulo: 'Atardecer · ' + ini2 + '–' + fin2 + ' h', nota: 'puesta del sol ' + hhmm(dia.puesta) });
+    }
+    return { destacadas: dest, resto: fijas };
+  }
+  function resumen(dia, f, ahora) {
+    var hs = dia.horas.slice(f.ini, f.fin);
+    var colores = hs.map(colorHora).filter(function (c) { return c !== 'gris'; });
+    var finIso = dia.fecha + 'T' + pad(Math.min(f.fin, 23)) + (f.fin >= 24 ? ':59' : ':00');
+    return {
+      hs: hs,
+      color: colores.length ? peor(colores) : 'gris',
+      ola: maximo(valores(hs, 'ola')),
+      periodo: maximo(valores(hs, 'periodo')),
+      viento: maximo(valores(hs, 'viento')),
+      rafaga: maximo(valores(hs, 'rafaga')),
+      dir: promedioAngulos(valores(hs, 'dir')),
+      uv: maximo(valores(hs, 'uv')),
+      pasada: ahora ? finIso <= ahora : false
+    };
+  }
+  function htmlFranja(dia, f, ahora) {
+    var r = resumen(dia, f, ahora), u = umbrales, uvTxt = avisoUV(r.uv);
+    var filas = r.hs.map(function (h) {
+      return '<tr><td><span class="punto ' + colorHora(h) + '"></span>' + hhmm(h.t) + '</td>' +
+        '<td>' + fmt(h.ola, 2) + '</td><td>' + fmt(h.periodo, 1) + '</td>' +
+        '<td>' + fmt(h.viento, 0) + '</td><td>' + fmt(h.rafaga, 0) + '</td>' +
+        '<td>' + flecha(h.dir) + ' ' + cardinal(h.dir) + '</td><td>' + fmt(h.uv, 1) + '</td></tr>';
+    }).join('');
+    return '<div class="franja ' + r.color + (f.destacada ? ' destacada' : '') + (r.pasada ? ' pasada' : '') + '">' +
+      '<div class="luz"></div><div>' +
+      '<div class="f-tit"><strong>' + esc(f.titulo) + '</strong><span class="estado">' + TEXTO[r.color] + '</span></div>' +
+      (f.nota ? '<div class="leyenda">' + esc(f.nota) + '</div>' : '') +
+      '<div class="vals">' +
+        '<span>🌊 Ola máx. <b class="' + claseValor(r.ola, u.olaA, u.olaR) + '">' + fmt(r.ola, 2) + ' m</b></span>' +
+        '<span>⏱ Período <b>' + fmt(r.periodo, 1) + ' s</b></span>' +
+        '<span>💨 Viento <b class="' + claseValor(r.viento, u.vientoA, u.vientoR) + '">' + fmt(r.viento, 0) + ' kn</b></span>' +
+        '<span>🌬 Ráfagas <b class="' + claseValor(r.rafaga, u.rafagaA, u.rafagaR) + '">' + fmt(r.rafaga, 0) + ' kn</b></span>' +
+        '<span>🧭 Del <b>' + cardinal(r.dir) + '</b> ' + flecha(r.dir) + '</span>' +
+        '<span>☀️ UV máx. <b>' + fmt(r.uv, 1) + '</b></span>' +
+      '</div>' +
+      (uvTxt ? '<span class="uv">⚠️ ' + uvTxt + '</span>' : '') +
+      '<details><summary>Hora por hora</summary><table>' +
+        '<tr><th>Hora</th><th>Ola m</th><th>Per. s</th><th>Vto kn</th><th>Ráf kn</th><th>Dir</th><th>UV</th></tr>' +
+        filas + '</table></details>' +
+      '</div></div>';
+  }
+
+  // ---------- análisis ----------
+  function relacionCosta(dir) {
+    if (dir == null) return null;
+    if (difAng(dir, RUMBO_MAR) <= 45) return 'mar';
+    if (difAng(dir, RUMBO_MAR + 180) <= 45) return 'tierra';
+    return 'lateral';
+  }
+  function analizarDia(dia, ahora) {
+    var u = umbrales;
+    // Horas útiles para pescar de día: desde la salida del sol (5 h) hasta pasada la puesta (19 h)
+    var utiles = dia.horas.slice(5, 20).filter(function (h) { return !ahora || h.t.slice(0, 13) >= ahora.slice(0, 13); });
+    if (!utiles.length) return null;
+    var colores = utiles.map(colorHora);
+    var conDatos = colores.filter(function (c) { return c !== 'gris'; });
+    if (!conDatos.length) return null;
+
+    // Mejor ventana: el tramo continuo más largo del mejor color disponible
+    var mejor = conDatos.reduce(function (a, c) { return NIVEL[c] < NIVEL[a] ? c : a; }, 'rojo');
+    var ini = -1, largo = 0, bi = -1, bl = 0;
+    colores.forEach(function (c, i) {
+      if (c === mejor) { if (ini < 0) ini = i; largo = i - ini + 1; if (largo > bl) { bl = largo; bi = ini; } }
+      else { ini = -1; }
+    });
+    var hIni = parseInt(utiles[bi].t.slice(11, 13), 10), hFin = hIni + bl;
+    var verdes = colores.filter(function (c) { return c === 'verde'; }).length;
+    var rojas = colores.filter(function (c) { return c === 'rojo'; }).length;
+
+    var veredicto;
+    if (verdes >= 3) veredicto = '🟢 Buen día para pescar de orilla';
+    else if (verdes > 0 || rojas < conDatos.length / 2) veredicto = '🟡 Día aprovechable, con precaución';
+    else veredicto = '🔴 Día complicado para la orilla';
+
+    var puntos = [];
+    puntos.push('<b>Mejor ventana:</b> de ' + hIni + ' a ' + hFin + ' h (' + TEXTO[mejor] + ').' +
+      (mejor !== 'verde' ? ' Ninguna hora con luz llega a verde con tus umbrales.' : ''));
+
+    // Ola: tendencia y período
+    var hs = dia.horas;
+    var olaM = promedio(valores(hs.slice(5, 10), 'ola')), olaT = promedio(valores(hs.slice(14, 19), 'ola'));
+    var olas = valores(hs.slice(5, 20), 'ola');
+    var per = promedio(valores(hs.slice(5, 20), 'periodo'));
+    var movida = false;
+    if (olas.length) {
+      var tend = '';
+      if (olaM != null && olaT != null) {
+        if (olaT - olaM > 0.15) tend = ' y <b>sube</b> en la tarde';
+        else if (olaM - olaT > 0.15) tend = ' y <b>baja</b> en la tarde';
+        else tend = ', bastante pareja en el día';
+      }
+      var txtOla = '<b>Ola:</b> entre ' + fmt(minimo(olas), 1) + ' y ' + fmt(maximo(olas), 1) + ' m' + tend + '. ';
+      if (per != null) {
+        if (per < 7) txtOla += 'Período corto (' + fmt(per, 1) + ' s): es mar de viento, picado y desordenado; la rompiente es más blanda de lo que dice la altura, pero el agua se enturbia.';
+        else if (per < 10) txtOla += 'Período medio (' + fmt(per, 1) + ' s): mezcla de viento y mar de fondo; las series llegan más espaciadas y con algo más de fuerza.';
+        else txtOla += 'Período largo (' + fmt(per, 1) + ' s): mar de fondo. Aunque la ola parezca baja, rompe con fuerza en la orilla y en las escolleras; ojo con las series.';
+      }
+      if (maximo(olas) >= u.olaA) movida = true;
+      puntos.push(txtOla);
+    }
+
+    // Viento
+    var vM = promedio(valores(hs.slice(6, 10), 'viento')), vT = promedio(valores(hs.slice(13, 18), 'viento'));
+    var dirDia = promedioAngulos(valores(hs.slice(6, 19), 'dir'));
+    if (vM != null || vT != null) {
+      var txtV = '<b>Viento:</b> ';
+      if (vM != null && vT != null) {
+        txtV += 'unos ' + fmt(vM, 0) + ' kn a la mañana y ' + fmt(vT, 0) + ' kn a la tarde' +
+          (vT - vM > 3 ? ' (se arma después del mediodía, típico de la brisa)' : vM - vT > 3 ? ' (afloja a la tarde)' : '') + ', ';
+      }
+      txtV += 'del ' + cardinal(dirDia) + '. ';
+      if (enTajamar()) {
+        var sv = sector(dirDia);
+        if (sv === 'norte') txtV += 'En el tajamar le pega <b>de frente a la punta</b>: cuesta lanzar hacia mar abierto y salpica en las piedras de adelante.';
+        else if (sv === 'este') txtV += 'En el tajamar entra <b>cruzado desde el lado del río</b>: lanzá hacia el lado del mar (oeste) con el viento a favor; del lado del río te viene de frente y la línea se embolsa.';
+        else if (sv === 'sur') txtV += 'En el tajamar sopla <b>de tierra, a lo largo de las piedras</b>: a favor para lanzar desde la punta hacia mar adentro.';
+        else if (sv === 'oeste') { txtV += 'En el tajamar entra <b>cruzado desde el mar</b>: lanzá hacia el lado del río con el viento a favor; del lado del mar te viene de frente.'; movida = true; }
+      } else if (distanciaKm(punto, VELERO) <= 35 || distanciaKm(punto, MI_PUNTO) <= 35) {
+        var rel = relacionCosta(dirDia);
+        if (rel === 'mar') { txtV += 'Sopla <b>de mar hacia la orilla</b>: empuja la ola y la espuma a la playa, cuesta lanzar lejos pero la comida se acerca a la rompiente.'; movida = true; }
+        else if (rel === 'tierra') txtV += 'Sopla <b>de tierra hacia el mar</b>: aplana la orilla y ayuda a lanzar lejos; si usás kayak o flotador, cuidado porque te aleja de la costa.';
+        else if (rel === 'lateral') txtV += 'Sopla <b>de costado</b> (paralelo a la playa): arrastra la línea a lo largo de la orilla; usá más plomo para que la carnada se quede quieta.';
+      }
+      if (vT != null && vT >= u.vientoA) movida = true;
+      puntos.push(txtV);
+    }
+
+    if (enTajamar()) {
+      var dirOla = promedioAngulos(valores(hs.slice(5, 20), 'dirOla'));
+      var so = sector(dirOla), olaMax = maximo(valores(hs.slice(5, 20), 'ola'));
+      var txtT = '<b>Tajamar:</b> ';
+      if (so) {
+        txtT += 'la ola llega del ' + cardinal(dirOla) + '. ';
+        if (so === 'norte') txtT += 'Pega de frente en la punta, que es la parte más expuesta; los costados quedan algo más protegidos.';
+        else if (so === 'este') txtT += 'Pega más del lado del río y la boca; el lado del mar (oeste) queda algo resguardado detrás de las piedras.';
+        else if (so === 'oeste') txtT += 'Pega del lado del mar (oeste); el lado del río queda más resguardado.';
+        else txtT += 'Viene de tierra, algo raro: el mar debería estar tranquilo junto a las piedras.';
+        txtT += ' ';
+      }
+      if (olaMax != null && (olaMax >= umbrales.olaA || (so === 'norte' && olaMax >= 0.6))) {
+        txtT += '⚠️ Con este mar puede pasar agua por encima de las piedras: evitá la punta, no le des la espalda al mar y usá calzado antideslizante.';
+      } else {
+        txtT += 'Igual cuidado: las piedras mojadas resbalan y las series más grandes llegan sin avisar.';
+      }
+      puntos.push(txtT);
+    }
+
+    if (distanciaKm(punto, BOCAS) <= 8) {
+      puntos.push('<b>Desembocadura del Magdalena:</b> cerca de Bocas de Ceniza el agua del río enturbia y endulza el mar y la corriente puede ser fuerte junto al tajamar. ' +
+        'El agua turbia favorece a róbalo, sábalo, jurel y bagre. Después de lluvias fuertes el río baja crecido, con palos y basura: más enredos y menos pique.');
+    }
+
+    // Qué esperar
+    var esperar;
+    if (mejor === 'rojo') esperar = 'Va a ser difícil sostener la línea y hay riesgo en rocas y escolleras. Si vas, buscá zonas abrigadas (dentro de la bahía o detrás de estructuras) y plomos pesados.';
+    else if (movida) esperar = 'Agua movida y algo turbia en la rompiente: favorece a los depredadores que cazan en la espuma (jurel, sábalo, róbalo, pámpano). Usá plomo pirámide o más peso y carnada viva o natural.';
+    else esperar = 'Agua tranquila y más clara: buena para carnada en fondo liviano y anzuelos chicos (mojarra, lisa, pargo, ronco) y para señuelos en las primeras y últimas horas de luz.';
+    puntos.push('<b>Qué esperar:</b> ' + esperar);
+
+    // Luna del día
+    var fl = faseDelDia(dia.fecha);
+    puntos.push('<b>Luna:</b> ' + fl.emoji + ' ' + fl.nombre.toLowerCase() + ' (' + Math.round(fl.ilum * 100) + ' %). ' +
+      (fl.enRango ? 'Dentro del rango de luna nueva o llena: mareas algo más fuertes, a favor.' : 'Fuera del rango de luna nueva o llena: efecto lunar neutro.'));
+
+    var uv = avisoUV(dia.uvMax);
+    if (uv) puntos.push('<b>Sol:</b> ' + uv + '.');
+
+    return { veredicto: veredicto, puntos: puntos, movida: movida, mejor: mejor };
+  }
+
+  // ---------- peces ----------
+  // Dibujos esquemáticos generados en SVG a partir de unos pocos parámetros por especie.
+  // Lienzo 260 x 120. Hocico en x0 = 16, base de la cola en xe, eje del cuerpo en cy = 60.
+  function dibujarPez(o, id) {
+    var x0 = 16, xe = o.xe || 190, cy = 60;
+    var h = o.h, hb = o.hb, ped = o.ped;
+    var xm = x0 + (xe - x0) * o.pico;
+    var kf = { roma: 0.32, normal: 0.55, aguda: 0.8 }[o.frente || 'normal'];
+    function top(x) {
+      if (x <= xm) { var t = (xm - x) / (xm - x0); return cy - h * Math.pow(Math.max(0, 1 - t * t), kf); }
+      var s = (x - xm) / (xe - xm); return cy - (ped + (h - ped) * Math.pow(Math.max(0, 1 - s * s), 0.9));
+    }
+    function bot(x) {
+      if (x <= xm) { var t = (xm - x) / (xm - x0); return cy + hb * Math.pow(Math.max(0, 1 - t * t), 0.5); }
+      var s = (x - xm) / (xe - xm); return cy + (ped + (hb - ped) * Math.pow(Math.max(0, 1 - s * s), 0.9));
+    }
+    function n(v) { return Math.round(v * 10) / 10; }
+    function at(x, f) { return top(x) + (bot(x) - top(x)) * f; } // f = 0 arriba, 1 abajo
+    var i, x, pts = [];
+    for (i = 0; i <= 60; i++) { x = x0 + (xe - x0) * i / 60; pts.push(n(x) + ',' + n(top(x))); }
+    for (i = 60; i >= 0; i--) { x = x0 + (xe - x0) * i / 60; pts.push(n(x) + ',' + n(bot(x))); }
+    var cuerpo = 'M' + pts.join(' L') + ' Z';
+    var aleta = o.aletas || '#8a9aa5', borde = o.borde || '#33414b';
+    var out = [];
+
+    // Aletas detrás del cuerpo
+    function aletaD(f, abajo) {
+      var a = f.x0, b = f.x1, fh = f.h, y = abajo ? bot : top, sg = abajo ? 1 : -1, w = b - a, d;
+      var ya = y(a), yb = y(b), c = f.color || aleta;
+      if (f.tipo === 'espinosa') {
+        d = 'M' + n(a) + ',' + n(ya + sg * -2) + ' L' + n(a + w * 0.25) + ',' + n(ya + sg * fh) + ' L' + n(a + w * 0.6) + ',' + n(y(a + w * 0.6) + sg * fh * 0.75) +
+          ' L' + n(b) + ',' + n(yb + sg * fh * 0.3) + ' L' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".8"/>');
+        for (var k = 1; k < 6; k++) {
+          var xs = a + w * k / 6, yt = y(xs);
+          out.push('<line x1="' + n(xs) + '" y1="' + n(yt) + '" x2="' + n(xs + 2) + '" y2="' + n(yt + sg * fh * (k < 2 ? 0.95 : 0.85 - k * 0.08)) + '" stroke="' + borde + '" stroke-width=".7"/>');
+        }
+        if (f.punta) out.push('<path d="M' + n(a) + ',' + n(ya) + ' L' + n(a + w * 0.25) + ',' + n(ya + sg * fh) + ' L' + n(a + w * 0.45) + ',' + n(y(a + w * 0.45) + sg * fh * 0.8) + ' Z" fill="' + f.punta + '"/>');
+      } else if (f.tipo === 'hoz') {
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' L' + n(a + w * 0.12) + ',' + n(ya + sg * fh) + ' Q' + n(a + w * 0.35) + ',' + n(ya + sg * fh * 0.35) + ' ' + n(b) + ',' + n(yb + sg * 3) + ' L' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".8"/>');
+      } else if (f.tipo === 'redonda') {
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' C' + n(a + w * 0.2) + ',' + n(ya + sg * fh * 1.2) + ' ' + n(b - w * 0.05) + ',' + n(yb + sg * fh * 1.3) + ' ' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".8"/>');
+      } else if (f.tipo === 'adiposa') {
+        d = 'M' + n(a) + ',' + n(ya - sg * 1) + ' Q' + n(a + w * 0.5) + ',' + n(ya + sg * fh * 1.6) + ' ' + n(b) + ',' + n(yb - sg * 1) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" stroke="' + borde + '" stroke-width=".8"/>');
+      } else if (f.tipo === 'espina') {
+        // una espina fuerte y alta (bagre)
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' L' + n(a + 6) + ',' + n(ya + sg * fh) + ' Q' + n(a + w * 0.5) + ',' + n(ya + sg * fh * 0.5) + ' ' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".8"/>');
+        out.push('<line x1="' + n(a) + '" y1="' + n(ya) + '" x2="' + n(a + 6) + '" y2="' + n(ya + sg * fh) + '" stroke="' + borde + '" stroke-width="2"/>');
+      } else { // blanda
+        d = 'M' + n(a) + ',' + n(ya - sg * 2) + ' L' + n(a + w * 0.18) + ',' + n(ya + sg * fh) + ' Q' + n(a + w * 0.7) + ',' + n(ya + sg * fh * 0.85) + ' ' + n(b + 3) + ',' + n(yb + sg * fh * 0.35) + ' L' + n(b) + ',' + n(yb - sg * 2) + ' Z';
+        out.push('<path d="' + d + '" fill="' + c + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".8"/>');
+      }
+      if (f.filamento) {
+        out.push('<path d="M' + n(b) + ',' + n(yb + sg * fh * 0.3) + ' Q' + n(b + 20) + ',' + n(yb + sg * (fh + 4)) + ' ' + n(b + f.filamento) + ',' + n(yb + sg * (fh * 0.6)) + '" fill="none" stroke="' + borde + '" stroke-width="1.4"/>');
+      }
+    }
+    (o.dorsales || []).forEach(function (f) { aletaD(f, false); });
+    (o.anales || []).forEach(function (f) { aletaD(f, true); });
+
+    // Pínulas (aletitas detrás de la dorsal y la anal)
+    if (o.pinulas) {
+      for (x = o.pinulas[0]; x < o.pinulas[1]; x += 6) {
+        out.push('<path d="M' + n(x) + ',' + n(top(x) + 1) + ' L' + n(x + 4) + ',' + n(top(x) - 5) + ' L' + n(x + 5) + ',' + n(top(x + 5) + 1) + ' Z" fill="' + (o.colPinulas || aleta) + '"/>');
+        out.push('<path d="M' + n(x) + ',' + n(bot(x) - 1) + ' L' + n(x + 4) + ',' + n(bot(x) + 5) + ' L' + n(x + 5) + ',' + n(bot(x + 5) - 1) + ' Z" fill="' + (o.colPinulas || aleta) + '"/>');
+      }
+    }
+
+    // Cola
+    var cc = o.colCola || aleta, ct = o.cola, p = ped, d2;
+    if (ct === 'redonda') d2 = 'M' + xe + ',' + (cy - p) + ' C' + (xe + 40) + ',' + (cy - p - 22) + ' ' + (xe + 40) + ',' + (cy + p + 22) + ' ' + xe + ',' + (cy + p) + ' Z';
+    else if (ct === 'truncada') d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 28) + ',' + (cy - p - 16) + ' Q' + (xe + 32) + ',' + cy + ' ' + (xe + 28) + ',' + (cy + p + 16) + ' L' + xe + ',' + (cy + p) + ' Z';
+    else if (ct === 'luna') d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 34) + ',' + (cy - p - 30) + ' Q' + (xe + 16) + ',' + cy + ' ' + (xe + 34) + ',' + (cy + p + 30) + ' L' + xe + ',' + (cy + p) + ' Z';
+    else if (ct === 'profunda') d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 42) + ',' + (cy - p - 32) + ' L' + (xe + 18) + ',' + cy + ' L' + (xe + 42) + ',' + (cy + p + 32) + ' L' + xe + ',' + (cy + p) + ' Z';
+    else d2 = 'M' + xe + ',' + (cy - p) + ' L' + (xe + 36) + ',' + (cy - p - 22) + ' L' + (xe + 22) + ',' + cy + ' L' + (xe + 36) + ',' + (cy + p + 22) + ' L' + xe + ',' + (cy + p) + ' Z';
+    out.push('<path d="' + d2 + '" fill="' + cc + '" fill-opacity=".92" stroke="' + borde + '" stroke-width=".8"/>');
+    if (o.puntasCola) {
+      out.push('<circle cx="' + (xe + 36) + '" cy="' + (cy - p - 21) + '" r="3" fill="' + o.puntasCola + '"/><circle cx="' + (xe + 36) + '" cy="' + (cy + p + 21) + '" r="3" fill="' + o.puntasCola + '"/>');
+    }
+
+    // Cuerpo con degradé
+    out.push('<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' + o.dorso + '"/><stop offset=".5" stop-color="' + o.flanco + '"/><stop offset="1" stop-color="' + o.vientre + '"/></linearGradient>' +
+      '<clipPath id="c' + id + '"><path d="' + cuerpo + '"/></clipPath></defs>');
+    out.push('<path d="' + cuerpo + '" fill="url(#g' + id + ')"/>');
+
+    // Marcas dentro del cuerpo
+    var m = [];
+    var mk = o.marcas || {};
+    if (mk.escamas) {
+      for (x = x0 + (xm - x0) * 0.75; x < xe - 4; x += 9) {
+        for (var f = 0.12; f < 0.95; f += 0.16) {
+          var yy = at(x, f) + ((Math.round((x - x0) / 9) % 2) ? 4 : 0);
+          m.push('<path d="M' + n(x) + ',' + n(yy - 5) + ' Q' + n(x + 6) + ',' + n(yy) + ' ' + n(x) + ',' + n(yy + 5) + '" fill="none" stroke="' + mk.escamas + '" stroke-width=".7" opacity=".7"/>');
+        }
+      }
+    }
+    (mk.franjas || []).forEach(function (fr) {
+      var ps = [], xa = fr.desde || x0, xb = fr.hasta || xe;
+      for (var j = 0; j <= 30; j++) { var xx = xa + (xb - xa) * j / 30; ps.push(n(xx) + ',' + n(at(xx, fr.f) + (fr.incl || 0) * (xx - xa) / (xb - xa))); }
+      m.push('<polyline points="' + ps.join(' ') + '" fill="none" stroke="' + fr.color + '" stroke-width="' + (fr.ancho || 1.5) + '" opacity="' + (fr.op || 0.9) + '" stroke-linecap="round"/>');
+    });
+    (mk.barras || []).forEach(function (bx) {
+      m.push('<path d="M' + n(bx.x) + ',' + n(top(bx.x) - 2) + ' L' + n(bx.x + (bx.incl || 0)) + ',' + n(at(bx.x, bx.hasta || 0.5)) + '" stroke="' + bx.color + '" stroke-width="' + (bx.ancho || 4) + '" opacity="' + (bx.op || 0.6) + '" stroke-linecap="round"/>');
+    });
+    (mk.manchas || []).forEach(function (s) {
+      m.push('<ellipse cx="' + n(s.x) + '" cy="' + n(at(s.x, s.f)) + '" rx="' + (s.rx || s.r) + '" ry="' + (s.ry || s.r) + '" fill="' + s.color + '" opacity="' + (s.op || 1) + '"/>');
+    });
+    if (mk.escudetes) {
+      for (x = mk.escudetes[0]; x < xe; x += 3.2) {
+        m.push('<path d="M' + n(x) + ',' + n(at(x, 0.5) - 2.5) + ' L' + n(x + 2.5) + ',' + n(at(x, 0.5)) + ' L' + n(x) + ',' + n(at(x, 0.5) + 2.5) + '" fill="none" stroke="#3b4a52" stroke-width=".8"/>');
+      }
+    }
+    out.push('<g clip-path="url(#c' + id + ')">' + m.join('') + '</g>');
+
+    // Línea lateral
+    if (o.lateral !== false) {
+      var lp = [], lc = (mk.lateral && mk.lateral.color) || 'rgba(40,50,60,.45)', lw = (mk.lateral && mk.lateral.ancho) || 0.8;
+      var la = x0 + (xm - x0) * 0.62, lb = mk.lateral && mk.lateral.cola ? xe + 22 : xe;
+      for (i = 0; i <= 30; i++) {
+        x = la + (lb - la) * i / 30;
+        var xx2 = Math.min(x, xe);
+        var ff = (mk.lateral && mk.lateral.f != null) ? mk.lateral.f : (0.3 + 0.2 * i / 30);
+        lp.push(n(x) + ',' + n(at(xx2, ff)));
+      }
+      out.push('<polyline points="' + lp.join(' ') + '" fill="none" stroke="' + lc + '" stroke-width="' + lw + '"/>');
+    }
+
+    // Cabeza: opérculo, ojo, boca
+    var opx = x0 + (xm - x0) * (o.opx || 0.58);
+    out.push('<path d="M' + n(opx - 4) + ',' + n(top(opx) + 4) + ' Q' + n(opx + 8) + ',' + cy + ' ' + n(opx - 4) + ',' + n(bot(opx) - 4) + '" fill="none" stroke="' + borde + '" stroke-width="1" opacity=".7"/>');
+    if (mk.opercular) out.push('<ellipse cx="' + n(opx + 1) + '" cy="' + n(at(opx, 0.32)) + '" rx="2.5" ry="4" fill="#1d2329"/>');
+    var ex = x0 + (xm - x0) * (o.ojoX || 0.28), ey = at(ex, o.ojoF || 0.3), er = o.ojo || 4.5;
+    out.push('<circle cx="' + n(ex) + '" cy="' + n(ey) + '" r="' + er + '" fill="' + (o.colOjo || '#f2f0e6') + '" stroke="' + borde + '" stroke-width=".8"/>');
+    out.push('<circle cx="' + n(ex + er * 0.1) + '" cy="' + n(ey) + '" r="' + n(er * 0.55) + '" fill="#111"/>');
+    out.push('<circle cx="' + n(ex - er * 0.25) + '" cy="' + n(ey - er * 0.3) + '" r="' + n(er * 0.18) + '" fill="#fff"/>');
+    var boca = o.boca || 'normal';
+    var bl = (xm - x0) * (o.bocaL || 0.22);
+    if (boca === 'superior') {
+      out.push('<path d="M' + (x0 - 2) + ',' + (cy - 4) + ' L' + n(x0 + bl) + ',' + (cy + 6) + '" stroke="' + borde + '" stroke-width="1.4"/>');
+    } else if (boca === 'saliente') {
+      out.push('<path d="M' + (x0 + 3) + ',' + (cy - 1) + ' L' + n(x0 + bl) + ',' + (cy + 2) + ' M' + (x0 - 3) + ',' + (cy + 2) + ' L' + n(x0 + bl) + ',' + (cy + 3) + '" stroke="' + borde + '" stroke-width="1.3" fill="none"/>');
+    } else if (boca === 'chica') {
+      out.push('<path d="M' + x0 + ',' + (cy + 1) + ' l6,1" stroke="' + borde + '" stroke-width="1.2"/>');
+    } else {
+      out.push('<path d="M' + x0 + ',' + (cy + 1) + ' L' + n(x0 + bl) + ',' + (cy + 3) + '" stroke="' + borde + '" stroke-width="1.2"/>');
+    }
+    if (o.colBoca) out.push('<path d="M' + x0 + ',' + (cy + 1) + ' L' + n(x0 + bl) + ',' + (cy + 3) + ' L' + x0 + ',' + (cy + 4) + ' Z" fill="' + o.colBoca + '"/>');
+    if (o.tubo) out.push('<path d="M' + x0 + ',' + (cy + 1) + ' l-9,9 l5,3 l8,-8" fill="none" stroke="' + borde + '" stroke-width=".9" stroke-dasharray="2 1.5"/>');
+    if (o.dientes) {
+      for (i = 0; i < 5; i++) out.push('<path d="M' + n(x0 + 3 + i * bl / 5) + ',' + (cy + 2) + ' l1.5,-3 l1.5,3 Z" fill="#fff" stroke="' + borde + '" stroke-width=".3"/>');
+    }
+    (o.barbillas || []).forEach(function (b) {
+      out.push('<path d="M' + n(x0 + b.x) + ',' + n(cy + b.y) + ' q' + b.dx * 0.5 + ',' + (b.dy * 0.2) + ' ' + b.dx + ',' + b.dy + '" fill="none" stroke="' + borde + '" stroke-width="' + (b.ancho || 1.1) + '" stroke-linecap="round"/>');
+    });
+
+    // Pectoral y pélvica (encima del cuerpo)
+    var px = opx + 4, py = at(px, 0.58), pl = o.pectoral || 22;
+    var colP = o.colPectoral || aleta;
+    if (o.pectoralRedonda) {
+      out.push('<path d="M' + n(px) + ',' + n(py - 3) + ' C' + n(px + pl) + ',' + n(py - 8) + ' ' + n(px + pl) + ',' + n(py + 14) + ' ' + n(px) + ',' + n(py + 4) + ' Z" fill="' + colP + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".7"/>');
+    } else {
+      out.push('<path d="M' + n(px) + ',' + n(py - 3) + ' Q' + n(px + pl * 0.6) + ',' + n(py - 4) + ' ' + n(px + pl) + ',' + n(py + 4) + ' Q' + n(px + pl * 0.5) + ',' + n(py + 4) + ' ' + n(px) + ',' + n(py + 3) + ' Z" fill="' + colP + '" fill-opacity=".85" stroke="' + borde + '" stroke-width=".7"/>');
+    }
+    if (o.espinaPectoral) out.push('<line x1="' + n(px) + '" y1="' + n(py - 3) + '" x2="' + n(px + pl * 0.8) + '" y2="' + n(py - 2) + '" stroke="' + borde + '" stroke-width="1.8"/>');
+    if (mk.axila) out.push('<ellipse cx="' + n(px + 2) + '" cy="' + n(py) + '" rx="3" ry="3.5" fill="#1d2329"/>');
+    var vx = px + 6, vy = bot(vx);
+    out.push('<path d="M' + n(vx) + ',' + n(vy - 2) + ' L' + n(vx + 6) + ',' + n(vy + 9) + ' L' + n(vx + 14) + ',' + n(vy + 1) + ' Z" fill="' + (o.colPelvica || aleta) + '" fill-opacity=".9" stroke="' + borde + '" stroke-width=".7"/>');
+
+    return '<svg class="dibujo" viewBox="0 0 260 120" role="img" aria-label="Dibujo de ' + esc(o.alt || '') + '">' + out.join('') + '</svg>';
+  }
+
+  var PECES = [
+    { n: 'Jurel', anz: 'N.º 1/0 a 4/0 (circular o J) con carnada; con señuelo, el que trae (triples N.º 2 a 4).', c: 'Caranx hippos', foto: 'Caranx hippos', cond: 'movida', tam: 'en orilla, 30 a 60 cm (llega a más de 1 m)',
+      claves: ['Cuerpo alto y aplanado de costado, frente muy redondeada y empinada.', 'Mancha negra en el borde de la tapa de las agallas y otra en la base de la aleta del pecho.', 'Fila de escamas duras como escudos (escudetes) en el último tramo antes de la cola.', 'Cola en horquilla, a menudo amarillenta.'],
+      t: 'Muy común desde la orilla y las escolleras. Ataca en la espuma al amanecer y al atardecer.', cb: 'Cucharas, poppers y jigs; sardina o lisa viva.',
+      d: { h: 36, hb: 30, pico: 0.36, ped: 4, frente: 'roma', dorso: '#466a7c', flanco: '#c9d4d2', vientre: '#e9dfa5', aletas: '#c7b25a', colCola: '#d8bc45', cola: 'profunda',
+        dorsales: [{ x0: 86, x1: 106, h: 13, tipo: 'espinosa' }, { x0: 110, x1: 168, h: 18, tipo: 'hoz' }], anales: [{ x0: 120, x1: 168, h: 15, tipo: 'hoz' }],
+        ojo: 6, ojoF: 0.32, marcas: { opercular: true, axila: true, escudetes: [145] } } },
+    { n: 'Sábalo', anz: 'N.º 5/0 a 8/0 circular con carnada viva. El circular engancha en la comisura y facilita soltarlo.', c: 'Megalops atlanticus', foto: 'Megalops atlanticus', cond: 'movida', tam: 'de 1 a 2 m (puede pasar de 2 m)',
+      claves: ['Escamas plateadas enormes, como espejos (se ven una por una).', 'Boca grande que mira hacia arriba, con la mandíbula de abajo saliente.', 'El último rayo de la aleta del lomo es un filamento largo.', 'Lomo azul verdoso oscuro y cola en horquilla grande.'],
+      t: 'Pez deportivo que entra a la orilla y a las bocas, sobre todo al amanecer, atardecer y de noche. Especie vulnerable: se recomienda captura y suelta.', cb: 'Señuelos de media agua y poppers; lisa o sardina viva.',
+      d: { h: 27, hb: 25, pico: 0.42, ped: 8, xe: 192, frente: 'normal', dorso: '#2f4e5c', flanco: '#d6dfe4', vientre: '#f3f5f6', aletas: '#7f909a', cola: 'profunda', boca: 'superior', bocaL: 0.3,
+        dorsales: [{ x0: 100, x1: 122, h: 20, tipo: 'blanda', filamento: 38 }], anales: [{ x0: 140, x1: 168, h: 14, tipo: 'hoz' }],
+        ojo: 6, ojoF: 0.3, marcas: { escamas: '#7b8c96' } } },
+    { n: 'Róbalo', anz: 'N.º 1/0 a 2/0 con camarón vivo; N.º 3/0 a 5/0 con lisa o sardina viva.', c: 'Centropomus undecimalis', foto: 'Centropomus undecimalis', cond: 'movida', tam: 'de 40 a 90 cm (llega a 1,4 m)',
+      claves: ['Línea negra muy marcada a lo largo del costado, desde la cabeza hasta el final de la cola.', 'Hocico largo y frente cóncava; la mandíbula de abajo sobresale.', 'Dos aletas en el lomo, bien separadas.', 'Color plateado dorado o verdoso; aletas de abajo amarillentas.'],
+      t: 'Le gusta el agua algo turbia, las bocas de ciénagas y las estructuras. Mejor con poca luz.', cb: 'Camarón vivo, señuelos de media agua. Respetá la talla mínima.',
+      d: { h: 21, hb: 19, pico: 0.46, ped: 7, frente: 'aguda', dorso: '#6c6b45', flanco: '#d7d4b9', vientre: '#f0efe6', aletas: '#9a9a78', colPelvica: '#e2c94a', colCola: '#8d8d6b', cola: 'horquilla', boca: 'saliente', bocaL: 0.32,
+        dorsales: [{ x0: 78, x1: 108, h: 22, tipo: 'espinosa' }, { x0: 116, x1: 150, h: 15, tipo: 'blanda' }], anales: [{ x0: 140, x1: 158, h: 13, tipo: 'blanda' }],
+        ojo: 4.5, ojoF: 0.28, marcas: { lateral: { color: '#141414', ancho: 2.2, f: 0.42, cola: true } } } },
+    { n: 'Pámpano / palometa', anz: 'N.º 2 a 1/0, de pata corta y fuerte: tiene la boca chica y dura.', c: 'Trachinotus spp.', foto: 'Trachinotus carolinus', cond: 'movida', tam: 'de 25 a 50 cm (el pámpano grande pasa de 1 m)',
+      claves: ['Cuerpo alto, casi redondo, plateado y liso (escamas muy finas).', 'Aletas del lomo y de abajo largas, en forma de hoz y oscuras en la punta.', 'Frente muy roma y boca chica.', 'Vientre y aletas de abajo a menudo amarillos o anaranjados.'],
+      t: 'Recorre la rompiente de las playas de arena cuando hay ola moderada.', cb: 'Camarón, cangrejito de arena, anzuelo chico y plomo pirámide.',
+      d: { h: 33, hb: 31, pico: 0.38, ped: 4, frente: 'roma', dorso: '#7d8d97', flanco: '#dfe4e6', vientre: '#e6be4a', aletas: '#4a5258', colPelvica: '#e3a53b', cola: 'luna', boca: 'chica',
+        dorsales: [{ x0: 108, x1: 168, h: 22, tipo: 'hoz' }], anales: [{ x0: 110, x1: 168, h: 22, tipo: 'hoz', color: '#d99a3a' }],
+        ojo: 5, ojoF: 0.36, lateral: true } },
+    { n: 'Mojarra', anz: 'N.º 8 a 4 (chicos): la boca es chica y protráctil.', c: 'Eugerres plumieri y otras', foto: 'Eugerres plumieri', cond: 'calma', tam: 'de 15 a 30 cm',
+      claves: ['Cuerpo alto y en forma de rombo, muy plateado.', 'Boca que se estira hacia abajo como un tubo al comer (línea punteada en el dibujo).', 'Rayas oscuras finas a lo largo de las filas de escamas (mojarra rayada).', 'Aletas de abajo amarillentas.'],
+      t: 'Fondos de arena cerca de la orilla y dentro de bahías. Abundante con agua tranquila.', cb: 'Camarón, lombriz de mar, anzuelo chico.',
+      d: { h: 33, hb: 26, pico: 0.4, ped: 5, frente: 'aguda', dorso: '#7c8a91', flanco: '#dde3e6', vientre: '#f4f6f7', aletas: '#9aa5ab', colPelvica: '#e2c94a', cola: 'horquilla', boca: 'chica', tubo: true,
+        dorsales: [{ x0: 78, x1: 122, h: 26, tipo: 'espinosa' }, { x0: 122, x1: 162, h: 12, tipo: 'blanda' }], anales: [{ x0: 136, x1: 162, h: 14, tipo: 'blanda', color: '#e2c94a' }],
+        ojo: 6, ojoF: 0.34, marcas: { franjas: [0.18, 0.3, 0.42, 0.54, 0.66].map(function (f) { return { f: f, color: '#55636b', ancho: 0.9, op: 0.6, desde: 60 }; }) } } },
+    { n: 'Lisa / lebranche', anz: 'N.º 10 a 6 (muy chicos), con masa o pan.', c: 'Mugil spp.', foto: 'Mugil curema', cond: 'calma', tam: 'de 25 a 50 cm',
+      claves: ['Cuerpo alargado y redondeado (como un cilindro), cabeza ancha y chata.', 'Dos aletas cortas en el lomo, bien separadas.', 'Boca chica, sin dientes visibles; ojos con un párpado gelatinoso.', 'Lomo gris azulado y flancos plateados; algunas con rayas oscuras a lo largo.'],
+      t: 'Cardúmenes pegados a la orilla y en bocas de ciénagas.', cb: 'Masa o pan con anzuelo muy chico; muchos la pescan con atarraya.',
+      d: { h: 19, hb: 18, pico: 0.4, ped: 8, frente: 'roma', dorso: '#4c6070', flanco: '#c9d3d9', vientre: '#eff2f4', aletas: '#8996a0', cola: 'horquilla', boca: 'chica',
+        dorsales: [{ x0: 88, x1: 102, h: 13, tipo: 'espinosa' }, { x0: 128, x1: 146, h: 12, tipo: 'blanda' }], anales: [{ x0: 126, x1: 148, h: 11, tipo: 'blanda' }],
+        ojo: 4.5, ojoF: 0.36, lateral: false, marcas: { axila: true, franjas: [0.2, 0.32, 0.44].map(function (f) { return { f: f, color: '#4c5b66', ancho: 1, op: 0.5, desde: 50 }; }) } } },
+    { n: 'Pargo rayado / biajaiba', anz: 'N.º 2 a 1/0; si hay pargos más grandes en la zona, hasta 2/0.', c: 'Lutjanus synagris', foto: 'Lutjanus synagris', cond: 'calma', tam: 'de 20 a 35 cm',
+      claves: ['Cuerpo rosado o rojizo con rayas amarillas a lo largo del costado.', 'Mancha negra difusa sobre la línea lateral, debajo del final de la aleta del lomo.', 'Colmillos (dos dientes grandes) adelante en la boca.', 'Cola rosada, algo ahorquillada.'],
+      t: 'Escolleras y fondos con piedra. Mejor al amanecer y de noche.', cb: 'Camarón, calamar o tiras de pescado.',
+      d: { h: 29, hb: 24, pico: 0.4, ped: 6, frente: 'aguda', dorso: '#c26a6a', flanco: '#eba6a2', vientre: '#f6dcd6', aletas: '#e4a36e', colCola: '#d9827a', cola: 'horquilla', dientes: true, colOjo: '#e7b9a8',
+        dorsales: [{ x0: 72, x1: 126, h: 18, tipo: 'espinosa' }, { x0: 126, x1: 160, h: 14, tipo: 'blanda' }], anales: [{ x0: 136, x1: 160, h: 14, tipo: 'blanda' }],
+        ojo: 5.5, ojoF: 0.3, marcas: { franjas: [0.22, 0.34, 0.46, 0.58, 0.7, 0.82].map(function (f) { return { f: f, color: '#f2d33c', ancho: 2, op: 0.95, desde: 34 }; }), manchas: [{ x: 132, f: 0.32, rx: 8, ry: 6, color: '#2a1a1a', op: 0.55 }] } } },
+    { n: 'Ronco', anz: 'N.º 6 a 2.', c: 'Haemulon spp.', foto: 'Haemulon plumierii', cond: 'calma', tam: 'de 20 a 35 cm',
+      claves: ['Cuerpo gris amarillento, con líneas azules y amarillas en la cabeza.', 'El interior de la boca es rojo intenso.', 'Al sacarlo del agua hace un ruido como un gruñido (de ahí “ronco”).', 'Aleta del lomo continua, con espinas adelante.'],
+      t: 'Alrededor de rocas y escolleras; pica bastante con agua calma.', cb: 'Camarón y trozos de calamar, anzuelo chico.',
+      d: { h: 29, hb: 24, pico: 0.4, ped: 6, frente: 'normal', dorso: '#8c8e86', flanco: '#d3d2c3', vientre: '#eeece0', aletas: '#a7a48c', cola: 'horquilla', colBoca: '#d23c3c',
+        dorsales: [{ x0: 72, x1: 126, h: 18, tipo: 'espinosa' }, { x0: 126, x1: 160, h: 12, tipo: 'blanda' }], anales: [{ x0: 136, x1: 160, h: 13, tipo: 'blanda' }],
+        ojo: 5.5, ojoF: 0.3, marcas: { franjas: [0.15, 0.28, 0.41, 0.54, 0.67].map(function (f, i) { return { f: f, color: i % 2 ? '#e8c53a' : '#2f6fb3', ancho: 1.8, desde: 16, hasta: 70, incl: 4 }; }) } } },
+    { n: 'Sierra', anz: 'N.º 1/0 a 3/0 con cable de acero de 15 a 20 cm (corta el nylon con los dientes).', c: 'Scomberomorus brasiliensis', foto: 'Scomberomorus brasiliensis', cond: 'ambas', tam: 'de 40 a 70 cm (llega a más de 1 m)',
+      claves: ['Cuerpo largo y fino, plateado, con varias filas de manchas doradas ovaladas.', 'Primera aleta del lomo con la parte de adelante negra.', 'Aletitas sueltas (pínulas) entre las aletas y la cola.', 'Dientes triangulares muy filosos y cola en horquilla profunda.'],
+      t: 'Pasa en cardúmenes cerca de muelles y escolleras con agua clara. Hay que lanzar lejos.', cb: 'Señuelos rápidos (cucharas, jigs) con cable de acero: tiene dientes filosos.',
+      d: { h: 18, hb: 16, pico: 0.44, ped: 4, xe: 196, frente: 'aguda', dorso: '#3c5a73', flanco: '#cbd5dd', vientre: '#f2f4f6', aletas: '#8395a3', cola: 'luna', dientes: true, bocaL: 0.3,
+        dorsales: [{ x0: 70, x1: 122, h: 12, tipo: 'espinosa', punta: '#151a1e' }, { x0: 128, x1: 148, h: 15, tipo: 'hoz' }], anales: [{ x0: 132, x1: 150, h: 14, tipo: 'hoz' }],
+        pinulas: [152, 190], ojo: 4, ojoF: 0.32,
+        marcas: { manchas: [0.36, 0.5, 0.64].reduce(function (acc, f, r) { for (var xx = 64 + r * 6; xx < 186; xx += 13) acc.push({ x: xx, f: f, rx: 3.6, ry: 2.4, color: '#e0a92a' }); return acc; }, []) } } },
+    { n: 'Barracuda / picúa', anz: 'N.º 3/0 a 6/0 con cable de acero.', c: 'Sphyraena barracuda', foto: 'Sphyraena barracuda', cond: 'ambas', tam: 'de 60 cm a 1,5 m',
+      claves: ['Cuerpo largo como un torpedo, cabeza puntiaguda.', 'Mandíbula de abajo saliente con colmillos grandes a la vista.', 'Barras oscuras inclinadas en el lomo y manchas negras sueltas en la parte de atrás del costado.', 'Dos aletas del lomo muy separadas; cola con las puntas claras.'],
+      t: 'Escolleras y bordes de bajos; ataca señuelos brillantes.', cb: 'Cucharas y plugs con cable de acero. No consumas ejemplares grandes: riesgo de ciguatera.',
+      d: { h: 14, hb: 14, pico: 0.5, ped: 6, xe: 198, frente: 'aguda', dorso: '#4b5e6e', flanco: '#c3cdd4', vientre: '#eef1f3', aletas: '#6a7a86', cola: 'horquilla', puntasCola: '#f4f6f7', boca: 'saliente', bocaL: 0.34, dientes: true,
+        dorsales: [{ x0: 88, x1: 104, h: 15, tipo: 'espinosa' }, { x0: 146, x1: 160, h: 12, tipo: 'blanda' }], anales: [{ x0: 146, x1: 162, h: 11, tipo: 'blanda' }],
+        ojo: 4.5, ojoF: 0.3,
+        marcas: { barras: [70, 84, 98, 112, 126, 140, 154, 168].map(function (x) { return { x: x, incl: -6, hasta: 0.4, color: '#24313a', ancho: 4, op: 0.55 }; }),
+          manchas: [{ x: 140, f: 0.72, r: 2.2, color: '#111' }, { x: 156, f: 0.62, r: 2, color: '#111' }, { x: 170, f: 0.75, r: 2, color: '#111' }, { x: 182, f: 0.6, r: 1.8, color: '#111' }, { x: 126, f: 0.8, r: 1.8, color: '#111' }] } } },
+    { n: 'Bagre de mar / chivo', anz: 'N.º 1/0 a 4/0; mejor circular, porque traga hondo.', c: 'Familia Ariidae (p. ej. Bagre marinus)', foto: 'Bagre marinus', cond: 'movida', tam: 'de 30 a 60 cm',
+      claves: ['Piel lisa, sin escamas, gris azulada arriba y blanca abajo.', 'Bigotes (barbillas) alrededor de la boca.', 'Espinas duras y aserradas en la aleta del lomo y en las del pecho: pinchan y duelen mucho.', 'Aleta pequeña y carnosa (adiposa) entre la del lomo y la cola; cabeza chata con una placa dura.'],
+      t: 'Fondo, de noche o con agua turbia (después de lluvias).', cb: 'Tiras de pescado o camarón en el fondo. Agarralo con trapo o pinza, cuidando las espinas.',
+      d: { h: 23, hb: 18, pico: 0.3, ped: 6, frente: 'roma', dorso: '#5b6876', flanco: '#a8b2bb', vientre: '#eef1f3', aletas: '#7a8691', cola: 'profunda', espinaPectoral: true, pectoral: 26,
+        dorsales: [{ x0: 70, x1: 92, h: 26, tipo: 'espina', filamento: 20 }, { x0: 146, x1: 162, h: 6, tipo: 'adiposa' }], anales: [{ x0: 134, x1: 162, h: 12, tipo: 'blanda' }],
+        ojo: 3.5, ojoF: 0.35, lateral: false,
+        barbillas: [{ x: 3, y: 0, dx: 24, dy: 22, ancho: 1.6 }, { x: 2, y: 3, dx: 8, dy: 10 }, { x: 5, y: 5, dx: 6, dy: 9 }] } },
+    { n: 'Mero guasa', anz: 'No se pesca: es especie protegida.', c: 'Epinephelus itajara', foto: 'Epinephelus itajara', cond: 'prot', tam: 'puede superar los 2 m; los juveniles se ven en escolleras',
+      claves: ['Muy robusto, cabeza ancha y chata, ojos chicos.', 'Todas las aletas redondeadas, también la cola.', 'Color marrón amarillento con manchas oscuras irregulares y puntitos negros.', 'Si sale uno, aunque sea chico: especie protegida, soltalo.'],
+      t: 'Especie amenazada y protegida. Si sale, soltalo de inmediato y con cuidado.', cb: 'No se busca.',
+      d: { h: 35, hb: 30, pico: 0.34, ped: 12, frente: 'roma', dorso: '#6e5f3d', flanco: '#a69466', vientre: '#cbbd8f', aletas: '#7d6c48', cola: 'redonda', pectoralRedonda: true, pectoral: 26,
+        dorsales: [{ x0: 72, x1: 120, h: 9, tipo: 'espinosa' }, { x0: 120, x1: 166, h: 16, tipo: 'redonda' }], anales: [{ x0: 138, x1: 164, h: 15, tipo: 'redonda' }],
+        ojo: 3.2, ojoF: 0.3, bocaL: 0.3,
+        marcas: { manchas: [[60, 0.3, 9, 6], [92, 0.25, 10, 7], [124, 0.3, 9, 8], [156, 0.35, 8, 6], [78, 0.62, 9, 7], [112, 0.66, 10, 6], [146, 0.62, 8, 6], [176, 0.5, 6, 5]].map(function (s) { return { x: s[0], f: s[1], rx: s[2], ry: s[3], color: '#3f3420', op: 0.55 }; })
+          .concat([[50, 0.5], [70, 0.45], [100, 0.45], [134, 0.48], [166, 0.6], [86, 0.82], [120, 0.85], [150, 0.8]].map(function (s) { return { x: s[0], f: s[1], r: 1.2, color: '#1b160c' }; })) } } }
+  ];
+
+  function cargarFoto(i, btn) {
+    var p = PECES[i];
+    var cont = document.getElementById('foto' + i);
+    var nombre = p.foto;
+    btn.disabled = true;
+    btn.textContent = 'Buscando foto…';
+    fetch('https://api.inaturalist.org/v1/taxa?q=' + encodeURIComponent(nombre) + '&per_page=10').then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (j) {
+      // Solo se acepta el taxón cuyo nombre científico coincide exactamente
+      var t = (j.results || []).filter(function (x) { return (x.name || '').toLowerCase() === nombre.toLowerCase(); })[0];
+      if (!t || !t.default_photo) throw new Error('sin foto');
+      if (t.default_photo.license_code) return { t: t, f: t.default_photo };
+      // La foto principal tiene todos los derechos reservados: se busca otra con licencia abierta
+      return fetch('https://api.inaturalist.org/v1/taxa/' + encodeURIComponent(t.id)).then(function (r) { return r.json(); }).then(function (k) {
+        var fotos = ((k.results && k.results[0] && k.results[0].taxon_photos) || []).map(function (x) { return x.photo; });
+        var libre = fotos.filter(function (ph) { return ph && ph.license_code; })[0];
+        return { t: t, f: libre || t.default_photo };
+      });
+    }).then(function (res) {
+      var t = res.t, f = res.f;
+      var src = f.medium_url || (f.url || '').replace('/square.', '/medium.');
+      cont.innerHTML = '<figure class="foto" style="margin:6px 0 0"><img loading="lazy" alt="Foto de ' + esc(p.n) + ' (' + esc(t.name) + ')" src="' + esc(src) + '">' +
+        '<figcaption><i>' + esc(t.name) + '</i>' + (t.preferred_common_name ? ' (' + esc(t.preferred_common_name) + ')' : '') +
+        ' · ' + esc(f.attribution || '') + ' · <a href="https://www.inaturalist.org/taxa/' + encodeURIComponent(t.id) + '" target="_blank" rel="noopener">más fotos en iNaturalist</a></figcaption></figure>';
+      btn.remove();
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = '📷 Reintentar foto';
+      cont.innerHTML = '<p class="leyenda">No se pudo cargar la foto. Mirala en <a href="https://www.inaturalist.org/taxa/search?q=' +
+        encodeURIComponent(nombre) + '" target="_blank" rel="noopener">iNaturalist: ' + esc(nombre) + '</a>.</p>';
+    });
+  }
+
+  function renderPeces(analisis) {
+    var hoy = analisis ? (analisis.mejor === 'rojo' ? null : analisis.movida ? 'movida' : 'calma') : null;
+    var etqCond = { movida: 'agua movida', calma: 'agua calma', ambas: 'calma o movida', prot: 'protegida' };
+    var html = '<h2>🐟 Peces de la zona: cómo reconocerlos</h2>' +
+      '<p class="leyenda" style="margin-top:0">Dibujos esquemáticos (no a escala) que marcan los rasgos para identificarlos. Tocá “Ver foto real” para ver una foto de la especie (de iNaturalist). ' +
+      (hoy ? 'En <b>verde</b> los que mejor se adaptan a las condiciones del día seleccionado (' + etqCond[hoy] + '). ' : '') +
+      'Lista orientativa: confirmá con pescadores locales y revisá vedas y tallas mínimas en la AUNAP.</p>';
+    html += '<details style="margin:0 0 8px"><summary>🪝 ¿Cómo se lee el número de anzuelo?</summary>' +
+      '<p class="leyenda" style="margin:4px 0 0">Hasta el N.º 1, <b>cuanto más alto el número, más chico</b> el anzuelo (un N.º 10 es mucho más chico que un N.º 2). ' +
+      'Desde el 1/0 (“uno barra cero”) es al revés: <b>cuanto más alto, más grande</b> (un 6/0 es mucho más grande que un 1/0). ' +
+      'El tamaño real cambia algo según la marca y el modelo, así que tomalo como referencia. ' +
+      'El anzuelo circular engancha en la comisura de la boca y lastima menos: es el mejor si vas a soltar el pez.</p></details>';
+    PECES.forEach(function (p, i) {
+      var marca = p.cond === 'prot' ? 'prot' : (hoy && (p.cond === hoy || p.cond === 'ambas')) ? 'hoy' : '';
+      p.d.alt = p.n;
+      html += '<div class="pez"><div class="nom"><strong>' + esc(p.n) + '</strong><span class="cient">' + esc(p.c) + '</span></div>' +
+        dibujarPez(p.d, i) +
+        '<p><span class="etq ' + marca + '">' + (marca === 'hoy' ? '✓ ' : '') + etqCond[p.cond] + '</span><span class="leyenda">Tamaño: ' + esc(p.tam) + '</span></p>' +
+        '<ul>' + p.claves.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>' +
+        '<p>' + esc(p.t) + '</p>' +
+        '<p class="leyenda">🎣 ' + esc(p.cb) + '</p>' +
+        '<p class="leyenda">🪝 <b>Anzuelo:</b> ' + esc(p.anz) + '</p>' +
+        '<div id="foto' + i + '"></div>' +
+        '<button type="button" class="chico" data-foto="' + i + '" style="margin-top:6px">📷 Ver foto real</button>' +
+        '</div>';
+    });
+    document.getElementById('peces').innerHTML = html;
+  }
+  document.getElementById('peces').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-foto]');
+    if (b) cargarFoto(parseInt(b.dataset.foto, 10), b);
+  });
+
+  // ---------- render ----------
+  function render() {
+    var cont = document.getElementById('contenido');
+    var tabs = document.getElementById('tabs');
+    renderPunto();
+    if (!datos) return;
+    var ahora = ahoraBogota();
+    var hoy = ahora.slice(0, 10);
+    var dias = datos.dias.filter(function (d) { return d.fecha >= hoy; }).slice(0, DIAS);
+    if (!dias.length) dias = datos.dias;
+    if (diaSel >= dias.length) diaSel = 0;
+
+    tabs.innerHTML = dias.map(function (d, i) {
+      var colorDia = peor(franjasDelDia(d).destacadas.map(function (f) { return resumen(d, f, '').color; }));
+      var p = { verde: '🟢', amarillo: '🟡', rojo: '🔴', gris: '⚪' }[colorDia];
+      return '<button type="button" role="tab" aria-selected="' + (i === diaSel) + '" data-i="' + i + '">' +
+        p + ' ' + esc(nombreTab(d.fecha, i)) + '</button>';
+    }).join('');
+
+    var d = dias[diaSel];
+    var fr = franjasDelDia(d);
+    var uvDia = avisoUV(d.uvMax);
+    var fl = faseDelDia(d.fecha);
+    var an = analizarDia(d, d.fecha === hoy ? ahora : '');
+    cont.innerHTML =
+      '<section class="card">' +
+        '<h2>' + esc(nombreDia(d.fecha, diaSel)) + '</h2>' +
+        '<div class="sol">🌅 Sale ' + hhmm(d.salida) + ' · 🌇 Se pone ' + hhmm(d.puesta) + ' · UV máx. ' + fmt(d.uvMax, 1) +
+        ' · ' + fl.emoji + ' ' + fl.nombre + '</div>' +
+        (uvDia ? '<span class="uv">⚠️ ' + uvDia + '</span>' : '') +
+      '</section>' +
+      (an ? '<section class="card analisis"><h3>Análisis del día</h3><p class="veredicto">' + an.veredicto + '</p><ul>' +
+        an.puntos.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>' +
+        '<p class="leyenda" style="margin:6px 0 0">Resumen automático a partir del pronóstico y tus umbrales. No reemplaza mirar el mar antes de bajar.</p></section>'
+        : '<section class="card analisis"><p class="leyenda" style="margin:0">Ya no quedan horas de luz para analizar hoy.</p></section>') +
+      '<div class="seccion">Franjas destacadas</div>' +
+      fr.destacadas.map(function (f) { return htmlFranja(d, f, ahora); }).join('') +
+      '<div class="seccion">Todo el día (cada 3 h)</div>' +
+      fr.resto.map(function (f) { return htmlFranja(d, f, ahora); }).join('') +
+      '<p class="leyenda">Umbrales actuales (amarillo / rojo): ola ' + fmt(umbrales.olaA, 1) + ' / ' + fmt(umbrales.olaR, 1) +
+      ' m · viento ' + fmt(umbrales.vientoA, 0) + ' / ' + fmt(umbrales.vientoR, 0) +
+      ' kn · ráfagas ' + fmt(umbrales.rafagaA, 0) + ' / ' + fmt(umbrales.rafagaR, 0) + ' kn. ' +
+      'Cada franja muestra el máximo de sus horas. La flecha apunta hacia donde sopla el viento.</p>';
+    renderPeces(an);
+  }
+
+  function renderPie(fechaConsulta, error) {
+    var cuando = fechaConsulta
+      ? fechaConsulta.toLocaleString('es-CO', { timeZone: TZ, dateStyle: 'full', timeStyle: 'medium' }) + ' (hora de Bogotá)'
+      : '–';
+    var celdas = datos ? '<p>Celda de mar usada por la Marine API: ' + fmt(datos.celdaMar.lat, 3) + ', ' + fmt(datos.celdaMar.lon, 3) +
+      ' · celda de la Forecast API: ' + fmt(datos.celdaTierra.lat, 3) + ', ' + fmt(datos.celdaTierra.lon, 3) + '.</p>' : '';
+    document.getElementById('pie').innerHTML =
+      '<p><strong>Consulta:</strong> ' + esc(cuando) + (error ? ' · falló' : '') + '</p>' +
+      '<p><strong>Marine API:</strong><br><a href="' + esc(urls.marine) + '" target="_blank" rel="noopener">' + esc(urls.marine) + '</a></p>' +
+      '<p><strong>Forecast API:</strong><br><a href="' + esc(urls.forecast) + '" target="_blank" rel="noopener">' + esc(urls.forecast) + '</a></p>' +
+      celdas +
+      '<p>Datos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Mapa: © colaboradores de OpenStreetMap. ' +
+      'Fotos de peces: iNaturalist (autor y licencia en cada foto). Fase lunar calculada en el teléfono (error de pocos minutos). Es un pronóstico de modelo, no una medición en la orilla.</p>';
+  }
+
+  function cargar() {
+    var cont = document.getElementById('contenido');
+    cont.innerHTML = '<p class="leyenda">Cargando pronóstico…</p>';
+    armarUrls();
+    renderPunto();
+    var momento = new Date(), este = ++pedido;
+    Promise.all([pedir(urls.marine), pedir(urls.forecast)]).then(function (res) {
+      if (este !== pedido) return; // llegó una consulta más nueva
+      datos = combinar(res[0], res[1]);
+      mapa.mar = datos.celdaMar;
+      dibujarMapa();
+      render();
+      renderPie(momento, false);
+    }).catch(function (e) {
+      if (este !== pedido) return;
+      datos = null;
+      document.getElementById('tabs').innerHTML = '';
+      cont.innerHTML = '<div class="error">No se pudo obtener el pronóstico para este punto: ' + esc(e.message || e) +
+        '. Si elegiste un punto lejos del mar, probá más cerca de la costa. Si no, revisá la conexión y tocá “Actualizar”.</div>';
+      renderPeces(null);
+      renderPie(momento, true);
+    });
+  }
+
+  // ---------- eventos ----------
+  document.getElementById('tabs').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-i]');
+    if (!b) return;
+    diaSel = parseInt(b.dataset.i, 10);
+    render();
+  });
+  document.getElementById('btnRecargar').addEventListener('click', function () { renderLuna(); cargar(); });
+  document.getElementById('btnUmbrales').addEventListener('click', function () {
+    var s = document.getElementById('umbrales');
+    s.hidden = !s.hidden;
+    this.setAttribute('aria-expanded', String(!s.hidden));
+    if (!s.hidden) llenarFormulario();
+  });
+  document.getElementById('btnGuardar').addEventListener('click', function () {
+    var nuevo = Object.assign({}, umbrales), ok = true;
+    document.querySelectorAll('#umbrales input').forEach(function (inp) {
+      var v = parseFloat(String(inp.value).replace(',', '.'));
+      if (!isFinite(v) || v < 0) ok = false; else nuevo[inp.dataset.k] = v;
+    });
+    if (!ok || nuevo.olaR < nuevo.olaA || nuevo.vientoR < nuevo.vientoA || nuevo.rafagaR < nuevo.rafagaA) {
+      alert('Revisá los valores: tienen que ser números positivos y el rojo no puede ser menor que el amarillo.');
+      return;
+    }
+    umbrales = nuevo;
+    escribir(CLAVE, umbrales);
+    render();
+  });
+  document.getElementById('btnDefecto').addEventListener('click', function () {
+    umbrales = Object.assign({}, DEFECTO);
+    escribir(CLAVE, null);
+    llenarFormulario();
+    render();
+  });
+  document.getElementById('btnMiPunto').addEventListener('click', function () {
+    mapa.z = 12;
+    elegirPunto(MI_PUNTO.lat, MI_PUNTO.lon);
+    centrarMapa(MI_PUNTO.lat, MI_PUNTO.lon);
+  });
+  document.getElementById('btnVelero').addEventListener('click', function () {
+    mapa.z = 11;
+    elegirPunto(VELERO.lat, VELERO.lon);
+    centrarMapa(VELERO.lat, VELERO.lon);
+  });
+  document.getElementById('btnUbicacion').addEventListener('click', function () {
+    var b = this;
+    if (!navigator.geolocation) { alert('Este navegador no permite obtener la ubicación.'); return; }
+    b.disabled = true;
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      b.disabled = false;
+      elegirPunto(pos.coords.latitude, pos.coords.longitude);
+      centrarMapa(punto.lat, punto.lon);
+    }, function () {
+      b.disabled = false;
+      alert('No se pudo obtener tu ubicación. Revisá el permiso de ubicación del navegador.');
+    }, { enableHighAccuracy: true, timeout: 15000 });
+  });
+
+  // ---------- inicio ----------
+  centrarMapa(punto.lat, punto.lon);
+  renderLuna();
+  renderPeces(null);
+  cargar();
+})();
+</script>
+</body>
+</html>
