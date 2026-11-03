@@ -1,0 +1,47 @@
+# Backend de la app comunitaria de pesca.
+#
+# Dos contenedores:
+# - pocketbase: base de datos, usuarios, fotos y panel de admin. Escucha solo
+#   en 127.0.0.1:8090 (el panel se publica únicamente dentro de la tailnet).
+# - filtro: Caddy delante de PocketBase para lo que sale a internet. Escucha en
+#   127.0.0.1:8091; Tailscale Funnel publica /api apuntando acá. Bloquea las
+#   rutas de administración y limita el tamaño de lo que se sube.
+services:
+  pocketbase:
+    build: .
+    container_name: pesca-pocketbase
+    ports:
+      - '127.0.0.1:8090:8090'
+    volumes:
+      - ./datos:/pb/pb_data
+      - ./pb_migrations:/pb/pb_migrations:ro
+    environment:
+      TZ: America/Bogota
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  filtro:
+    image: caddy:2.11.7-alpine
+    container_name: pesca-filtro
+    ports:
+      - '127.0.0.1:8091:8091'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - pocketbase
+    restart: unless-stopped

@@ -1,0 +1,39 @@
+# Filtro entre internet (Tailscale Funnel) y PocketBase.
+{
+	admin off
+	auto_https off
+	servers {
+		# Las peticiones llegan desde Tailscale en la misma máquina. Confiar en
+		# su X-Forwarded-For permite saber la IP real de cada visitante, que
+		# PocketBase usa para limitar intentos por persona y no para todos juntos.
+		trusted_proxies static private_ranges
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+:8091 {
+	# Rutas solo para administración: desde internet no existen.
+	@admin path /api/collections/_superusers/* /api/settings* /api/logs* /api/backups* /api/crons* /api/collections/_mfas/* /api/collections/_otps/* /api/collections/_externalAuths/* /api/collections/_authOrigins/*
+	respond @admin 404
+
+	# Listar o modificar colecciones (no sus registros) también es de admin.
+	@esquema {
+		path_regexp esquema ^/api/collections/?$|^/api/collections/[^/]+/?$|^/api/collections/import
+	}
+	respond @esquema 404
+
+	# Fotos de hasta 6 MB más el resto del formulario.
+	request_body {
+		max_size 8MB
+	}
+
+	# Registro de accesos (con la IP real) para detectar abusos. Docker lo rota.
+	log {
+		output stdout
+		format json
+	}
+
+	reverse_proxy pocketbase:8090 {
+		header_up X-Real-IP {client_ip}
+	}
+}
