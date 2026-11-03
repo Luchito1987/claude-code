@@ -1,0 +1,48 @@
+# Publica apps/pesca/index.html en la rama gh-pages (GitHub Pages)
+# cada vez que cambia en main. El sitio queda en https://luchito1987.github.io/claude-code/
+name: Publicar semáforo de pesca
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/pesca/**'
+      - '.github/workflows/pesca-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pesca-pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copiar la página a gh-pages
+        run: |
+          set -euo pipefail
+          cp apps/pesca/index.html "$RUNNER_TEMP/index.html"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin gh-pages > /dev/null; then
+            git fetch origin gh-pages
+            git switch -C gh-pages origin/gh-pages
+          else
+            git switch --orphan gh-pages
+          fi
+          cp "$RUNNER_TEMP/index.html" index.html
+          touch .nojekyll
+          git add index.html .nojekyll
+          if git diff --cached --quiet; then
+            echo "gh-pages ya tiene esta versión; no hay nada que publicar."
+            exit 0
+          fi
+          git commit -m "Publica apps/pesca desde ${GITHUB_SHA::7}"
+          git push origin gh-pages
