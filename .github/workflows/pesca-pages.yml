@@ -1,4 +1,4 @@
-# Publica apps/pesca/index.html en la rama gh-pages (GitHub Pages)
+# Publica apps/pesca (menos servidor/) en la rama gh-pages (GitHub Pages)
 # cada vez que cambia en main. El sitio queda en https://luchito1987.github.io/claude-code/
 name: Publicar semáforo de pesca
 
@@ -25,10 +25,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Copiar la página a gh-pages
+      - name: Copiar la app a gh-pages
         run: |
           set -euo pipefail
-          cp apps/pesca/index.html "$RUNNER_TEMP/index.html"
+          # Todo apps/pesca menos el servidor (que corre en la máquina de casa).
+          SITIO="$RUNNER_TEMP/sitio"
+          mkdir -p "$SITIO"
+          tar -C apps/pesca --exclude=./servidor -cf - . | tar -C "$SITIO" -xf -
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git ls-remote --exit-code --heads origin gh-pages > /dev/null; then
@@ -37,9 +40,12 @@ jobs:
           else
             git switch --orphan gh-pages
           fi
-          cp "$RUNNER_TEMP/index.html" index.html
+          # Reemplaza el contenido publicado por el de esta versión.
+          git rm -rq --ignore-unmatch . || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$SITIO/." ./
           touch .nojekyll
-          git add index.html .nojekyll
+          git add -A
           if git diff --cached --quiet; then
             echo "gh-pages ya tiene esta versión; no hay nada que publicar."
             exit 0

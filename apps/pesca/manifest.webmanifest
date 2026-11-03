@@ -1,0 +1,19 @@
+{
+  "name": "Pescadores de orilla",
+  "short_name": "Pesca orilla",
+  "description": "Comunidad de pesca de orilla del Atlántico (Colombia) con semáforo de condiciones: capturas, especies que pican, ola, viento y luna.",
+  "lang": "es-CO",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b3d4f",
+  "theme_color": "#0b3d4f",
+  "categories": ["sports", "social", "weather"],
+  "icons": [
+    { "src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -18,6 +18,7 @@ tailnet ──► Tailscale Serve (:8443, panel /_/) ──┘
 | `docker-compose.yml` | PocketBase y el filtro, ambos escuchando solo en 127.0.0.1 |
 | `Caddyfile` | El filtro: bloquea rutas de admin, limita subidas a 8 MB y pasa la IP real |
 | `pb_migrations/` | Ajustes (límite de intentos, IP real) y colecciones con sus reglas |
+| `pb_hooks/` | Código que corre en el servidor: redondea la ubicación de cada captura a ~1 km |
 
 ## Qué queda público y qué no
 

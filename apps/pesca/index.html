@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b3d4f">
-<title>Semáforo de pesca de orilla</title>
+<meta name="description" content="Comunidad de pesca de orilla del Atlántico (Colombia) con semáforo de condiciones: capturas, especies que pican, ola, viento y luna.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="iconos/favicon-32.png">
+<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Pescadores de orilla</title>
 <style>
   :root {
     --bg: #f3f6f8;
@@ -287,6 +293,12 @@
   .post.card { padding: 0; overflow: hidden; }
   .vermas { border: 0; background: transparent; color: var(--muted); padding: 2px 0; min-height: 28px; font-size: .85rem; }
   .etq.pica { background: #fde8d7; color: #b4530b; }
+  .modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 24px 16px; }
+  .modal .card { width: 100%; max-width: 460px; margin: 0; }
+  .modal .cerrar { float: right; min-height: 32px; padding: 0 10px; }
+  .lista-bloq { list-style: none; padding: 0; margin: 6px 0 0; }
+  .lista-bloq li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  button.peligro { border-color: var(--rojo); color: var(--rojo); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -294,9 +306,11 @@
 <header>
   <div class="fila-cab">
     <h1>🎣 Pescadores de orilla</h1>
+    <div class="yo">
+      <button type="button" id="btnInstalar" hidden>📲 Instalar</button>
+    </div>
     <div class="yo" id="yo" hidden>
-      <button type="button" id="yoNombre" title="Cambiar tu nombre"></button>
-      <button type="button" id="btnSalir">Salir</button>
+      <button type="button" id="yoNombre" title="Mi cuenta"></button>
     </div>
   </div>
   <p id="subtitulo">Puerto Velero, Tubará (Atlántico, Colombia) · hora de Bogotá</p>
@@ -320,16 +334,58 @@
       <input id="cEmail" type="email" required autocomplete="email">
       <label for="cClave">Contraseña (mínimo 8 caracteres)</label>
       <input id="cClave" type="password" required minlength="8" autocomplete="current-password">
+      <label class="check" id="campoNormas" hidden><input type="checkbox" id="cNormas"> <span>Acepto las <a href="#" data-ver="normas">normas de la comunidad</a> y la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad</a>.</span></label>
       <button type="submit" class="primario ancho" id="btnCuenta">Ingresar</button>
       <div id="bloqueGoogle" hidden>
         <p class="separador">o</p>
         <button type="button" class="ancho" id="btnGoogle">Continuar con Google</button>
       </div>
       <p class="msg" id="msgCuenta"></p>
-      <p class="leyenda">Tu correo no se muestra a nadie. Al crear la cuenta aceptás las normas de la comunidad: respeto, nada de spam ni ventas, y las especies protegidas se liberan siempre.</p>
+      <p class="leyenda">Tu correo no se muestra a nadie. <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</p>
     </form>
   </div>
 </section>
+
+<div class="modal" id="modalNormas" hidden role="dialog" aria-modal="true" aria-labelledby="tNormas">
+  <div class="card">
+    <h2 id="tNormas">📜 Normas de la comunidad</h2>
+    <ul style="padding-left:18px;margin:0 0 8px">
+      <li>Respeto ante todo: nada de insultos, burlas, amenazas ni discriminación.</li>
+      <li>Solo fotos de pesca reales y propias. Nada de ventas, publicidad ni spam.</li>
+      <li>Las especies protegidas (como el mero guasa) se liberan siempre. Respetá vedas y tallas mínimas.</li>
+      <li>No publiques datos personales tuyos ni de otros.</li>
+      <li>Contenido ofensivo o ilegal se elimina y la cuenta puede ser bloqueada. No hay tolerancia con el acoso.</li>
+      <li>Podés reportar publicaciones y bloquear usuarios desde el menú ⋯ de cada publicación.</li>
+    </ul>
+    <p class="leyenda">Leé también la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad</a>.</p>
+    <div class="barra" style="margin:8px 0 0">
+      <button type="button" class="primario" id="btnAceptarNormas">Acepto</button>
+      <button type="button" id="btnCerrarNormas">Cerrar</button>
+    </div>
+    <p class="msg" id="msgNormas"></p>
+  </div>
+</div>
+
+<div class="modal" id="modalCuenta" hidden role="dialog" aria-modal="true" aria-labelledby="tCuenta">
+  <div class="card">
+    <button type="button" class="cerrar" id="btnCerrarCuenta" aria-label="Cerrar">✕</button>
+    <h2 id="tCuenta">👤 Mi cuenta</h2>
+    <p style="margin:0"><b id="cuentaNombre"></b> <span class="leyenda" id="cuentaEmail"></span></p>
+    <div class="barra" style="margin:10px 0">
+      <button type="button" class="chico" id="btnNombre">✏️ Cambiar nombre</button>
+      <button type="button" class="chico" id="btnSalir">Salir</button>
+    </div>
+    <h3>🚫 Usuarios bloqueados</h3>
+    <p class="leyenda" style="margin:0">No ves sus publicaciones ni comentarios.</p>
+    <ul class="lista-bloq" id="listaBloq"></ul>
+    <h3 style="margin-top:14px">Privacidad</h3>
+    <p class="leyenda" style="margin:0"><a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a> · <a href="#" data-ver="normas">Normas de la comunidad</a></p>
+    <h3 style="margin-top:14px">Borrar mi cuenta</h3>
+    <p class="leyenda" style="margin:0">Se borran para siempre tu cuenta, tus publicaciones, fotos, comentarios y me gusta. Las copias de seguridad se eliminan solas en 14 días.</p>
+    <button type="button" class="chico peligro" id="btnBorrarCuenta" style="margin-top:8px">Borrar mi cuenta</button>
+    <p class="msg" id="msgCuenta2"></p>
+  </div>
+</div>
 
 <div id="app" hidden>
 <nav class="vistas" role="tablist">
@@ -1711,11 +1767,18 @@
     $('app').hidden = !dentro;
     $('pie').hidden = !dentro;
     $('yo').hidden = !dentro;
+    if (dentro && !auth.record.normas_aceptadas) {
+      $('app').hidden = true;
+      $('modalNormas').hidden = false;
+      $('btnCerrarNormas').textContent = 'Salir';
+      return;
+    }
     if (dentro) {
-      $('yoNombre').textContent = nombreUsuario(auth.record);
+      $('yoNombre').textContent = '👤 ' + nombreUsuario(auth.record);
       $('miAvatar').outerHTML = htmlAvatar(auth.record).replace('class="avatar"', 'class="avatar" id="miAvatar"');
       $('pTexto').placeholder = '¿Qué pescaste hoy, ' + nombreUsuario(auth.record).split(' ')[0] + '?';
-      mostrarVista(leer(CLAVE_VISTA) === 'semaforo' ? 'semaforo' : 'comunidad');
+      // Primero la lista de bloqueados, para no mostrar ni por un instante lo que publican.
+      cargarBloqueos().then(function () { mostrarVista(leer(CLAVE_VISTA) === 'semaforo' ? 'semaforo' : 'comunidad'); });
     }
   }
   function mostrarVista(v) {
@@ -1739,8 +1802,83 @@
     mostrarApp();
     if (motivo) { $('msgCuenta').className = 'msg err'; $('msgCuenta').textContent = motivo; }
   }
-  $('btnSalir').addEventListener('click', function () { cerrarSesion(); });
-  $('yoNombre').addEventListener('click', function () { pedirNombre(); });
+  $('btnSalir').addEventListener('click', function () { $('modalCuenta').hidden = true; cerrarSesion(); });
+  $('btnNombre').addEventListener('click', function () { pedirNombre(); });
+  $('yoNombre').addEventListener('click', abrirCuenta);
+  $('btnCerrarCuenta').addEventListener('click', function () { $('modalCuenta').hidden = true; });
+  $('modalCuenta').addEventListener('click', function (ev) { if (ev.target === this) this.hidden = true; });
+  // Ver las normas desde cualquier enlace data-ver="normas" (solo lectura si ya las aceptó).
+  document.addEventListener('click', function (ev) {
+    var a = ev.target.closest('a[data-ver="normas"]');
+    if (!a) return;
+    ev.preventDefault();
+    var yaAcepto = !auth || !auth.record || auth.record.normas_aceptadas;
+    $('btnAceptarNormas').hidden = !!yaAcepto;
+    $('btnCerrarNormas').textContent = 'Cerrar';
+    $('modalNormas').hidden = false;
+  });
+  $('btnCerrarNormas').addEventListener('click', function () {
+    $('modalNormas').hidden = true;
+    $('btnAceptarNormas').hidden = false;
+    if (auth && auth.record && !auth.record.normas_aceptadas) cerrarSesion();
+  });
+  $('btnAceptarNormas').addEventListener('click', function () {
+    api('/api/collections/users/records/' + auth.record.id, { method: 'PATCH', json: { normas_aceptadas: fechaPB(new Date()) } }).then(function (r) {
+      guardarAuth({ token: auth.token, record: r });
+      $('modalNormas').hidden = true;
+      mostrarApp();
+      if (!r.name) pedirNombre(true);
+    }).catch(function (e) { $('msgNormas').className = 'msg err'; $('msgNormas').textContent = e.message; });
+  });
+  function abrirCuenta() {
+    $('cuentaNombre').textContent = nombreUsuario(auth.record);
+    $('cuentaEmail').textContent = auth.record.email || '';
+    $('msgCuenta2').textContent = '';
+    pintarBloqueos();
+    $('modalCuenta').hidden = false;
+  }
+  // --- bloqueos ---
+  var bloqueos = []; // [{id, bloqueado, expand.bloqueado}]
+  function bloqueadosIds() { return bloqueos.map(function (b) { return b.bloqueado; }); }
+  function cargarBloqueos() {
+    return api('/api/collections/bloqueos/records?perPage=500&expand=bloqueado').then(function (r) {
+      bloqueos = r.items;
+    }).catch(function () { bloqueos = []; });
+  }
+  function pintarBloqueos() {
+    $('listaBloq').innerHTML = bloqueos.length
+      ? bloqueos.map(function (b) {
+          return '<li><span>' + esc(nombreUsuario(b.expand && b.expand.bloqueado)) + '</span><button type="button" class="chico" data-desbloq="' + b.id + '">Desbloquear</button></li>';
+        }).join('')
+      : '<li class="leyenda">No bloqueaste a nadie.</li>';
+  }
+  $('listaBloq').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-desbloq]');
+    if (!b) return;
+    api('/api/collections/bloqueos/records/' + b.dataset.desbloq, { method: 'DELETE' }).then(function () {
+      bloqueos = bloqueos.filter(function (x) { return x.id !== b.dataset.desbloq; });
+      pintarBloqueos();
+      cargarMuro(true);
+    }).catch(function (e) { alert(e.message); });
+  });
+  function bloquearUsuario(uid, nombre) {
+    if (!confirm('¿Bloquear a ' + nombre + '? No vas a ver sus publicaciones ni comentarios. Podés desbloquearlo desde “Mi cuenta”.')) return;
+    api('/api/collections/bloqueos/records?expand=bloqueado', { method: 'POST', json: { usuario: auth.record.id, bloqueado: uid } }).then(function (b) {
+      bloqueos.push(b);
+      cargarMuro(true);
+    }).catch(function (e) { alert(e.message); });
+  }
+  // --- borrar cuenta ---
+  $('btnBorrarCuenta').addEventListener('click', function () {
+    var t = prompt('Esto borra para siempre tu cuenta y todo lo que publicaste. Para confirmar, escribí BORRAR');
+    if (t == null) return;
+    if (t.trim().toUpperCase() !== 'BORRAR') { $('msgCuenta2').className = 'msg err'; $('msgCuenta2').textContent = 'No se borró nada: había que escribir BORRAR.'; return; }
+    api('/api/collections/users/records/' + auth.record.id, { method: 'DELETE' }).then(function () {
+      $('modalCuenta').hidden = true;
+      cerrarSesion('Tu cuenta y todo tu contenido fueron borrados.');
+      $('msgCuenta').className = 'msg ok';
+    }).catch(function (e) { $('msgCuenta2').className = 'msg err'; $('msgCuenta2').textContent = e.message; });
+  });
   function pedirNombre(obligatorio) {
     var n = prompt(obligatorio ? '¿Cómo querés que te vean en la comunidad? (nombre o apodo)' : 'Cambiar tu nombre o apodo', (auth.record && auth.record.name) || '');
     if (n == null) return;
@@ -1764,6 +1902,7 @@
     modoCuenta = b.dataset.modo;
     $('pantallaLogin').querySelectorAll('button[data-modo]').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
     $('campoNombre').hidden = modoCuenta !== 'crear';
+    $('campoNormas').hidden = modoCuenta !== 'crear';
     $('btnCuenta').textContent = modoCuenta === 'crear' ? 'Crear cuenta' : 'Ingresar';
     $('cClave').autocomplete = modoCuenta === 'crear' ? 'new-password' : 'current-password';
     $('msgCuenta').textContent = '';
@@ -1776,7 +1915,8 @@
     if (modoCuenta === 'crear') {
       var nombre = $('cNombre').value.trim();
       if (nombre.length < 2) { msg.className = 'msg err'; msg.textContent = 'Poné un nombre o apodo de al menos 2 letras.'; return; }
-      paso = api('/api/collections/users/records', { method: 'POST', json: { name: nombre, email: email, password: clave, passwordConfirm: clave, emailVisibility: false } });
+      if (!$('cNormas').checked) { msg.className = 'msg err'; msg.textContent = 'Para crear la cuenta tenés que aceptar las normas y la política de privacidad.'; return; }
+      paso = api('/api/collections/users/records', { method: 'POST', json: { name: nombre, email: email, password: clave, passwordConfirm: clave, emailVisibility: false, normas_aceptadas: fechaPB(new Date()) } });
     }
     paso.then(function () {
       return api('/api/collections/users/auth-with-password', { method: 'POST', json: { identity: email, password: clave } });
@@ -1817,7 +1957,8 @@
     if (!auth || !auth.token) return;
     api('/api/collections/users/auth-refresh', { method: 'POST' }).then(function (r) {
       guardarAuth({ token: r.token, record: r.record });
-      $('yoNombre').textContent = nombreUsuario(r.record);
+      $('yoNombre').textContent = '👤 ' + nombreUsuario(r.record);
+      if (!r.record.normas_aceptadas) mostrarApp();
     }).catch(function (e) { if (e.status === 401 || e.status === 403 || e.status === 404) cerrarSesion('Tu sesión venció. Volvé a ingresar.'); });
   }
 
@@ -1982,8 +2123,10 @@
   });
   function cargarMuro(desdeCero) {
     if (desdeCero) muro.pagina = 1;
+    var f = bloqueadosIds().map(function (id) { return 'usuario != "' + id + '"'; });
+    if (muro.filtro) f.push('especie = "' + muro.filtro + '"');
     var q = '?page=' + muro.pagina + '&perPage=10&sort=-created&expand=usuario' +
-      (muro.filtro ? '&filter=' + encodeURIComponent('especie = "' + muro.filtro + '"') : '');
+      (f.length ? '&filter=' + encodeURIComponent(f.join(' && ')) : '');
     if (desdeCero) $('muro').innerHTML = '<p class="leyenda">Cargando…</p>';
     api('/api/collections/capturas/records' + q).then(function (r) {
       var ids = r.items.map(function (c) { return c.id; });
@@ -2008,7 +2151,8 @@
       api('/api/collections/comentarios/records?perPage=500&sort=created&expand=usuario&filter=' + f)
     ]).then(function (rs) {
       rs[0].items.forEach(function (g) { if (estado[g.captura]) estado[g.captura].gustas.push(g); });
-      rs[1].items.forEach(function (c) { if (estado[c.captura]) estado[c.captura].coms.push(c); });
+      var bl = bloqueadosIds();
+      rs[1].items.forEach(function (c) { if (estado[c.captura] && bl.indexOf(c.usuario) < 0) estado[c.captura].coms.push(c); });
     });
   }
   function miGusta(id) {
@@ -2033,7 +2177,7 @@
     if (cond.ola != null) condTxt.push('🌊 ' + fmt(cond.ola, 1) + ' m');
     if (cond.viento != null) condTxt.push('💨 ' + fmt(cond.viento, 0) + ' kn ' + cardinal(cond.dir));
     if (cond.luna) condTxt.push(esc(cond.luna));
-    return '<article class="card post" data-id="' + c.id + '" data-mio="' + (c.usuario === auth.record.id) + '">' +
+    return '<article class="card post" data-id="' + c.id + '" data-mio="' + (c.usuario === auth.record.id) + '" data-uid="' + esc(c.usuario) + '" data-autor="' + esc(nombreUsuario(u)) + '">' +
       '<div class="cab">' + htmlAvatar(u) +
         '<div class="quien"><b>' + esc(nombreUsuario(u)) + '</b><span class="leyenda" title="' + esc(fechaLarga(c.created)) + '">' + esc(haceCuanto(c.created)) +
         (lugar ? ' · 📍 ' + esc(lugar) : '') + '</span></div>' +
@@ -2109,10 +2253,13 @@
       if (op.hidden) return;
       op.innerHTML = post.dataset.mio === 'true'
         ? '<button type="button" class="chico" data-acc="borrar">🗑 Borrar publicación</button>'
-        : '<form class="form"><b>Reportar publicación</b><select name="motivo">' +
+        : '<button type="button" class="chico" data-acc="bloquear">🚫 Bloquear a ' + esc(post.dataset.autor) + '</button>' +
+          '<form class="form" style="margin-top:8px"><b>Reportar publicación</b><select name="motivo">' +
           Object.keys(MOTIVOS).map(function (k) { return '<option value="' + k + '">' + MOTIVOS[k] + '</option>'; }).join('') +
           '</select><input name="detalle" maxlength="300" placeholder="Detalle (opcional)" style="margin-top:6px">' +
           '<div class="barra" style="margin:8px 0 0"><button class="chico primario">Enviar reporte</button></div></form>';
+    } else if (acc === 'bloquear') {
+      bloquearUsuario(post.dataset.uid, post.dataset.autor);
     } else if (acc === 'borrar') {
       if (!confirm('¿Borrar esta publicación? No se puede deshacer.')) return;
       api('/api/collections/capturas/records/' + id, { method: 'DELETE' }).then(function () { post.remove(); cargarPicando(); })
@@ -2131,6 +2278,23 @@
 
   renderFiltro();
   prepararGoogle();
+
+  // ---------- app instalable (PWA) ----------
+  var pedidoInstalar = null;
+  window.addEventListener('beforeinstallprompt', function (ev) {
+    ev.preventDefault();
+    pedidoInstalar = ev;
+    $('btnInstalar').hidden = false;
+  });
+  $('btnInstalar').addEventListener('click', function () {
+    if (!pedidoInstalar) return;
+    pedidoInstalar.prompt();
+    pedidoInstalar.userChoice.then(function () { pedidoInstalar = null; $('btnInstalar').hidden = true; });
+  });
+  window.addEventListener('appinstalled', function () { $('btnInstalar').hidden = true; });
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function () { /* sin modo sin conexión */ });
+  }
 
   // ---------- inicio ----------
   centrarMapa(punto.lat, punto.lon);

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b3d4f">
+<title>Privacidad · Pescadores de orilla</title>
+<style>
+  :root { --bg: #f3f6f8; --card: #fff; --ink: #13212b; --muted: #5b6b77; --line: #dde4ea; --head: #0b3d4f; --link: #0b7a99; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d151b; --card: #16222b; --ink: #e6edf2; --muted: #9aabb8; --line: #263642; --head: #0a2f3d; --link: #4fc3e0; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { background: var(--head); color: #fff; padding: 14px 16px; }
+  header h1 { margin: 0; font-size: 1.2rem; }
+  main { max-width: 720px; margin: 0 auto; padding: 12px 16px 32px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; }
+  h2 { font-size: 1.05rem; margin: 0 0 6px; }
+  p, li { margin: 4px 0; }
+  ul { padding-left: 20px; }
+  a { color: var(--link); }
+  .leyenda { color: var(--muted); font-size: .88rem; }
+</style>
+</head>
+<body>
+<header><h1>🎣 Pescadores de orilla · Política de privacidad</h1></header>
+<main>
+  <p class="leyenda">Última actualización: 3 de noviembre de 2026. <a href="./">Volver a la app</a></p>
+
+  <section>
+    <h2>Quiénes somos</h2>
+    <p>“Pescadores de orilla” es una app comunitaria sin fines de lucro para pescadores de orilla del Atlántico (Colombia), administrada por una persona particular. El responsable del tratamiento de los datos es el administrador de la app, al que podés escribir a <b>CORREO_DE_CONTACTO</b>.</p>
+  </section>
+
+  <section>
+    <h2>Qué datos guardamos y para qué</h2>
+    <ul>
+      <li><b>Cuenta:</b> correo, nombre o apodo y, si entrás con Google, tu foto de perfil de Google. El correo sirve para iniciar sesión y <b>no se muestra a nadie</b>; el nombre y la foto los ven los demás miembros.</li>
+      <li><b>Publicaciones:</b> textos, fotos, especie, medidas, carnada, anzuelo, comentarios y “me gusta”. Los ven solo los miembros con sesión iniciada.</li>
+      <li><b>Fotos:</b> antes de subirlas, la app las achica y les quita los datos ocultos (EXIF), incluida la ubicación GPS de la cámara.</li>
+      <li><b>Ubicación:</b> solo si tocás “Usar mi ubicación” y das permiso. Se guarda <b>redondeada a unos 1 km</b>, nunca el punto exacto, junto con el nombre del lugar. Podés escribir el lugar a mano en vez de usar el GPS.</li>
+      <li><b>Condiciones del pronóstico</b> (ola, viento, luna) del momento de cada publicación, para que la comunidad aprenda qué condiciones funcionan.</li>
+      <li><b>Moderación:</b> los reportes que hacés y la lista de usuarios que bloqueaste (esa lista es privada).</li>
+      <li><b>Seguridad:</b> la dirección IP de cada pedido al servidor, para limitar intentos de acceso y detectar abusos. Se guarda en registros técnicos que se renuevan solos y se conservan poco tiempo (normalmente unas semanas como máximo).</li>
+      <li><b>En tu teléfono:</b> la sesión, tus umbrales del semáforo y la última vista se guardan en el almacenamiento del navegador o de la app.</li>
+    </ul>
+    <p>No vendemos ni compartimos tus datos con fines comerciales y no mostramos publicidad personalizada.</p>
+  </section>
+
+  <section>
+    <h2>Dónde se guardan</h2>
+    <p>En un servidor propio del administrador, en Colombia. Se accede a él a través de Tailscale, que transporta la conexión cifrada. La página se sirve desde GitHub Pages.</p>
+    <p>La app también consulta servicios externos que reciben tu dirección IP, como cualquier sitio web: Open-Meteo (pronóstico), OpenStreetMap (mapa), iNaturalist (fotos de especies) y Google (solo si entrás con Google).</p>
+  </section>
+
+  <section>
+    <h2>Cuánto tiempo</h2>
+    <p>Mientras tengas la cuenta. Si la borrás, se elimina enseguida todo tu contenido; las copias de seguridad del servidor se renuevan y las anteriores se eliminan en un máximo de 14 días.</p>
+  </section>
+
+  <section id="borrar-cuenta">
+    <h2>Borrar tu cuenta</h2>
+    <p><b>Desde la app:</b> tocá tu nombre arriba a la derecha → <b>Mi cuenta</b> → <b>Borrar mi cuenta</b> y escribí BORRAR para confirmar. Se borran tu cuenta, publicaciones, fotos, comentarios, “me gusta”, reportes y bloqueos.</p>
+    <p><b>Sin la app:</b> escribí a <b>CORREO_DE_CONTACTO</b> desde el correo de tu cuenta pidiendo el borrado. Lo hacemos en un plazo máximo de 15 días hábiles y te avisamos.</p>
+  </section>
+
+  <section>
+    <h2>Tus derechos</h2>
+    <p>Según la Ley 1581 de 2012 de Colombia podés conocer, actualizar, rectificar y pedir que se supriman tus datos, y revocar tu autorización. Podés hacerlo desde la app (cambiar tu nombre o borrar la cuenta) o escribiendo a <b>CORREO_DE_CONTACTO</b>. También podés presentar quejas ante la Superintendencia de Industria y Comercio.</p>
+  </section>
+
+  <section>
+    <h2>Menores de edad</h2>
+    <p>La app no está dirigida a menores de 14 años. Si sos menor de 18, usala con autorización de tu madre, padre o representante.</p>
+  </section>
+
+  <section>
+    <h2>Normas y moderación</h2>
+    <p>Para publicar hay que aceptar las normas de la comunidad. El administrador puede ocultar contenido que las incumpla y bloquear cuentas. Cualquier miembro puede reportar publicaciones y bloquear a otros usuarios.</p>
+  </section>
+
+  <section>
+    <h2>Cambios</h2>
+    <p>Si esta política cambia, lo avisaremos en la app y actualizaremos la fecha de arriba.</p>
+  </section>
+</main>
+</body>
+</html>
