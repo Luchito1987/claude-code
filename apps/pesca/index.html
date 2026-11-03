@@ -282,6 +282,18 @@
   var MI_PUNTO = { lat: 11.0712, lon: -74.8487 };
   // Desembocadura del río Magdalena (Bocas de Ceniza), aprox.
   var BOCAS = { lat: 11.10, lon: -74.85 };
+  // Tajamar occidental de Bocas de Ceniza: corre aprox. de sur a norte; al oeste el mar, al este el canal del río.
+  var TAJAMAR_KM = 3; // a menos de esta distancia de MI_PUNTO se usa el análisis del tajamar
+  function enTajamar() { return distanciaKm(punto, MI_PUNTO) <= TAJAMAR_KM; }
+  function sector(dir) {
+    // Sector de donde viene el viento o la ola, respecto de un tajamar orientado de sur a norte
+    if (dir == null) return null;
+    var d = ((dir % 360) + 360) % 360;
+    if (d >= 330 || d < 30) return 'norte';
+    if (d < 150) return 'este';
+    if (d < 210) return 'sur';
+    return 'oeste';
+  }
   // En Puerto Velero la costa corre de NE a SO y el mar queda hacia el noroeste.
   var RUMBO_MAR = 315;
   var TZ = 'America/Bogota';
@@ -683,7 +695,7 @@
     var lat = punto.lat.toFixed(4).replace(/\.?0+$/, ''), lon = punto.lon.toFixed(4).replace(/\.?0+$/, '');
     urls.marine = 'https://marine-api.open-meteo.com/v1/marine' +
       '?latitude=' + lat + '&longitude=' + lon +
-      '&hourly=wave_height,wave_period' +
+      '&hourly=wave_height,wave_period,wave_direction' +
       '&timezone=' + encodeURIComponent(TZ) +
       '&forecast_days=' + DIAS +
       '&cell_selection=sea';
@@ -711,6 +723,7 @@
       var s = slot(t);
       s.ola = mh.wave_height ? mh.wave_height[i] : null;
       s.periodo = mh.wave_period ? mh.wave_period[i] : null;
+      s.dirOla = mh.wave_direction ? mh.wave_direction[i] : null;
     });
     var ph = pron.hourly || {};
     (ph.time || []).forEach(function (t, i) {
@@ -867,7 +880,13 @@
           (vT - vM > 3 ? ' (se arma después del mediodía, típico de la brisa)' : vM - vT > 3 ? ' (afloja a la tarde)' : '') + ', ';
       }
       txtV += 'del ' + cardinal(dirDia) + '. ';
-      if (distanciaKm(punto, VELERO) <= 35 || distanciaKm(punto, MI_PUNTO) <= 35) {
+      if (enTajamar()) {
+        var sv = sector(dirDia);
+        if (sv === 'norte') txtV += 'En el tajamar le pega <b>de frente a la punta</b>: cuesta lanzar hacia mar abierto y salpica en las piedras de adelante.';
+        else if (sv === 'este') txtV += 'En el tajamar entra <b>cruzado desde el lado del río</b>: lanzá hacia el lado del mar (oeste) con el viento a favor; del lado del río te viene de frente y la línea se embolsa.';
+        else if (sv === 'sur') txtV += 'En el tajamar sopla <b>de tierra, a lo largo de las piedras</b>: a favor para lanzar desde la punta hacia mar adentro.';
+        else if (sv === 'oeste') { txtV += 'En el tajamar entra <b>cruzado desde el mar</b>: lanzá hacia el lado del río con el viento a favor; del lado del mar te viene de frente.'; movida = true; }
+      } else if (distanciaKm(punto, VELERO) <= 35 || distanciaKm(punto, MI_PUNTO) <= 35) {
         var rel = relacionCosta(dirDia);
         if (rel === 'mar') { txtV += 'Sopla <b>de mar hacia la orilla</b>: empuja la ola y la espuma a la playa, cuesta lanzar lejos pero la comida se acerca a la rompiente.'; movida = true; }
         else if (rel === 'tierra') txtV += 'Sopla <b>de tierra hacia el mar</b>: aplana la orilla y ayuda a lanzar lejos; si usás kayak o flotador, cuidado porque te aleja de la costa.';
@@ -875,6 +894,26 @@
       }
       if (vT != null && vT >= u.vientoA) movida = true;
       puntos.push(txtV);
+    }
+
+    if (enTajamar()) {
+      var dirOla = promedioAngulos(valores(hs.slice(5, 20), 'dirOla'));
+      var so = sector(dirOla), olaMax = maximo(valores(hs.slice(5, 20), 'ola'));
+      var txtT = '<b>Tajamar:</b> ';
+      if (so) {
+        txtT += 'la ola llega del ' + cardinal(dirOla) + '. ';
+        if (so === 'norte') txtT += 'Pega de frente en la punta, que es la parte más expuesta; los costados quedan algo más protegidos.';
+        else if (so === 'este') txtT += 'Pega más del lado del río y la boca; el lado del mar (oeste) queda algo resguardado detrás de las piedras.';
+        else if (so === 'oeste') txtT += 'Pega del lado del mar (oeste); el lado del río queda más resguardado.';
+        else txtT += 'Viene de tierra, algo raro: el mar debería estar tranquilo junto a las piedras.';
+        txtT += ' ';
+      }
+      if (olaMax != null && (olaMax >= umbrales.olaA || (so === 'norte' && olaMax >= 0.6))) {
+        txtT += '⚠️ Con este mar puede pasar agua por encima de las piedras: evitá la punta, no le des la espalda al mar y usá calzado antideslizante.';
+      } else {
+        txtT += 'Igual cuidado: las piedras mojadas resbalan y las series más grandes llegan sin avisar.';
+      }
+      puntos.push(txtT);
     }
 
     if (distanciaKm(punto, BOCAS) <= 8) {
