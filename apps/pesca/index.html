@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b3d4f">
-<title>Semáforo de pesca · Puerto Velero</title>
+<title>Semáforo de pesca de orilla</title>
 <style>
   :root {
     --bg: #f3f6f8;
@@ -1352,8 +1352,11 @@
       if (este !== pedido) return;
       datos = null;
       document.getElementById('tabs').innerHTML = '';
-      cont.innerHTML = '<div class="error">No se pudo obtener el pronóstico para este punto: ' + esc(e.message || e) +
-        '. Si elegiste un punto lejos del mar, probá más cerca de la costa. Si no, revisá la conexión y tocá “Actualizar”.</div>';
+      var msg = String(e.message || e);
+      var ayuda = /limit/i.test(msg)
+        ? 'Open-Meteo limitó las consultas desde esta conexión (límite diario del servicio gratuito). Probá más tarde o desde otra red (por ejemplo, datos móviles).'
+        : 'Si elegiste un punto lejos del mar, probá más cerca de la costa. Si no, revisá la conexión y tocá “Actualizar”.';
+      cont.innerHTML = '<div class="error">No se pudo obtener el pronóstico: ' + esc(msg) + '<br>' + ayuda + '</div>';
       renderPeces(null);
       renderPie(momento, true);
     });
