@@ -18,17 +18,20 @@ export const runtime = 'nodejs'
  */
 export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
-  const { tarjeta, patronPago, pagado, saldada, crear } = (await req.json().catch(() => ({}))) as {
+  const { tarjeta, patronPago, pagado, saldada, crear, cierre, vencimiento } = (await req.json().catch(() => ({}))) as {
     tarjeta?: string
     patronPago?: string
     pagado?: { periodo?: string; importeCents?: number }
     saldada?: { hasta?: string }
     crear?: { nombre?: string; emisor?: string; moneda?: string; cierre?: number; vencimiento?: number }
+    cierre?: number
+    vencimiento?: number
   }
   const patron = (patronPago ?? '').trim()
   if (crear) return altaTarjeta(crear, patron)
   if (tarjeta && pagado) return marcarPagado(tarjeta, pagado)
   if (tarjeta && saldada) return marcarSaldada(tarjeta, saldada.hasta)
+  if (tarjeta && (cierre !== undefined || vencimiento !== undefined)) return fechas(tarjeta, cierre, vencimiento)
   if (!tarjeta || patron.length < 4) {
     return NextResponse.json({ error: 'Hace falta la tarjeta y un texto de al menos 4 caracteres.' }, { status: 400 })
   }
@@ -98,4 +101,17 @@ function altaTarjeta(
     `INSERT INTO cards (id, name, issuer, closing_day, due_day, currency, match_pattern) VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(nueva, nombre, c.emisor ?? '', c.cierre, c.vencimiento, c.moneda === 'ARS' ? 'ARS' : 'COP', patron)
   return NextResponse.json({ ok: `Tarjeta "${nombre}" creada.`, id: nueva })
+}
+
+/** Corrige el día de cierre y de vencimiento de una tarjeta. */
+function fechas(tarjeta: string, cierre?: number, vencimiento?: number) {
+  const dia = (n: unknown) => n === undefined || (Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 31)
+  if (!dia(cierre) || !dia(vencimiento)) return NextResponse.json({ error: 'Cierre y vencimiento: días 1-31.' }, { status: 400 })
+  const db = getDb()
+  const card = db.prepare('SELECT id, name, closing_day, due_day FROM cards WHERE id = ? OR name = ?').get(tarjeta, tarjeta) as
+    | { id: string; name: string; closing_day: number; due_day: number }
+    | undefined
+  if (!card) return NextResponse.json({ error: `No existe la tarjeta "${tarjeta}".` }, { status: 404 })
+  db.prepare('UPDATE cards SET closing_day = ?, due_day = ? WHERE id = ?').run(cierre ?? card.closing_day, vencimiento ?? card.due_day, card.id)
+  return NextResponse.json({ ok: `${card.name}: cierra el ${cierre ?? card.closing_day} y vence el ${vencimiento ?? card.due_day}.` })
 }
