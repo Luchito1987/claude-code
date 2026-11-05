@@ -14,6 +14,7 @@ const LINKS = [
   { href: '/importar', label: 'Importar' },
   { href: '/prestamos', label: 'Préstamos' },
   { href: '/rappi', label: 'Rappi' },
+  { href: '/plan', label: 'Plan AR' },
   { href: '/reportes', label: 'Reportes' },
   { href: '/config', label: 'Config' },
 ]
