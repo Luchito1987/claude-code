@@ -184,3 +184,19 @@ describe('proyección mensual con tarjetas sin resumen', () => {
     ])
   })
 })
+
+describe('compra con tarjeta cargada a mano', () => {
+  it('entra en el resumen que le toca según cierre y vencimiento', async () => {
+    const { q, db } = await load()
+    db.prepare(`INSERT INTO cards (id, name) VALUES ('tuya', 'Tuya')`).run()
+    const tarj = await import('@/app/api/tarjetas/route')
+    const mov = await import('@/app/api/movimientos/route')
+    const h = { authorization: `Bearer ${'p'.repeat(48)}`, 'content-type': 'application/json' }
+    const post = (m: { POST: (r: Request) => Promise<Response> }, body: unknown) =>
+      m.POST(new Request('http://x', { method: 'POST', headers: h, body: JSON.stringify(body) }))
+    expect((await post(tarj, { tarjeta: 'Tuya', cierre: 12, vencimiento: 4 })).status).toBe(200)
+    expect((await post(mov, { tarjeta: 'Tuya', fecha: '2026-11-14', descripcion: 'Colegio', importeCents: 168528900, categoria: 'educacion' })).status).toBe(200)
+    const ene = q.monthItems('2027-01', '2026-11-05').find((i) => i.refId === 'tuya')
+    expect([ene?.cents, ene?.dueDate]).toEqual([168528900, '2027-01-04'])
+  })
+})

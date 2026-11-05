@@ -46,6 +46,8 @@ export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
   const b = (await req.json().catch(() => ({}))) as {
     cuenta?: string
+    /** En vez de una cuenta: una compra con tarjeta, que se paga con su resumen. */
+    tarjeta?: string
     fecha?: string
     descripcion?: string
     importeCents?: number
@@ -53,6 +55,7 @@ export async function POST(req: Request) {
     compromiso?: string
   }
   const descripcion = (b.descripcion ?? '').trim()
+  if (b.tarjeta && !b.cuenta) return compraConTarjeta(b as Required<Pick<typeof b, 'tarjeta'>> & typeof b)
   if (!b.cuenta || !/^\d{4}-\d{2}-\d{2}$/.test(b.fecha ?? '') || !descripcion || !Number.isInteger(b.importeCents) || !b.importeCents) {
     return NextResponse.json(
       { error: 'Hace falta cuenta, fecha (AAAA-MM-DD), descripción e importeCents entero distinto de cero.' },
@@ -103,4 +106,28 @@ function resincronizarTarjeta(compromiso: string, fecha: string): void {
   if (syncCardMonthPayment(tarjeta, periodo) === 0) {
     getDb().prepare("DELETE FROM month_payments WHERE kind = 'tarjeta' AND ref_id = ? AND period = ?").run(tarjeta, periodo)
   }
+}
+
+/**
+ * Una compra con tarjeta cargada a mano (pagar el colegio con la Tuya, por
+ * ejemplo). Entra al resumen que le toca según el cierre y el vencimiento de
+ * la tarjeta, hasta que llegue el resumen real.
+ */
+function compraConTarjeta(b: { tarjeta: string; fecha?: string; descripcion?: string; importeCents?: number; categoria?: string }) {
+  const descripcion = (b.descripcion ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.fecha ?? '') || !descripcion || !Number.isInteger(b.importeCents) || !b.importeCents) {
+    return NextResponse.json({ error: 'Hace falta fecha (AAAA-MM-DD), descripción e importeCents.' }, { status: 400 })
+  }
+  const db = getDb()
+  const card = db.prepare('SELECT id, name, currency FROM cards WHERE id = ? OR lower(name) = lower(?)').get(b.tarjeta, b.tarjeta) as
+    | { id: string; name: string; currency: string }
+    | undefined
+  if (!card) return NextResponse.json({ error: `No existe la tarjeta "${b.tarjeta}".` }, { status: 404 })
+  const nuevo = id()
+  db.prepare(
+    `INSERT INTO transactions (id, date, description, merchant, amount_cents, currency, category, method,
+       card_id, source, created_at)
+     VALUES (?, ?, ?, '', ?, ?, ?, 'credito', ?, 'manual', ?)`,
+  ).run(nuevo, b.fecha, descripcion, -Math.abs(b.importeCents!), card.currency, b.categoria || 'otros', card.id, now())
+  return NextResponse.json({ ok: `${card.name}: compra cargada.`, id: nuevo })
 }
