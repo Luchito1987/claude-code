@@ -58,6 +58,7 @@ describe('/api/facturas', () => {
     expect((await llamar({ servicio: 'x', periodo: '2026-10' }, 'otra'.repeat(12))).status).toBe(401)
     expect((await llamar({ servicio: 'x', periodo: 'octubre' })).status).toBe(400)
     expect((await llamar({ servicio: 'x', periodo: '2026-10', importeCents: -5 })).status).toBe(400)
+    expect((await llamar({ servicio: 'nadie', periodo: '2026-12', importeCents: 0 })).status).toBe(404)
     expect((await llamar({ servicio: 'nadie', periodo: '2026-10' })).status).toBe(404)
   })
 })

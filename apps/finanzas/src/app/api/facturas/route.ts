@@ -11,7 +11,8 @@ export const runtime = 'nodejs'
  * que no pasan por un extracto: efectivo, o una transferencia desde una cuenta
  * que no se carga.
  *
- * `importeCents` fija lo que se pagó ese mes y nada más: un descuento puntual
+ * `importeCents` fija lo que se pagó ese mes y nada más (0 = ese mes no se
+ * cobra, como el colegio en diciembre): un descuento puntual
  * no cambia lo que se espera para los meses siguientes.
  */
 export async function POST(req: Request) {
@@ -25,8 +26,8 @@ export async function POST(req: Request) {
   if (!servicio || !/^\d{4}-\d{2}$/.test(periodo ?? '')) {
     return NextResponse.json({ error: 'Hace falta el servicio y el período (AAAA-MM).' }, { status: 400 })
   }
-  if (importeCents !== undefined && !(Number.isInteger(importeCents) && importeCents > 0)) {
-    return NextResponse.json({ error: 'El importe va en centavos, entero y positivo.' }, { status: 400 })
+  if (importeCents !== undefined && !(Number.isInteger(importeCents) && importeCents >= 0)) {
+    return NextResponse.json({ error: 'El importe va en centavos, entero y no negativo (0 = no se cobra ese mes).' }, { status: 400 })
   }
   const db = getDb()
   const servicios = db
