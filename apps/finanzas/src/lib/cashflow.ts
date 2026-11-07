@@ -78,6 +78,8 @@ export interface ProjectionInput {
   incomes: IncomeLike[]
   cardDues: CardDue[]
   dailyBurnCents: number
+  /** Entre `desde` y `hasta` se gasta `porDiaCents` por día en vez del promedio. */
+  presupuesto?: { desde: ISODate; hasta: ISODate; porDiaCents: number }
   minBufferCents: number
 }
 
@@ -198,15 +200,18 @@ export function project(input: ProjectionInput): Projection {
   }
 
   const burn = Math.abs(input.dailyBurnCents)
-  if (burn > 0) {
-    for (let d = 0; d < weeks * 7; d++) {
-      events.push({
-        date: addDays(today, d),
-        kind: 'variable',
-        label: 'Gasto variable proyectado',
-        amountCents: -burn,
-      })
-    }
+  const p = input.presupuesto
+  for (let d = 0; d < weeks * 7; d++) {
+    const date = addDays(today, d)
+    const enPresupuesto = p && compare(date, p.desde) >= 0 && compare(date, p.hasta) <= 0
+    const cents = enPresupuesto ? Math.abs(p.porDiaCents) : burn
+    if (cents <= 0) continue
+    events.push({
+      date,
+      kind: 'variable',
+      label: enPresupuesto ? 'Gasto variable (presupuesto)' : 'Gasto variable proyectado',
+      amountCents: -cents,
+    })
   }
 
   events.sort((a, b) => compare(a.date, b.date) || a.kind.localeCompare(b.kind))

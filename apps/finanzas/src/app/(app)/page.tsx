@@ -5,6 +5,7 @@ import { compare, formatDate, formatPeriod, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 import {
   accountBalanceCents,
+  estadoPresupuesto,
   listAccounts,
   listCards,
   monthSummary,
@@ -31,6 +32,7 @@ export default function Tablero() {
   const today = todayISO()
   const moneda = monedaActual()
   const mes = monthSummary(today, moneda)
+  const presupuesto = estadoPresupuesto(moneda, today)
   const cuentas = listAccounts(moneda).map((c) => ({ ...c, saldo: accountBalanceCents(c.id, today) }))
   const pendientes = mes.items.filter((i) => !i.paid)
   const pagados = mes.items.filter((i) => i.paid)
@@ -128,6 +130,8 @@ export default function Tablero() {
           </Empty>
         )}
       </Panel>
+
+      {presupuesto?.vigente ? <Presupuesto p={presupuesto} /> : null}
 
       <GastosVariables items={mes.variable} total={mes.variableCents} period={mes.period} />
 
@@ -305,6 +309,41 @@ function GastosVariables({
       ) : (
         <Empty>Todavía no hay gastos sueltos cargados este mes.</Empty>
       )}
+    </Panel>
+  )
+}
+
+/** Cuánto queda del presupuesto de gasto variable y a cuánto por día. */
+function Presupuesto({ p }: { p: NonNullable<ReturnType<typeof estadoPresupuesto>> }) {
+  const moneda = p.moneda
+  const usado = p.montoCents ? Math.min(100, Math.max(0, (p.gastadoCents / p.montoCents) * 100)) : 100
+  const pasado = p.restanteCents < 0
+  return (
+    <Panel
+      title="Presupuesto para mercado y gasto variable"
+      subtitle={`Del ${formatDate(p.desde)} al ${formatDate(p.hasta)}. Cuenta lo que sale de las cuentas por fuera de los compromisos; lo comprado con tarjeta se paga con el resumen.`}
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted">Queda</p>
+          <p className={`mt-1 text-2xl font-semibold tabular-nums ${pasado ? 'text-bad' : ''}`}>
+            {formatMoney(p.restanteCents, moneda)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted">Por día</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(p.porDiaCents, moneda)}</p>
+          <p className="text-xs text-muted">{p.diasRestantes} día(s) restantes</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted">Gastado</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(p.gastadoCents, moneda)}</p>
+          <p className="text-xs text-muted">de {formatMoney(p.montoCents, moneda)}</p>
+        </div>
+      </div>
+      <div className="mt-3 h-2 rounded-full bg-edge">
+        <div className={`h-2 rounded-full ${pasado ? 'bg-bad' : 'bg-brand'}`} style={{ width: `${usado}%` }} />
+      </div>
     </Panel>
   )
 }

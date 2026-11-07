@@ -454,8 +454,12 @@ export function unpaidCardDues(today: ISODate = todayISO(), currency?: Moneda): 
 export function currentBurnCents(today: ISODate = todayISO(), currency?: Moneda): number {
   const txs = getDb()
     .prepare(
+      // Las compras con tarjeta cargadas a mano son provisorias (el colegio con la
+      // Tuya, lo que se debe en la Falabella hasta que llega el resumen): ya
+      // figuran como pago de la tarjeta, no son un ritmo de gasto diario.
       `SELECT date, amount_cents, category, method, card_id, commitment FROM transactions
-       WHERE date >= ? ${currency ? 'AND currency = ?' : ''}`,
+       WHERE date >= ? ${currency ? 'AND currency = ?' : ''}
+         AND NOT (card_id IS NOT NULL AND source = 'manual')`,
     )
     .all(addDays(today, -90), ...(currency ? [currency] : [])) as Array<{
     date: ISODate
@@ -488,6 +492,7 @@ export function buildProjection(
     incomes: listIncomes(currency),
     cardDues: unpaidCardDues(today, currency),
     dailyBurnCents: currentBurnCents(today, currency),
+    presupuesto: presupuestoParaProyectar(currency, today),
     minBufferCents: minBufferCents(),
   })
 }
@@ -1490,6 +1495,7 @@ export function monthlyProjection(
     cardEstimates: estimacionesDeTarjetas(currency, today),
     incomeMonthlyCents: monthlyIncomeCents(currency),
     dailyBurnCents: currentBurnCents(today, currency),
+    presupuesto: presupuestoParaProyectar(currency, today),
     today,
   })
 }
@@ -1688,4 +1694,105 @@ export function markMonthItemPaid(kind: 'tarjeta' | 'prestamo', refId: string, p
   } else {
     db.prepare('DELETE FROM month_payments WHERE kind = ? AND ref_id = ? AND period = ?').run(kind, refId, period)
   }
+}
+
+// ------------------------------------------------------------------ presupuesto
+
+/**
+ * Un tope para el gasto variable (mercado, Rappi, farmacia...) entre dos
+ * fechas. Mientras está vigente reemplaza al promedio de los últimos 90 días,
+ * que en meses atípicos proyecta mucho más de lo que se va a poder gastar.
+ */
+export interface PresupuestoVariable {
+  montoCents: number
+  desde: ISODate
+  hasta: ISODate
+}
+
+export interface EstadoPresupuesto extends PresupuestoVariable {
+  moneda: Moneda
+  gastadoCents: number
+  restanteCents: number
+  diasRestantes: number
+  porDiaCents: number
+  vigente: boolean
+}
+
+const CLAVE_PRESUPUESTO = 'presupuesto_variable'
+
+function presupuestos(): Partial<Record<Moneda, PresupuestoVariable>> {
+  try {
+    return JSON.parse(getSetting(CLAVE_PRESUPUESTO, '{}'))
+  } catch {
+    return {}
+  }
+}
+
+export function leerPresupuesto(currency: Moneda = MONEDA_BASE): PresupuestoVariable | null {
+  return presupuestos()[currency] ?? null
+}
+
+/** Guarda el presupuesto de una moneda; `null` lo borra. */
+export function guardarPresupuesto(currency: Moneda, p: PresupuestoVariable | null): void {
+  const todos = presupuestos()
+  if (p) todos[currency] = p
+  else delete todos[currency]
+  setSetting(CLAVE_PRESUPUESTO, JSON.stringify(todos))
+}
+
+const diasEntre = (a: ISODate, b: ISODate): number => Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1
+
+/**
+ * Gasto variable que salió de las cuentas entre dos fechas: lo mismo que el
+ * tablero muestra como "Gastos variables". Lo comprado con tarjeta no cuenta,
+ * porque sale de la plata cuando se paga el resumen.
+ */
+export function gastoVariableEntre(desde: ISODate, hasta: ISODate, currency: Moneda = MONEDA_BASE): number {
+  if (compare(desde, hasta) > 0) return 0
+  const excluidas = NON_VARIABLE_CATEGORIES.map(() => '?').join(', ')
+  const r = getDb()
+    .prepare(
+      `SELECT COALESCE(SUM(-amount_cents), 0) AS cents FROM transactions
+       WHERE date BETWEEN ? AND ? AND currency = ? AND amount_cents < 0
+         AND card_id IS NULL AND commitment = '' AND category NOT IN (${excluidas})`,
+    )
+    .get(desde, hasta, currency, ...NON_VARIABLE_CATEGORIES) as { cents: number }
+  return r.cents
+}
+
+export function estadoPresupuesto(currency: Moneda = MONEDA_BASE, today: ISODate = todayISO()): EstadoPresupuesto | null {
+  const p = leerPresupuesto(currency)
+  if (!p) return null
+  const vigente = compare(today, p.hasta) <= 0
+  const gastadoCents = gastoVariableEntre(p.desde, p.hasta, currency)
+  const restanteCents = p.montoCents - gastadoCents
+  const desdeHoy = compare(today, p.desde) > 0 ? today : p.desde
+  const diasRestantes = vigente ? diasEntre(desdeHoy, p.hasta) : 0
+  return {
+    ...p,
+    moneda: currency,
+    gastadoCents,
+    restanteCents,
+    diasRestantes,
+    porDiaCents: diasRestantes ? Math.floor(Math.max(0, restanteCents) / diasRestantes) : 0,
+    vigente,
+  }
+}
+
+/**
+ * Lo que las proyecciones necesitan del presupuesto: desde hoy hasta su fin se
+ * gasta lo que queda repartido por día, y lo ya gastado antes de hoy dentro del
+ * presupuesto cuenta tal cual.
+ */
+function presupuestoParaProyectar(
+  currency: Moneda,
+  today: ISODate,
+): { desde: ISODate; hasta: ISODate; porDiaCents: number; gastadoAntesCents: number } | undefined {
+  const e = estadoPresupuesto(currency, today)
+  if (!e || !e.vigente) return undefined
+  const desde = compare(today, e.desde) > 0 ? today : e.desde
+  // Lo gastado en el mes antes de que arranque lo que queda del presupuesto
+  // (lo ya salido en el mes, real, en vez del promedio).
+  const inicioMes = monthRange(financialMonth(desde)).start
+  return { desde, hasta: e.hasta, porDiaCents: e.porDiaCents, gastadoAntesCents: gastoVariableEntre(inicioMes, addDays(desde, -1), currency) }
 }
