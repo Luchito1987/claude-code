@@ -200,3 +200,21 @@ describe('compra con tarjeta cargada a mano', () => {
     expect([ene?.cents, ene?.dueDate]).toEqual([168528900, '2027-01-04'])
   })
 })
+
+describe('reabrir el mes de una tarjeta', () => {
+  it('con pagada: false vuelve a figurar pendiente', async () => {
+    const { q } = await load()
+    const { POST } = await import('@/app/api/tarjetas/route')
+    const h = { authorization: `Bearer ${'p'.repeat(48)}`, 'content-type': 'application/json' }
+    const enviar = (pagado: object) =>
+      POST(new Request('http://x/api/tarjetas', { method: 'POST', headers: h, body: JSON.stringify({ tarjeta: 'Visa', pagado }) }))
+    expect((await enviar({ periodo: '2026-11', importeCents: 0 })).status).toBe(200)
+    let visa = q.monthItems('2026-11', HOY).find((i) => i.refId === 'visa')!
+    expect([visa.cents, visa.paid]).toEqual([0, true])
+    const r = await enviar({ periodo: '2026-11', pagada: false })
+    expect(((await r.json()) as { ok: string }).ok).toBe('Visa 2026-11: pendiente.')
+    visa = q.monthItems('2026-11', HOY).find((i) => i.refId === 'visa')!
+    expect([visa.cents, visa.paid, visa.estimated]).toEqual([120000000, false, true])
+    expect((await enviar({ periodo: 'nov', pagada: false })).status).toBe(400)
+  })
+})

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const { tarjeta, patronPago, pagado, saldada, crear, cierre, vencimiento } = (await req.json().catch(() => ({}))) as {
     tarjeta?: string
     patronPago?: string
-    pagado?: { periodo?: string; importeCents?: number }
+    pagado?: { periodo?: string; importeCents?: number; pagada?: boolean }
     saldada?: { hasta?: string }
     crear?: { nombre?: string; emisor?: string; moneda?: string; cierre?: number; vencimiento?: number }
     cierre?: number
@@ -44,8 +44,9 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: `${card.name}: su pago se reconoce por "${patron}".` })
 }
 
-function marcarPagado(tarjeta: string, pagado: { periodo?: string; importeCents?: number }) {
+function marcarPagado(tarjeta: string, pagado: { periodo?: string; importeCents?: number; pagada?: boolean }) {
   const { periodo, importeCents } = pagado
+  if (pagado.pagada === false) return reabrir(tarjeta, periodo)
   if (!/^\d{4}-\d{2}$/.test(periodo ?? '') || !(Number.isInteger(importeCents) && importeCents! >= 0)) {
     return NextResponse.json({ error: 'El pago necesita periodo (AAAA-MM) e importeCents entero (0 = sin deuda, saldada con un pago anterior).' }, { status: 400 })
   }
@@ -114,4 +115,18 @@ function fechas(tarjeta: string, cierre?: number, vencimiento?: number) {
   if (!card) return NextResponse.json({ error: `No existe la tarjeta "${tarjeta}".` }, { status: 404 })
   db.prepare('UPDATE cards SET closing_day = ?, due_day = ? WHERE id = ?').run(cierre ?? card.closing_day, vencimiento ?? card.due_day, card.id)
   return NextResponse.json({ ok: `${card.name}: cierra el ${cierre ?? card.closing_day} y vence el ${vencimiento ?? card.due_day}.` })
+}
+
+/** Con `pagado: {periodo, pagada: false}` vuelve a dejar pendiente el mes de la tarjeta. */
+function reabrir(tarjeta: string, periodo?: string) {
+  if (!/^\d{4}-\d{2}$/.test(periodo ?? '')) {
+    return NextResponse.json({ error: 'Hace falta el periodo (AAAA-MM).' }, { status: 400 })
+  }
+  const db = getDb()
+  const card = db.prepare('SELECT id, name FROM cards WHERE id = ? OR name = ?').get(tarjeta, tarjeta) as
+    | { id: string; name: string }
+    | undefined
+  if (!card) return NextResponse.json({ error: `No existe la tarjeta "${tarjeta}".` }, { status: 404 })
+  db.prepare("DELETE FROM month_payments WHERE kind = 'tarjeta' AND ref_id = ? AND period = ?").run(card.id, periodo)
+  return NextResponse.json({ ok: `${card.name} ${periodo}: pendiente.` })
 }
