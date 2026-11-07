@@ -203,6 +203,12 @@ export interface OutlookInput {
   cardEstimates?: Array<{ cardId: string; name: string; cents: number }>
   incomeMonthlyCents: number
   dailyBurnCents: number
+  /**
+   * Presupuesto de gasto variable vigente: entre `desde` y `hasta` se gasta
+   * `porDiaCents` por día en vez del promedio, y en el mes de `desde` los días
+   * anteriores valen lo que ya se gastó de verdad (`gastadoAntesCents`).
+   */
+  presupuesto?: { desde: ISODate; hasta: ISODate; porDiaCents: number; gastadoAntesCents: number }
   today?: ISODate
 }
 
@@ -282,7 +288,7 @@ export function monthlyOutlook(input: OutlookInput): MonthOutlook[] {
     const serviciosCents = suma(servicios)
     const prestamosCents = suma(cuotasPrestamo)
     const tarjetasCents = suma(tarjetas)
-    const variableCents = Math.abs(input.dailyBurnCents) * dias
+    const variableCents = variableDelMes(start, end, dias, Math.abs(input.dailyBurnCents), input.presupuesto)
     const totalCents = serviciosCents + prestamosCents + tarjetasCents + variableCents
 
     return {
@@ -429,4 +435,22 @@ export function debtSummary(args: {
       : 0,
     porMes: meses,
   }
+}
+
+/** Gasto variable de un mes, con el presupuesto vigente donde corresponde. */
+function variableDelMes(
+  start: ISODate,
+  end: ISODate,
+  dias: number,
+  burn: number,
+  p: OutlookInput['presupuesto'],
+): number {
+  if (!p) return burn * dias
+  const contar = (a: ISODate, b: ISODate) =>
+    a > b ? 0 : Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1
+  const enPresupuesto = contar(p.desde > start ? p.desde : start, p.hasta < end ? p.hasta : end)
+  const contieneDesde = p.desde >= start && p.desde <= end
+  const antes = contieneDesde ? contar(start, p.desde) - 1 : 0
+  const resto = dias - enPresupuesto - antes
+  return (contieneDesde ? p.gastadoAntesCents : 0) + p.porDiaCents * enPresupuesto + burn * resto
 }
