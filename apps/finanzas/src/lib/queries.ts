@@ -1444,12 +1444,21 @@ function serviceEstimates(currency?: Moneda): ServiceEstimate[] {
  * pago registrado. Las que tienen resúmenes importados se proyectan con sus
  * resúmenes y cuotas; las saldadas (último pago en 0) no deben nada.
  */
-function estimacionesDeTarjetas(currency: Moneda): Array<{ cardId: string; name: string; cents: number }> {
+function estimacionesDeTarjetas(
+  currency: Moneda,
+  today: ISODate = todayISO(),
+): Array<{ cardId: string; name: string; cents: number }> {
   const db = getDb()
+  // Las tarjetas con un resumen que vence de este mes en adelante se proyectan
+  // con ese resumen. Las demás (sin resumen, o con el último ya vencido) se
+  // estiman con lo último que se les pagó.
+  const desde = monthRange(financialMonth(today)).start
   const conResumen = new Set(
-    (db.prepare("SELECT DISTINCT card_id FROM statements WHERE card_id IS NOT NULL").all() as Array<{ card_id: string }>).map(
-      (r) => r.card_id,
-    ),
+    (
+      db
+        .prepare("SELECT DISTINCT card_id FROM statements WHERE card_id IS NOT NULL AND due_date >= ?")
+        .all(desde) as Array<{ card_id: string }>
+    ).map((r) => r.card_id),
   )
   return listCards(currency).flatMap((c) => {
     if (conResumen.has(c.id)) return []
@@ -1478,7 +1487,7 @@ export function monthlyProjection(
     loans: listLoans(currency),
     installments: cardInstallments(today).filter((i) => tarjetas.has(i.cardId)),
     cardDues: unpaidCardDues(today).filter((d) => tarjetas.has(d.cardId)),
-    cardEstimates: estimacionesDeTarjetas(currency),
+    cardEstimates: estimacionesDeTarjetas(currency, today),
     incomeMonthlyCents: monthlyIncomeCents(currency),
     dailyBurnCents: currentBurnCents(today, currency),
     today,
