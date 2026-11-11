@@ -232,6 +232,23 @@ describe('la remesa: lo que sobra allá y puede cruzar', () => {
     expect(r.enBaseCents).toBe(0)
   })
 
+  it('con una cuenta de allá cargada, manda el saldo y no el sueldo', async () => {
+    const { q, db } = await load()
+    ingreso(db, 'i1', 'Sueldo', 'Luciano', 300000000, 300000000, 'ARS')
+    prestamo(db, 'l1', 25000000, 'ARS')
+    q.setFxArsCop(1.65)
+
+    // El sueldo ya se trajo: quedan 27.000 en la cuenta para una cuota de 25.000.
+    cuenta(db, 'ar', 27000000, 'ARS')
+    let r = q.remesaDesdeArgentina(HOY)!
+    expect([r.porSaldo, r.ingresoCents, r.compromisosCents, r.remanenteCents]).toEqual([true, 27000000, 25000000, 2000000])
+
+    // Con menos saldo que lo pendiente no queda nada para traer.
+    db.prepare(`UPDATE accounts SET balance_cents = 10000000 WHERE id = 'ar'`).run()
+    r = q.remesaDesdeArgentina(HOY)!
+    expect([r.enRojo, r.enBaseCents]).toEqual([true, 0])
+  })
+
   it('sin nada cargado del lado argentino no hay remesa que mostrar', async () => {
     const { q } = await load()
     expect(q.remesaDesdeArgentina(HOY)).toBeUndefined()

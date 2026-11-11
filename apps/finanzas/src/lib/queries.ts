@@ -1092,6 +1092,13 @@ export interface Remesa {
    * mandar, y la vida de acá tiene que salir del ingreso de acá.
    */
   enRojo: boolean
+  /**
+   * Con una cuenta argentina cargada, el remanente es plata real: lo que hay
+   * en la cuenta menos lo que falta pagar allá. `ingresoCents` es entonces ese
+   * saldo y `compromisosCents` lo pendiente. Sin cuenta, es la cuenta teórica
+   * del sueldo menos los compromisos del mes.
+   */
+  porSaldo: boolean
 }
 
 /**
@@ -1404,11 +1411,14 @@ export function monthSummary(today: ISODate = todayISO(), currency: Moneda = MON
  * otro bolsillo.
  */
 export function remesaDesdeArgentina(today: ISODate = todayISO()): Remesa | undefined {
-  const ingresoCents = monthlyIncomeCents('ARS')
   const items = monthItems(financialMonth(today), today, 'ARS')
-  // No se descuenta sólo lo impago: el mes completo es lo que hay que cubrir
-  // allá antes de que sobre algo, se haya pagado ya o no.
-  const compromisosCents = items.reduce((a, i) => a + i.cents, 0)
+  // Con una cuenta de allá cargada manda el saldo: el sueldo que ya se trajo o
+  // se gastó no sobra, por más que la resta del mes diga otra cosa.
+  const porSaldo = listAccounts('ARS').length > 0
+  const ingresoCents = porSaldo ? totalCashCents('ARS', today) : monthlyIncomeCents('ARS')
+  // Sin cuenta no se descuenta sólo lo impago: el mes completo es lo que hay
+  // que cubrir allá antes de que sobre algo, se haya pagado ya o no.
+  const compromisosCents = items.filter((i) => !porSaldo || !i.paid).reduce((a, i) => a + i.cents, 0)
 
   // Sin nada cargado del lado argentino no hay remesa que mostrar, y una línea
   // en cero sólo agrega ruido al tablero.
@@ -1423,6 +1433,7 @@ export function remesaDesdeArgentina(today: ISODate = todayISO()): Remesa | unde
     compromisosCents,
     fx,
     enRojo: remanenteCents <= 0,
+    porSaldo,
   }
 }
 
