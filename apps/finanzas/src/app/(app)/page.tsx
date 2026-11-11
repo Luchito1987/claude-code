@@ -495,6 +495,19 @@ function MovimientoRapido({
  * cosas que pueden fallar.
  */
 function BloqueRemesa({ remesa }: { remesa: Remesa }) {
+  if (remesa.porSaldo && remesa.enRojo) {
+    return (
+      <section className="card">
+        <p className="text-xs uppercase tracking-wide text-muted">Desde Argentina</p>
+        <p className="mt-1 text-lg font-semibold">No queda plata para traer</p>
+        <p className="mt-1 text-sm text-muted">
+          En la cuenta de allá hay {formatMoney(remesa.ingresoCents, 'ARS')} y faltan pagar{' '}
+          {formatMoney(remesa.compromisosCents, 'ARS')} de compromisos de allá. Lo demás del sueldo ya se trajo o
+          se gastó.
+        </p>
+      </section>
+    )
+  }
   if (remesa.enRojo) {
     return (
       <section className="card border-bad/50">
@@ -523,9 +536,19 @@ function BloqueRemesa({ remesa }: { remesa: Remesa }) {
         {remesa.fx ? formatMoney(remesa.enBaseCents, 'COP') : formatMoney(remesa.remanenteCents, 'ARS')}
       </p>
       <p className="mt-1 text-sm text-muted">
-        Sobran {formatMoney(remesa.remanenteCents, 'ARS')} del sueldo de allá:{' '}
-        {formatMoney(remesa.ingresoCents, 'ARS')} menos {formatMoney(remesa.compromisosCents, 'ARS')} de
-        compromisos.
+        {remesa.porSaldo ? (
+          <>
+            Sobran {formatMoney(remesa.remanenteCents, 'ARS')} en la cuenta de allá:{' '}
+            {formatMoney(remesa.ingresoCents, 'ARS')} de saldo menos {formatMoney(remesa.compromisosCents, 'ARS')} que
+            faltan pagar allá.
+          </>
+        ) : (
+          <>
+            Sobran {formatMoney(remesa.remanenteCents, 'ARS')} del sueldo de allá:{' '}
+            {formatMoney(remesa.ingresoCents, 'ARS')} menos {formatMoney(remesa.compromisosCents, 'ARS')} de
+            compromisos.
+          </>
+        )}
       </p>
     </section>
   )
