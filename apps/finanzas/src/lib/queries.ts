@@ -1478,6 +1478,11 @@ function estimacionesDeTarjetas(
   )
   return listCards(currency).flatMap((c) => {
     if (conResumen.has(c.id)) return []
+    // Un pago previsto cargado a mano (la cuota de una deuda diferida) manda
+    // sobre el último pago, que puede haber sido un abono extraordinario.
+    const previsto = (db.prepare('SELECT estimated_cents FROM cards WHERE id = ?').get(c.id) as { estimated_cents: number } | undefined)
+      ?.estimated_cents
+    if (previsto && previsto > 0) return [{ cardId: c.id, name: c.name, cents: previsto }]
     const ultimo = db
       .prepare("SELECT amount_cents FROM month_payments WHERE kind = 'tarjeta' AND ref_id = ? ORDER BY period DESC LIMIT 1")
       .get(c.id) as { amount_cents: number } | undefined

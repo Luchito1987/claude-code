@@ -18,8 +18,9 @@ export const runtime = 'nodejs'
  */
 export async function POST(req: Request) {
   if (!claveValida(req)) return noAutorizado()
-  const { tarjeta, patronPago, pagado, saldada, crear, cierre, vencimiento } = (await req.json().catch(() => ({}))) as {
+  const { tarjeta, patronPago, pagado, saldada, crear, cierre, vencimiento, estimadoCents } = (await req.json().catch(() => ({}))) as {
     tarjeta?: string
+    estimadoCents?: number
     patronPago?: string
     pagado?: { periodo?: string; importeCents?: number; pagada?: boolean }
     saldada?: { hasta?: string }
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
   if (tarjeta && pagado) return marcarPagado(tarjeta, pagado)
   if (tarjeta && saldada) return marcarSaldada(tarjeta, saldada.hasta)
   if (tarjeta && (cierre !== undefined || vencimiento !== undefined)) return fechas(tarjeta, cierre, vencimiento)
+  if (tarjeta && estimadoCents !== undefined) return previsto(tarjeta, estimadoCents)
   if (!tarjeta || patron.length < 4) {
     return NextResponse.json({ error: 'Hace falta la tarjeta y un texto de al menos 4 caracteres.' }, { status: 400 })
   }
@@ -129,4 +131,24 @@ function reabrir(tarjeta: string, periodo?: string) {
   if (!card) return NextResponse.json({ error: `No existe la tarjeta "${tarjeta}".` }, { status: 404 })
   db.prepare("DELETE FROM month_payments WHERE kind = 'tarjeta' AND ref_id = ? AND period = ?").run(card.id, periodo)
   return NextResponse.json({ ok: `${card.name} ${periodo}: pendiente.` })
+}
+
+/**
+ * Pago mensual previsto de una tarjeta sin resumen cargado, para que la
+ * proyección no use el último pago cuando fue un abono fuera de lo normal.
+ * Cero vuelve a estimar con el último pago.
+ */
+function previsto(tarjeta: string, estimadoCents: number) {
+  if (!Number.isInteger(estimadoCents) || estimadoCents < 0) {
+    return NextResponse.json({ error: 'estimadoCents tiene que ser un entero mayor o igual a cero.' }, { status: 400 })
+  }
+  const db = getDb()
+  const card = db.prepare('SELECT id, name FROM cards WHERE id = ? OR name = ?').get(tarjeta, tarjeta) as
+    | { id: string; name: string }
+    | undefined
+  if (!card) return NextResponse.json({ error: `No existe la tarjeta "${tarjeta}".` }, { status: 404 })
+  db.prepare('UPDATE cards SET estimated_cents = ? WHERE id = ?').run(estimadoCents, card.id)
+  return NextResponse.json({
+    ok: estimadoCents ? `${card.name}: pago previsto ${estimadoCents / 100}.` : `${card.name}: se estima con el último pago.`,
+  })
 }

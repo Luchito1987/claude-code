@@ -64,7 +64,10 @@ CREATE TABLE IF NOT EXISTS cards (
   -- de Bancolombia se paga como "PAGO SUC VIRT TC VISA" y la Falabella como
   -- "PAGO PSE BANCO FALABELLA S A": sin esto no hay forma de saber a qué
   -- tarjeta corresponde el pago.
-  match_pattern TEXT NOT NULL DEFAULT ''
+  match_pattern TEXT NOT NULL DEFAULT '',
+  -- Pago mensual previsto mientras no haya resumen (una deuda diferida, por
+  -- ejemplo). Cero: se estima con el último pago.
+  estimated_cents INTEGER NOT NULL DEFAULT 0
 );
 
 -- Servicios recurrentes (luz, gas, internet, colegio, suscripciones...).
