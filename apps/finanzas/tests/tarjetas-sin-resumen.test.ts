@@ -218,3 +218,21 @@ describe('reabrir el mes de una tarjeta', () => {
     expect((await enviar({ periodo: 'nov', pagada: false })).status).toBe(400)
   })
 })
+
+describe('pago previsto de una tarjeta', () => {
+  it('reemplaza al último pago en la proyección y se borra con cero', async () => {
+    const { q } = await load()
+    const { POST } = await import('@/app/api/tarjetas/route')
+    const h = { authorization: `Bearer ${'p'.repeat(48)}`, 'content-type': 'application/json' }
+    const enviar = (estimadoCents: number) =>
+      POST(new Request('http://x/api/tarjetas', { method: 'POST', headers: h, body: JSON.stringify({ tarjeta: 'Visa', estimadoCents }) }))
+    const visa = () =>
+      q.monthlyProjection(2, HOY, 'COP')[1].detalle.tarjetas.find((t) => t.label.startsWith('Visa'))!.cents
+    expect(visa()).toBe(120000000)
+    expect((await enviar(57500000)).status).toBe(200)
+    expect(visa()).toBe(57500000)
+    expect((await enviar(0)).status).toBe(200)
+    expect(visa()).toBe(120000000)
+    expect((await enviar(-1)).status).toBe(400)
+  })
+})
