@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1500" viewBox="0 0 800 1500" font-family="Arial, Helvetica, sans-serif">
+  <rect width="800" height="1500" fill="#f7f4ee"/>
+  <text x="400" y="60" text-anchor="middle" font-size="40" font-weight="bold" fill="#1f2a36">Cómo armar tu líder</text>
+  <text x="400" y="98" text-anchor="middle" font-size="22" fill="#5a6470">De arriba (carrete) hacia abajo (señuelo)</text>
+
+  <!-- Carrete -->
+  <rect x="210" y="130" width="100" height="60" rx="12" fill="#c9a227" stroke="#7a6214" stroke-width="3"/>
+  <rect x="222" y="142" width="76" height="36" rx="6" fill="#4d6b3a"/>
+  <text x="360" y="168" font-size="24" fill="#1f2a36" font-weight="bold">Carrete</text>
+
+  <!-- Trenzado -->
+  <line x1="260" y1="190" x2="260" y2="330" stroke="#4d6b3a" stroke-width="4"/>
+  <text x="300" y="250" font-size="22" fill="#4d6b3a" font-weight="bold">Trenzado verde 20 lb</text>
+  <text x="300" y="278" font-size="18" fill="#5a6470">(la línea del carrete)</text>
+
+  <!-- Nudo Palomar -->
+  <ellipse cx="260" cy="340" rx="11" ry="14" fill="#2f4424"/>
+  <line x1="275" y1="340" x2="430" y2="340" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="435" y="318" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="585" y="349" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">① Nudo Palomar</text>
+
+  <!-- Girador barril -->
+  <g stroke="#3a3f45" stroke-width="5" fill="none">
+    <circle cx="260" cy="372" r="16"/>
+    <circle cx="260" cy="488" r="16"/>
+  </g>
+  <line x1="260" y1="352" x2="260" y2="340" stroke="#4d6b3a" stroke-width="4"/>
+  <ellipse cx="260" cy="430" rx="22" ry="36" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+  <ellipse cx="254" cy="418" rx="6" ry="14" fill="#d7dadd"/>
+  <line x1="275" y1="430" x2="430" y2="430" stroke="#1f2a36" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="440" y="424" font-size="24" fill="#1f2a36" font-weight="bold">Girador barril</text>
+  <text x="440" y="452" font-size="18" fill="#5a6470">(los pequeños del montón,</text>
+  <text x="440" y="474" font-size="18" fill="#5a6470">sin gancho)</text>
+
+  <!-- Nudo clinch arriba del líder -->
+  <ellipse cx="260" cy="514" rx="9" ry="12" fill="#6e8aa0"/>
+  <line x1="272" y1="514" x2="430" y2="530" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="435" y="510" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="585" y="541" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">② Clinch (4 vueltas)</text>
+
+  <!-- Líder -->
+  <line x1="260" y1="504" x2="260" y2="900" stroke="#8fb3cc" stroke-width="7"/>
+  <line x1="200" y1="530" x2="200" y2="900" stroke="#1f2a36" stroke-width="2"/>
+  <line x1="192" y1="530" x2="208" y2="530" stroke="#1f2a36" stroke-width="2"/>
+  <line x1="192" y1="900" x2="208" y2="900" stroke="#1f2a36" stroke-width="2"/>
+  <text x="185" y="720" font-size="20" fill="#1f2a36" text-anchor="middle" transform="rotate(-90 185 720)">80 – 100 cm</text>
+  <text x="300" y="680" font-size="24" fill="#3d6e91" font-weight="bold">Líder: nylon Gilher</text>
+  <text x="300" y="710" font-size="24" fill="#3d6e91" font-weight="bold">60 lb (0,75 mm)</text>
+
+  <!-- Nudo clinch abajo -->
+  <ellipse cx="260" cy="905" rx="9" ry="12" fill="#6e8aa0"/>
+  <line x1="272" y1="905" x2="430" y2="905" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="435" y="882" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="585" y="913" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">③ Clinch (4 vueltas)</text>
+
+  <!-- Snap con girador -->
+  <g stroke="#3a3f45" stroke-width="5" fill="none">
+    <circle cx="260" cy="932" r="15"/>
+    <circle cx="260" cy="1030" r="15"/>
+  </g>
+  <ellipse cx="260" cy="981" rx="18" ry="30" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+  <ellipse cx="255" cy="972" rx="5" ry="11" fill="#d7dadd"/>
+  <!-- twist -->
+  <path d="M252 1046 l16 6 M252 1054 l16 6 M252 1062 l16 6" stroke="#3a3f45" stroke-width="3"/>
+  <!-- snap -->
+  <path d="M260 1045 L 260 1075 L 232 1200 Q 260 1218 288 1200 L 268 1080" fill="none" stroke="#3a3f45" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M268 1080 L 276 1074" stroke="#3a3f45" stroke-width="5"/>
+  <line x1="295" y1="1080" x2="430" y2="1060" stroke="#1f2a36" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="440" y="1040" font-size="24" fill="#1f2a36" font-weight="bold">Snap con girador</text>
+  <text x="440" y="1068" font-size="18" fill="#5a6470">(los que tienen el gancho</text>
+  <text x="440" y="1090" font-size="18" fill="#5a6470">que se abre)</text>
+  <text x="440" y="1124" font-size="18" fill="#1f2a36">• Oscuros chicos → crankbait y minnow</text>
+  <text x="440" y="1150" font-size="18" fill="#1f2a36">• Plateado grande → plomos con vinilo</text>
+
+  <!-- Señuelo -->
+  <circle cx="260" cy="1238" r="24" fill="#7d7f80" stroke="#4a4c4d" stroke-width="3"/>
+  <path d="M260 1212 l0 -12" stroke="#3a3f45" stroke-width="4"/>
+  <path d="M282 1228 C 360 1210, 470 1215, 560 1238 L 610 1210 L 600 1270 L 560 1250 C 470 1272, 360 1268, 282 1250 Z" fill="#e8ecef" stroke="#8b9299" stroke-width="3"/>
+  <g fill="#333"><circle cx="350" cy="1236" r="3"/><circle cx="390" cy="1244" r="3"/><circle cx="430" cy="1232" r="3"/><circle cx="470" cy="1246" r="3"/><circle cx="510" cy="1238" r="3"/></g>
+  <path d="M300 1256 L 300 1290 Q 300 1305 318 1300" fill="none" stroke="#a9b0b6" stroke-width="4"/>
+  <text x="400" y="1340" text-anchor="middle" font-size="24" fill="#1f2a36" font-weight="bold">Señuelo (vinilo con plomo, crankbait o minnow)</text>
+
+  <!-- Nota -->
+  <rect x="60" y="1375" width="680" height="95" rx="14" fill="#fff" stroke="#d9d3c7" stroke-width="2"/>
+  <text x="400" y="1412" text-anchor="middle" font-size="20" fill="#1f2a36">Para cambiar de señuelo solo abres y cierras el snap.</text>
+  <text x="400" y="1444" text-anchor="middle" font-size="20" fill="#1f2a36">Al lanzar, el girador barril no debe entrar en las anillas.</text>
+</svg>
