@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1560" viewBox="0 0 800 1560" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#d6453d"/></marker></defs>
+<rect width="800" height="1560" fill="#f7f4ee"/>
+<text x="400" y="58" text-anchor="middle" font-size="36" font-weight="bold" fill="#1f2a36">Anzuelo directo en el lazo</text>
+<text x="400" y="94" text-anchor="middle" font-size="21" fill="#5a6470">Solo con el nylon de 60 lb · sin brazolada</text>
+<rect x="30" y="130" width="740" height="310" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="170" r="22" fill="#d6453d"/><text x="70" y="178" text-anchor="middle" font-size="24" font-weight="bold" fill="#fff">1</text>
+<text x="105" y="170" font-size="23" font-weight="bold" fill="#1f2a36">Haz un dropper loop largo</text>
+<text x="105" y="198" font-size="18" fill="#5a6470">Círculo de unos 20 cm → el lazo queda de 8–10 cm</text>
+<line x1="150" y1="220" x2="150" y2="425" stroke="#8fb3cc" stroke-width="7"/>
+<path d="M150 312 C 260 286, 420 290, 450 320 C 420 350, 260 354, 150 328" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<rect x="141" y="306" width="18" height="28" rx="6" fill="#3d6e91"/>
+<line x1="140" y1="310" x2="160" y2="314" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="317" x2="160" y2="321" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="324" x2="160" y2="328" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="331" x2="160" y2="335" stroke="#244a66" stroke-width="2"/>
+<line x1="170" y1="380" x2="450" y2="380" stroke="#1f2a36" stroke-width="2"/><line x1="170" y1="372" x2="170" y2="388" stroke="#1f2a36" stroke-width="2"/><line x1="450" y1="372" x2="450" y2="388" stroke="#1f2a36" stroke-width="2"/>
+<text x="310" y="410" text-anchor="middle" font-size="18" fill="#1f2a36">8–10 cm</text>
+<text x="490" y="325" font-size="18" fill="#5a6470">5 torsiones,</text><text x="490" y="349" font-size="18" fill="#5a6470">bien mojado</text>
+<rect x="30" y="460" width="740" height="310" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="500" r="22" fill="#d6453d"/><text x="70" y="508" text-anchor="middle" font-size="24" font-weight="bold" fill="#fff">2</text>
+<text x="105" y="500" font-size="23" font-weight="bold" fill="#1f2a36">Pasa la punta del lazo por el ojo</text>
+<text x="105" y="528" font-size="18" fill="#5a6470">Mete el lazo por el ojito del anzuelo</text>
+<line x1="150" y1="550" x2="150" y2="755" stroke="#8fb3cc" stroke-width="7"/>
+<path d="M150 577 C 260 555, 420 571, 520 579 Q 540 585 520 591 C 420 599, 260 615, 150 593" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<rect x="141" y="571" width="18" height="28" rx="6" fill="#3d6e91"/>
+<line x1="140" y1="575" x2="160" y2="579" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="582" x2="160" y2="586" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="589" x2="160" y2="593" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="596" x2="160" y2="600" stroke="#244a66" stroke-width="2"/>
+<circle cx="470" cy="585" r="10" fill="none" stroke="#6b7177" stroke-width="5"/>
+<path d="M470 594 L470 695 Q470 735 435 735 Q405 735 405 697" fill="none" stroke="#6b7177" stroke-width="6" stroke-linecap="round"/>
+<path d="M405 697 l14 12" stroke="#6b7177" stroke-width="5" stroke-linecap="round"/>
+<path d="M560 545 Q 600 575 545 585" fill="none" stroke="#d6453d" stroke-width="3" marker-end="url(#ar)"/>
+<text x="570" y="535" font-size="18" fill="#d6453d" font-weight="bold">sale por aquí</text>
+<rect x="30" y="790" width="740" height="310" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="830" r="22" fill="#d6453d"/><text x="70" y="838" text-anchor="middle" font-size="24" font-weight="bold" fill="#fff">3</text>
+<text x="105" y="830" font-size="23" font-weight="bold" fill="#1f2a36">Abre el lazo y pasa el anzuelo</text>
+<text x="105" y="858" font-size="18" fill="#5a6470">El anzuelo entero entra por dentro del lazo</text>
+<line x1="150" y1="880" x2="150" y2="1085" stroke="#8fb3cc" stroke-width="7"/>
+<path d="M150 912 C 260 896, 400 910, 464 920" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<path d="M150 928 C 260 940, 400 932, 464 924" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<rect x="141" y="906" width="18" height="28" rx="6" fill="#3d6e91"/>
+<line x1="140" y1="910" x2="160" y2="914" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="917" x2="160" y2="921" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="924" x2="160" y2="928" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="931" x2="160" y2="935" stroke="#244a66" stroke-width="2"/>
+<path d="M476 918 C 560 900, 600 980, 580 1040 C 560 1080, 420 1088, 385 1050 C 355 1015, 380 950, 476 924" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<circle cx="470" cy="920" r="10" fill="none" stroke="#6b7177" stroke-width="5"/>
+<path d="M470 929 L470 1030 Q470 1070 435 1070 Q405 1070 405 1032" fill="none" stroke="#6b7177" stroke-width="6" stroke-linecap="round"/>
+<path d="M405 1032 l14 12" stroke="#6b7177" stroke-width="5" stroke-linecap="round"/>
+<path d="M650 1025 C 680 980, 660 940, 610 920" fill="none" stroke="#d6453d" stroke-width="3" marker-end="url(#ar)"/>
+<text x="615" y="1055" font-size="17" fill="#d6453d" font-weight="bold">el anzuelo pasa</text><text x="615" y="1075" font-size="17" fill="#d6453d" font-weight="bold">por dentro del lazo</text>
+<rect x="30" y="1120" width="740" height="310" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="1160" r="22" fill="#d6453d"/><text x="70" y="1168" text-anchor="middle" font-size="24" font-weight="bold" fill="#fff">4</text>
+<text x="105" y="1160" font-size="23" font-weight="bold" fill="#1f2a36">Tira y ajusta</text>
+<text x="105" y="1188" font-size="18" fill="#5a6470">El lazo queda abrazando el ojo del anzuelo</text>
+<line x1="150" y1="1210" x2="150" y2="1415" stroke="#8fb3cc" stroke-width="7"/>
+<path d="M150 1242 C 260 1226, 400 1238, 462 1246" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<path d="M150 1258 C 260 1270, 400 1262, 462 1256" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<rect x="141" y="1236" width="18" height="28" rx="6" fill="#3d6e91"/>
+<line x1="140" y1="1240" x2="160" y2="1244" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="1247" x2="160" y2="1251" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="1254" x2="160" y2="1258" stroke="#244a66" stroke-width="2"/>
+<line x1="140" y1="1261" x2="160" y2="1265" stroke="#244a66" stroke-width="2"/>
+<circle cx="470" cy="1250" r="10" fill="none" stroke="#6b7177" stroke-width="5"/>
+<path d="M461 1244 Q 470 1228 480 1244 Q 486 1258 472 1264 Q 458 1264 461 1256" fill="none" stroke="#3d6e91" stroke-width="5"/>
+<path d="M470 1259 L470 1360 Q470 1400 435 1400 Q405 1400 405 1362" fill="none" stroke="#6b7177" stroke-width="6" stroke-linecap="round"/>
+<path d="M405 1362 l14 12" stroke="#6b7177" stroke-width="5" stroke-linecap="round"/>
+<path d="M110 1310 L 110 1210" stroke="#d6453d" stroke-width="3" marker-end="url(#ar)"/>
+<path d="M545 1310 L 545 1380" stroke="#d6453d" stroke-width="3" marker-end="url(#ar)"/>
+<text x="560" y="1350" font-size="18" fill="#d6453d" font-weight="bold">tira del anzuelo</text>
+<text x="560" y="1240" font-size="20" fill="#2e7d4f" font-weight="bold">✓ Listo</text>
+<rect x="30" y="1450" width="740" height="90" rx="14" fill="#fff" stroke="#d9d3c7" stroke-width="2"/>
+<text x="400" y="1486" text-anchor="middle" font-size="20" fill="#1f2a36">Haz lo mismo en el segundo lazo.</text>
+<text x="400" y="1518" text-anchor="middle" font-size="20" fill="#1f2a36">Para cambiar el anzuelo: afloja el lazo y saca el anzuelo por dentro.</text>
+</svg>
