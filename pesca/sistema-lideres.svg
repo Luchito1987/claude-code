@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1600" viewBox="0 0 800 1600" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#d6453d"/></marker><marker id="at" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#e0822e"/></marker></defs>
+<rect width="800" height="1600" fill="#f7f4ee"/>
+<text x="400" y="56" text-anchor="middle" font-size="35" font-weight="bold" fill="#1f2a36">Sistema de líderes intercambiables</text>
+<text x="400" y="92" text-anchor="middle" font-size="20" fill="#5a6470">Un snap fijo en tu línea · cada señuelo con su propio líder</text>
+<rect x="350" y="120" width="100" height="56" rx="12" fill="#c9a227" stroke="#7a6214" stroke-width="3"/><rect x="362" y="131" width="76" height="34" rx="6" fill="#4d6b3a"/>
+<path d="M400 176 L400 290" fill="none" stroke="#4d6b3a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="420" y="240" font-size="20" fill="#4d6b3a" text-anchor="start" font-weight="bold">Trenzado 20 lb</text>
+<ellipse cx="400" cy="296" rx="10" ry="13" fill="#2f4424"/>
+<text x="420" y="302" font-size="18" fill="#d6453d" text-anchor="start" font-weight="bold">Palomar</text>
+<g stroke="#3a3f45" stroke-width="5" fill="none"><circle cx="400" cy="322" r="14"/><circle cx="400" cy="414" r="14"/></g>
+<ellipse cx="400" cy="368" rx="17" ry="29" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+<path d="M400 428 L400 452 L376 548 Q 400 562 424 548 L 418 520" fill="none" stroke="#3a3f45" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M418 520 L 440 470" fill="none" stroke="#3a3f45" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="450" y="370" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Snap con girador</text>
+<text x="450" y="396" font-size="18" fill="#5a6470" text-anchor="start">queda FIJO en tu línea</text>
+<text x="450" y="500" font-size="18" fill="#d6453d" text-anchor="start" font-weight="bold">← se abre aquí</text>
+<path d="M400 575 L400 640" fill="none" stroke="#d6453d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ar)"/>
+<text x="415" y="615" font-size="18" fill="#d6453d" text-anchor="start" font-weight="bold">engancha el líder que quieras</text>
+<rect x="50" y="660" width="220" height="760" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<g stroke="#3a3f45" stroke-width="5" fill="none"><circle cx="160" cy="695" r="11.200000000000001"/><circle cx="160" cy="775.0" r="11.200000000000001"/></g>
+<ellipse cx="160" cy="735.0" rx="15.200000000000001" ry="25.6" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+<ellipse cx="155" cy="727.0" rx="4.0" ry="9.600000000000001" fill="#d7dadd"/>
+<text x="188" y="740" font-size="15" fill="#5a6470" text-anchor="start">girador</text>
+<text x="188" y="758" font-size="15" fill="#5a6470" text-anchor="start">barril</text>
+<path d="M160 786 L160 1140" fill="none" stroke="#8fb3cc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="160" cy="788" rx="7" ry="10" fill="#6e8aa0"/>
+<text x="146" y="965" font-size="16" fill="#3d6e91" font-weight="bold" text-anchor="middle" transform="rotate(-90 146 965)">líder 80–100 cm</text>
+<rect x="152" y="1136" width="16" height="22" rx="6" fill="#3d6e91"/>
+<path d="M156 1158 C 152 1168, 154 1176, 160 1178 C 166 1176, 168 1168, 164 1158" fill="none" stroke="#3d6e91" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="174" y="1158" font-size="14" fill="#d6453d" text-anchor="start" font-weight="bold">nudo de lazo</text>
+<path d="M140 1185 L180 1185 L176 1305 Q 160 1335 144 1305 Z" fill="#e3eaf0" stroke="#9aa5ad" stroke-width="3"/>
+<ellipse cx="160" cy="1187" rx="21" ry="7" fill="#d64b45" stroke="#a5302b" stroke-width="2"/>
+<circle cx="169" cy="1203" r="4" fill="#222"/>
+<path d="M142 1240 L142 1262 M142 1262 q -14 4 -14 -10 M142 1262 q 14 4 14 -10" fill="none" stroke="#6b7177" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M160 1325 L160 1347 M160 1347 q -14 4 -14 -10 M160 1347 q 14 4 14 -10" fill="none" stroke="#6b7177" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="160" y="1405" font-size="20" fill="#1f2a36" text-anchor="middle" font-weight="bold">Popper</text>
+<rect x="290" y="660" width="220" height="760" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<g stroke="#3a3f45" stroke-width="5" fill="none"><circle cx="400" cy="695" r="11.200000000000001"/><circle cx="400" cy="775.0" r="11.200000000000001"/></g>
+<ellipse cx="400" cy="735.0" rx="15.200000000000001" ry="25.6" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+<ellipse cx="395" cy="727.0" rx="4.0" ry="9.600000000000001" fill="#d7dadd"/>
+<text x="428" y="740" font-size="15" fill="#5a6470" text-anchor="start">girador</text>
+<text x="428" y="758" font-size="15" fill="#5a6470" text-anchor="start">barril</text>
+<path d="M400 786 L400 1140" fill="none" stroke="#8fb3cc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="400" cy="788" rx="7" ry="10" fill="#6e8aa0"/>
+<text x="386" y="965" font-size="16" fill="#3d6e91" font-weight="bold" text-anchor="middle" transform="rotate(-90 386 965)">líder 80–100 cm</text>
+<rect x="392" y="1136" width="16" height="22" rx="6" fill="#3d6e91"/>
+<path d="M396 1158 C 392 1168, 394 1176, 400 1178 C 406 1176, 408 1168, 404 1158" fill="none" stroke="#3d6e91" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="414" y="1158" font-size="14" fill="#d6453d" text-anchor="start" font-weight="bold">nudo de lazo</text>
+<path d="M400 1195 C 422 1215, 420 1305, 400 1350 C 380 1305, 378 1215, 400 1195 Z" fill="#f3f3f3" stroke="#9aa5ad" stroke-width="3"/>
+<path d="M400 1195 C 422 1215, 420 1235, 418 1245 L 382 1245 C 380 1235, 378 1215, 400 1195 Z" fill="#d64b45"/>
+<circle cx="408" cy="1219" r="5" fill="#e2c046" stroke="#222" stroke-width="2"/>
+<path d="M380 1255 L380 1277 M380 1277 q -14 4 -14 -10 M380 1277 q 14 4 14 -10" fill="none" stroke="#6b7177" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M400 1350 L400 1372 M400 1372 q -14 4 -14 -10 M400 1372 q 14 4 14 -10" fill="none" stroke="#6b7177" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="400" y="1405" font-size="20" fill="#1f2a36" text-anchor="middle" font-weight="bold">Minnow</text>
+<rect x="530" y="660" width="220" height="760" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<g stroke="#3a3f45" stroke-width="5" fill="none"><circle cx="640" cy="695" r="11.200000000000001"/><circle cx="640" cy="775.0" r="11.200000000000001"/></g>
+<ellipse cx="640" cy="735.0" rx="15.200000000000001" ry="25.6" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+<ellipse cx="635" cy="727.0" rx="4.0" ry="9.600000000000001" fill="#d7dadd"/>
+<text x="668" y="740" font-size="15" fill="#5a6470" text-anchor="start">girador</text>
+<text x="668" y="758" font-size="15" fill="#5a6470" text-anchor="start">barril</text>
+<path d="M640 786 L640 1140" fill="none" stroke="#8fb3cc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="640" cy="788" rx="7" ry="10" fill="#6e8aa0"/>
+<text x="626" y="965" font-size="16" fill="#3d6e91" font-weight="bold" text-anchor="middle" transform="rotate(-90 626 965)">líder 80–100 cm</text>
+<rect x="632" y="1136" width="16" height="22" rx="6" fill="#3d6e91"/>
+<path d="M636 1158 C 632 1168, 634 1176, 640 1178 C 646 1176, 648 1168, 644 1158" fill="none" stroke="#3d6e91" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="654" y="1158" font-size="14" fill="#d6453d" text-anchor="start" font-weight="bold">clinch o lazo</text>
+<circle cx="640" cy="1207" r="20" fill="#7d7f80" stroke="#4a4c4d" stroke-width="3"/>
+<path d="M628 1223 C 624 1275, 630 1315, 640 1335 L 624 1363 L 658 1363 L 644 1335 C 652 1305, 656 1265, 652 1223 Z" fill="#eef1f3" stroke="#9aa5ad" stroke-width="3"/>
+<path d="M652 1255 L666 1277 q 4 10 -8 10" fill="none" stroke="#a9b0b6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="640" y="1405" font-size="20" fill="#1f2a36" text-anchor="middle" font-weight="bold">Vinilo con plomo</text>
+<rect x="30" y="1445" width="740" height="135" rx="14" fill="#fff" stroke="#d9d3c7" stroke-width="2"/>
+<text x="400" y="1481" font-size="18" fill="#1f2a36" text-anchor="middle">Para cambiar: abre el snap → saca el líder → engancha otro → ciérralo.</text>
+<text x="400" y="1511" font-size="18" fill="#1f2a36" text-anchor="middle">El snap queda a 1 m del señuelo: no le quita movimiento.</text>
+<text x="400" y="1541" font-size="18" fill="#1f2a36" text-anchor="middle">Guarda cada líder enrollado en un cartón con su señuelo.</text>
+<text x="400" y="1571" font-size="18" fill="#1f2a36" text-anchor="middle">El líder de plomada también se engancha al mismo snap.</text>
+</svg>

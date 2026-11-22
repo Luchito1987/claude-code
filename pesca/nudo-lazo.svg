@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1900" viewBox="0 0 800 1900" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#d6453d"/></marker><marker id="at" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#e0822e"/></marker></defs>
+<rect width="800" height="1900" fill="#f7f4ee"/>
+<text x="400" y="56" text-anchor="middle" font-size="35" font-weight="bold" fill="#1f2a36">Nudo de lazo (Non-Slip Loop)</text>
+<text x="400" y="92" text-anchor="middle" font-size="20" fill="#5a6470">Para atar el señuelo al líder dejando que se mueva libre</text>
+<rect x="200" y="108" width="400" height="34" rx="17" fill="#fff" stroke="#e1dbcf"/>
+<path d="M222 125 L262 125" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="270" y="131" font-size="16" fill="#1f2a36" text-anchor="start">nylon (hacia el girador)</text>
+<path d="M455 125 L485 125" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="492" y="131" font-size="16" fill="#1f2a36" text-anchor="start">la punta</text>
+<rect x="30" y="160" width="740" height="255" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="198" r="21" fill="#d6453d"/>
+<text x="70" y="206" font-size="23" fill="#fff" text-anchor="middle" font-weight="bold">1</text>
+<text x="104" y="198" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Haz un nudo simple flojo</text>
+<text x="104" y="224" font-size="17" fill="#5a6470" text-anchor="start">A unos 10 cm de la punta. No lo aprietes.</text>
+<path d="M80 335 L300 335 C 335 335, 360 305, 340 277 C 320 253, 280 269, 292 297 C 300 317, 318 329, 350 335" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M612 305 Q 640 301 790 309 L 790 361 Q 640 369 612 365 Z" fill="#e8ecef" stroke="#a9b0b6" stroke-width="3"/>
+<rect x="608" y="305" width="12" height="60" rx="5" fill="#d64b45"/>
+<circle cx="600" cy="335" r="12" fill="none" stroke="#6b7177" stroke-width="5"/>
+<line x1="612" y1="335" x2="620" y2="335" stroke="#6b7177" stroke-width="5"/>
+<path d="M350 335 L470 335" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="300" y="375" font-size="16" fill="#d6453d" text-anchor="middle" font-weight="bold">nudo simple flojo</text>
+<rect x="30" y="430" width="740" height="255" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="468" r="21" fill="#d6453d"/>
+<text x="70" y="476" font-size="23" fill="#fff" text-anchor="middle" font-weight="bold">2</text>
+<text x="104" y="468" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Pasa la punta por el ojo del señuelo</text>
+<text x="104" y="494" font-size="17" fill="#5a6470" text-anchor="start">Y regrésala hacia el nudo.</text>
+<path d="M80 605 L300 605 C 335 605, 360 575, 340 547 C 320 523, 280 539, 292 567 C 300 587, 318 599, 350 605" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M612 575 Q 640 571 790 579 L 790 631 Q 640 639 612 635 Z" fill="#e8ecef" stroke="#a9b0b6" stroke-width="3"/>
+<rect x="608" y="575" width="12" height="60" rx="5" fill="#d64b45"/>
+<circle cx="600" cy="605" r="12" fill="none" stroke="#6b7177" stroke-width="5"/>
+<line x1="612" y1="605" x2="620" y2="605" stroke="#6b7177" stroke-width="5"/>
+<path d="M350 605 L588 605 C 628 605, 628 635, 588 635 L470 635" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#at)"/>
+<rect x="30" y="700" width="740" height="255" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="738" r="21" fill="#d6453d"/>
+<text x="70" y="746" font-size="23" fill="#fff" text-anchor="middle" font-weight="bold">3</text>
+<text x="104" y="738" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Mete la punta por dentro del nudo simple</text>
+<text x="104" y="764" font-size="17" fill="#5a6470" text-anchor="start">Por el mismo lado por donde sale el nylon.</text>
+<path d="M80 875 L300 875 C 335 875, 360 845, 340 817 C 320 793, 280 809, 292 837 C 300 857, 318 869, 350 875" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M612 845 Q 640 841 790 849 L 790 901 Q 640 909 612 905 Z" fill="#e8ecef" stroke="#a9b0b6" stroke-width="3"/>
+<rect x="608" y="845" width="12" height="60" rx="5" fill="#d64b45"/>
+<circle cx="600" cy="875" r="12" fill="none" stroke="#6b7177" stroke-width="5"/>
+<line x1="612" y1="875" x2="620" y2="875" stroke="#6b7177" stroke-width="5"/>
+<path d="M350 875 L588 875 C 628 875, 628 905, 588 905 L470 905" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M470 905 C 400 905, 345 865, 318 839 L 262 813" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#at)"/>
+<text x="200" y="805" font-size="16" fill="#d6453d" text-anchor="middle" font-weight="bold">entra al nudo</text>
+<rect x="30" y="970" width="740" height="255" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="1008" r="21" fill="#d6453d"/>
+<text x="70" y="1016" font-size="23" fill="#fff" text-anchor="middle" font-weight="bold">4</text>
+<text x="104" y="1008" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Enrolla la punta 3 veces en el nylon</text>
+<text x="104" y="1034" font-size="17" fill="#5a6470" text-anchor="start">Con 60 lb bastan 2–3 vueltas.</text>
+<path d="M80 1145 L300 1145 C 335 1145, 360 1115, 340 1087 C 320 1063, 280 1079, 292 1107 C 300 1127, 318 1139, 350 1145" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M612 1115 Q 640 1111 790 1119 L 790 1171 Q 640 1179 612 1175 Z" fill="#e8ecef" stroke="#a9b0b6" stroke-width="3"/>
+<rect x="608" y="1115" width="12" height="60" rx="5" fill="#d64b45"/>
+<circle cx="600" cy="1145" r="12" fill="none" stroke="#6b7177" stroke-width="5"/>
+<line x1="612" y1="1145" x2="620" y2="1145" stroke="#6b7177" stroke-width="5"/>
+<path d="M350 1145 L588 1145 C 628 1145, 628 1175, 588 1175 L470 1175" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M470 1175 C 400 1175, 345 1135, 318 1109 L 262 1083" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<g fill="none" stroke="#e0822e" stroke-width="5">
+<ellipse cx="240" cy="1145" rx="9" ry="20" transform="rotate(20 240 1145)"/>
+<ellipse cx="205" cy="1145" rx="9" ry="20" transform="rotate(20 205 1145)"/>
+<ellipse cx="170" cy="1145" rx="9" ry="20" transform="rotate(20 170 1145)"/>
+</g>
+<path d="M262 1083 C 255 1105, 250 1120, 245 1127" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M80 1145 L300 1145" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M234 1133 C 238 1141, 242 1149, 246 1157" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M199 1133 C 203 1141, 207 1149, 211 1157" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M164 1133 C 168 1141, 172 1149, 176 1157" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M165 1167 C 150 1185, 140 1190, 125 1190" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#at)"/>
+<text x="205" y="1200" font-size="16" fill="#d6453d" text-anchor="middle" font-weight="bold">3 vueltas</text>
+<rect x="30" y="1240" width="740" height="255" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="1278" r="21" fill="#d6453d"/>
+<text x="70" y="1286" font-size="23" fill="#fff" text-anchor="middle" font-weight="bold">5</text>
+<text x="104" y="1278" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Vuelve a pasar la punta por el nudo simple</text>
+<text x="104" y="1304" font-size="17" fill="#5a6470" text-anchor="start">Por el mismo lado por donde salió.</text>
+<path d="M80 1415 L300 1415 C 335 1415, 360 1385, 340 1357 C 320 1333, 280 1349, 292 1377 C 300 1397, 318 1409, 350 1415" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M612 1385 Q 640 1381 790 1389 L 790 1441 Q 640 1449 612 1445 Z" fill="#e8ecef" stroke="#a9b0b6" stroke-width="3"/>
+<rect x="608" y="1385" width="12" height="60" rx="5" fill="#d64b45"/>
+<circle cx="600" cy="1415" r="12" fill="none" stroke="#6b7177" stroke-width="5"/>
+<line x1="612" y1="1415" x2="620" y2="1415" stroke="#6b7177" stroke-width="5"/>
+<path d="M350 1415 L588 1415 C 628 1415, 628 1445, 588 1445 L470 1445" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M470 1445 C 400 1445, 345 1405, 318 1379 L 262 1353" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<g fill="none" stroke="#e0822e" stroke-width="5">
+<ellipse cx="240" cy="1415" rx="9" ry="20" transform="rotate(20 240 1415)"/>
+<ellipse cx="205" cy="1415" rx="9" ry="20" transform="rotate(20 205 1415)"/>
+<ellipse cx="170" cy="1415" rx="9" ry="20" transform="rotate(20 170 1415)"/>
+</g>
+<path d="M262 1353 C 255 1375, 250 1390, 245 1397" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M80 1415 L300 1415" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M234 1403 C 238 1411, 242 1419, 246 1427" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M199 1403 C 203 1411, 207 1419, 211 1427" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M164 1403 C 168 1411, 172 1419, 176 1427" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M165 1437 C 200 1475, 270 1435, 300 1393 L 330 1365 L 380 1335" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#at)"/>
+<text x="400" y="1335" font-size="16" fill="#d6453d" text-anchor="start" font-weight="bold">sale por aquí</text>
+<rect x="30" y="1510" width="740" height="255" rx="16" fill="#fff" stroke="#e1dbcf" stroke-width="2"/>
+<circle cx="70" cy="1548" r="21" fill="#d6453d"/>
+<text x="70" y="1556" font-size="23" fill="#fff" text-anchor="middle" font-weight="bold">6</text>
+<text x="104" y="1548" font-size="22" fill="#1f2a36" text-anchor="start" font-weight="bold">Moja, ajusta el lazo y aprieta</text>
+<text x="104" y="1574" font-size="17" fill="#5a6470" text-anchor="start">Deja el lazo de 0,5–1 cm. Corta la punta a 3 mm.</text>
+<path d="M80 1685 L300 1685" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="298" y="1674" width="44" height="22" rx="8" fill="#3d6e91"/>
+<line x1="304" y1="1674" x2="308" y2="1696" stroke="#244a66" stroke-width="2"/>
+<line x1="314" y1="1674" x2="318" y2="1696" stroke="#244a66" stroke-width="2"/>
+<line x1="324" y1="1674" x2="328" y2="1696" stroke="#244a66" stroke-width="2"/>
+<line x1="334" y1="1674" x2="338" y2="1696" stroke="#244a66" stroke-width="2"/>
+<path d="M342 1680 C 372 1673, 392 1669, 404 1675" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M342 1690 C 372 1697, 392 1701, 404 1695" fill="none" stroke="#3d6e91" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M340 1675 L352 1663" fill="none" stroke="#e0822e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M422 1655 Q 450 1651 790 1659 L 790 1711 Q 450 1719 422 1715 Z" fill="#e8ecef" stroke="#a9b0b6" stroke-width="3"/>
+<rect x="418" y="1655" width="12" height="60" rx="5" fill="#d64b45"/>
+<circle cx="410" cy="1685" r="12" fill="none" stroke="#6b7177" stroke-width="5"/>
+<line x1="422" y1="1685" x2="430" y2="1685" stroke="#6b7177" stroke-width="5"/>
+<line x1="342" y1="1727" x2="410" y2="1727" stroke="#1f2a36" stroke-width="2"/><line x1="342" y1="1719" x2="342" y2="1735" stroke="#1f2a36" stroke-width="2"/><line x1="410" y1="1719" x2="410" y2="1735" stroke="#1f2a36" stroke-width="2"/>
+<text x="376" y="1755" font-size="16" fill="#d6453d" text-anchor="middle" font-weight="bold">lazo 0,5–1 cm</text>
+<path d="M200 1655 L110 1655" fill="none" stroke="#d6453d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ar)"/>
+<text x="155" y="1645" font-size="16" fill="#d6453d" text-anchor="middle" font-weight="bold">tira</text>
+<text x="470" y="1747" font-size="17" fill="#2e7d4f" text-anchor="start" font-weight="bold">✓ el señuelo se mueve libre</text>
+<rect x="30" y="1780" width="740" height="100" rx="14" fill="#fff" stroke="#d9d3c7" stroke-width="2"/>
+<text x="400" y="1814" font-size="18" fill="#1f2a36" text-anchor="middle">Antes de apretar del todo, desliza el nudo simple hacia el señuelo</text>
+<text x="400" y="1840" font-size="18" fill="#1f2a36" text-anchor="middle">para que el lazo quede chico: así el anzuelo no se engancha en él.</text>
+</svg>
