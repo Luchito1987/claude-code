@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1760" viewBox="0 0 800 1760" font-family="Arial, Helvetica, sans-serif">
+  <rect width="800" height="1760" fill="#f7f4ee"/>
+  <text x="400" y="60" text-anchor="middle" font-size="38" font-weight="bold" fill="#1f2a36">Líder de fondo con plomada</text>
+  <text x="400" y="98" text-anchor="middle" font-size="22" fill="#5a6470">Para plomos de 2½ oz y 3 oz · 2 anzuelos</text>
+
+  <!-- Carrete -->
+  <rect x="170" y="130" width="100" height="60" rx="12" fill="#c9a227" stroke="#7a6214" stroke-width="3"/>
+  <rect x="182" y="142" width="76" height="36" rx="6" fill="#4d6b3a"/>
+  <text x="300" y="168" font-size="24" fill="#1f2a36" font-weight="bold">Carrete</text>
+
+  <!-- Trenzado -->
+  <line x1="220" y1="190" x2="220" y2="300" stroke="#4d6b3a" stroke-width="4"/>
+  <text x="250" y="245" font-size="22" fill="#4d6b3a" font-weight="bold">Trenzado verde 20 lb</text>
+
+  <!-- Palomar -->
+  <ellipse cx="220" cy="306" rx="11" ry="14" fill="#2f4424"/>
+  <line x1="235" y1="306" x2="440" y2="306" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="445" y="284" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="595" y="315" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">① Nudo Palomar</text>
+
+  <!-- Girador barril -->
+  <g stroke="#3a3f45" stroke-width="5" fill="none">
+    <circle cx="220" cy="338" r="16"/>
+    <circle cx="220" cy="454" r="16"/>
+  </g>
+  <ellipse cx="220" cy="396" rx="22" ry="36" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+  <ellipse cx="214" cy="384" rx="6" ry="14" fill="#d7dadd"/>
+  <line x1="245" y1="396" x2="440" y2="396" stroke="#1f2a36" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="450" y="392" font-size="24" fill="#1f2a36" font-weight="bold">Girador barril</text>
+  <text x="450" y="418" font-size="18" fill="#5a6470">(de los pequeños, sin gancho)</text>
+
+  <!-- Clinch arriba -->
+  <ellipse cx="220" cy="480" rx="9" ry="12" fill="#6e8aa0"/>
+  <line x1="232" y1="480" x2="440" y2="480" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="445" y="458" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="595" y="489" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">② Clinch (4 vueltas)</text>
+
+  <!-- Cuerpo del líder -->
+  <line x1="220" y1="470" x2="220" y2="1210" stroke="#8fb3cc" stroke-width="7"/>
+
+  <!-- Medidas a la izquierda -->
+  <g stroke="#1f2a36" stroke-width="2">
+    <line x1="120" y1="490" x2="120" y2="600"/><line x1="112" y1="490" x2="128" y2="490"/><line x1="112" y1="600" x2="128" y2="600"/>
+    <line x1="120" y1="600" x2="120" y2="900"/><line x1="112" y1="900" x2="128" y2="900"/>
+    <line x1="120" y1="900" x2="120" y2="1205"/><line x1="112" y1="1205" x2="128" y2="1205"/>
+  </g>
+  <text x="105" y="545" font-size="20" fill="#1f2a36" text-anchor="middle" transform="rotate(-90 105 545)">20 cm</text>
+  <text x="105" y="750" font-size="20" fill="#1f2a36" text-anchor="middle" transform="rotate(-90 105 750)">40 cm</text>
+  <text x="105" y="1052" font-size="20" fill="#1f2a36" text-anchor="middle" transform="rotate(-90 105 1052)">30 cm</text>
+  <text x="70" y="760" font-size="18" fill="#3d6e91" font-weight="bold" text-anchor="middle" transform="rotate(-90 70 760)">Nylon 60 lb · unos 90 cm en total</text>
+
+  <!-- Brazolada 1 -->
+  <path d="M220 590 C 250 578, 268 590, 268 600 C 268 612, 250 622, 220 610" fill="none" stroke="#3d6e91" stroke-width="5"/>
+  <path d="M268 600 C 300 620, 320 660, 330 720" fill="none" stroke="#b9d1e0" stroke-width="4"/>
+  <path d="M330 720 l0 34 q0 20 -18 20 q-16 0 -16 -16" fill="none" stroke="#6b7177" stroke-width="5" stroke-linecap="round"/>
+  <path d="M296 758 l8 -10" stroke="#6b7177" stroke-width="4" stroke-linecap="round"/>
+  <line x1="275" y1="600" x2="440" y2="600" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="445" y="578" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="595" y="609" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">③ Lazo (dropper loop)</text>
+  <line x1="340" y1="700" x2="440" y2="680" stroke="#1f2a36" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="450" y="668" font-size="22" fill="#1f2a36" font-weight="bold">Brazolada 25–30 cm</text>
+  <text x="450" y="694" font-size="18" fill="#5a6470">nylon más fino (30–40 lb)</text>
+  <text x="450" y="718" font-size="18" fill="#5a6470">con el anzuelo amarrado</text>
+  <text x="450" y="742" font-size="18" fill="#5a6470">y unida al lazo "lazo con lazo"</text>
+
+  <!-- Brazolada 2 -->
+  <path d="M220 890 C 250 878, 268 890, 268 900 C 268 912, 250 922, 220 910" fill="none" stroke="#3d6e91" stroke-width="5"/>
+  <path d="M268 900 C 300 920, 320 960, 330 1020" fill="none" stroke="#b9d1e0" stroke-width="4"/>
+  <path d="M330 1020 l0 34 q0 20 -18 20 q-16 0 -16 -16" fill="none" stroke="#6b7177" stroke-width="5" stroke-linecap="round"/>
+  <path d="M296 1058 l8 -10" stroke="#6b7177" stroke-width="4" stroke-linecap="round"/>
+  <line x1="275" y1="900" x2="440" y2="900" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="445" y="878" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="595" y="909" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">④ Lazo (dropper loop)</text>
+  <text x="450" y="970" font-size="18" fill="#5a6470">Igual que el de arriba. La brazolada</text>
+  <text x="450" y="994" font-size="18" fill="#5a6470">es más corta que la distancia entre</text>
+  <text x="450" y="1018" font-size="18" fill="#5a6470">lazos, así no se enredan.</text>
+
+  <!-- Clinch abajo -->
+  <ellipse cx="220" cy="1212" rx="9" ry="12" fill="#6e8aa0"/>
+  <line x1="232" y1="1212" x2="440" y2="1212" stroke="#d6453d" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="445" y="1190" width="300" height="46" rx="10" fill="#d6453d"/>
+  <text x="595" y="1221" text-anchor="middle" font-size="22" fill="#fff" font-weight="bold">⑤ Clinch (4 vueltas)</text>
+
+  <!-- Snap con girador -->
+  <g stroke="#3a3f45" stroke-width="5" fill="none">
+    <circle cx="220" cy="1239" r="15"/>
+    <circle cx="220" cy="1337" r="15"/>
+  </g>
+  <ellipse cx="220" cy="1288" rx="18" ry="30" fill="#8b9299" stroke="#3a3f45" stroke-width="4"/>
+  <ellipse cx="215" cy="1279" rx="5" ry="11" fill="#d7dadd"/>
+  <path d="M212 1353 l16 6 M212 1361 l16 6 M212 1369 l16 6" stroke="#3a3f45" stroke-width="3"/>
+  <path d="M220 1352 L 220 1382 L 194 1480 Q 220 1496 246 1480 L 228 1387" fill="none" stroke="#3a3f45" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M228 1387 L 236 1381" stroke="#3a3f45" stroke-width="5"/>
+  <line x1="252" y1="1400" x2="440" y2="1330" stroke="#1f2a36" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="450" y="1318" font-size="24" fill="#1f2a36" font-weight="bold">Snap con girador</text>
+  <text x="450" y="1344" font-size="18" fill="#5a6470">(usa el plateado grande,</text>
+  <text x="450" y="1368" font-size="18" fill="#5a6470">el más fuerte)</text>
+
+  <!-- Plomada pirámide -->
+  <line x1="220" y1="1488" x2="220" y2="1505" stroke="#3a3f45" stroke-width="4"/>
+  <polygon points="220,1505 175,1600 265,1600" fill="#7d7f80" stroke="#4a4c4d" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="275" y1="1560" x2="440" y2="1500" stroke="#1f2a36" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="450" y="1490" font-size="24" fill="#1f2a36" font-weight="bold">Plomada 2½ oz o 3 oz</text>
+  <text x="450" y="1516" font-size="18" fill="#5a6470">2½ oz → poca corriente u ola</text>
+  <text x="450" y="1540" font-size="18" fill="#5a6470">3 oz → corriente u ola fuerte</text>
+  <text x="450" y="1564" font-size="18" fill="#5a6470">(se cambia solo abriendo el snap)</text>
+
+  <!-- Nota -->
+  <rect x="40" y="1630" width="720" height="105" rx="14" fill="#fff" stroke="#d9d3c7" stroke-width="2"/>
+  <text x="400" y="1668" text-anchor="middle" font-size="20" fill="#1f2a36">El armado es el mismo para 2½ y 3 oz: solo cambias el plomo.</text>
+  <text x="400" y="1700" text-anchor="middle" font-size="20" fill="#1f2a36">Con trenzado de 20 lb, lanza con un movimiento suave,</text>
+  <text x="400" y="1726" text-anchor="middle" font-size="20" fill="#1f2a36">sin golpe brusco, para que la línea no se corte en el lance.</text>
+</svg>
